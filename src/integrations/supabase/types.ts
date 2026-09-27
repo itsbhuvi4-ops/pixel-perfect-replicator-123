@@ -14,16 +14,314 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ambassadors: {
+        Row: {
+          ambassador_name: string
+          created_at: string
+          discord: string | null
+          id: string
+          info: string | null
+          photo_url: string | null
+          remaining_points: number
+          starting_points: number
+          team_name: string
+          user_id: string
+        }
+        Insert: {
+          ambassador_name: string
+          created_at?: string
+          discord?: string | null
+          id?: string
+          info?: string | null
+          photo_url?: string | null
+          remaining_points?: number
+          starting_points?: number
+          team_name: string
+          user_id: string
+        }
+        Update: {
+          ambassador_name?: string
+          created_at?: string
+          discord?: string | null
+          id?: string
+          info?: string | null
+          photo_url?: string | null
+          remaining_points?: number
+          starting_points?: number
+          team_name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      auction_events: {
+        Row: {
+          ambassador_id: string | null
+          amount: number | null
+          created_at: string
+          event_type: string
+          id: string
+          message: string
+          player_id: string | null
+        }
+        Insert: {
+          ambassador_id?: string | null
+          amount?: number | null
+          created_at?: string
+          event_type: string
+          id?: string
+          message: string
+          player_id?: string | null
+        }
+        Update: {
+          ambassador_id?: string | null
+          amount?: number | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          message?: string
+          player_id?: string | null
+        }
+        Relationships: []
+      }
+      auction_state: {
+        Row: {
+          base_price: number
+          caster_stream_url: string | null
+          current_bid: number | null
+          current_bidder_id: string | null
+          current_player_id: string | null
+          id: number
+          lot_counter: number
+          max_ambassadors: number
+          max_casters: number
+          max_players: number
+          min_increment: number
+          status: Database["public"]["Enums"]["auction_status"]
+          tournament_name: string
+          updated_at: string
+        }
+        Insert: {
+          base_price?: number
+          caster_stream_url?: string | null
+          current_bid?: number | null
+          current_bidder_id?: string | null
+          current_player_id?: string | null
+          id?: number
+          lot_counter?: number
+          max_ambassadors?: number
+          max_casters?: number
+          max_players?: number
+          min_increment?: number
+          status?: Database["public"]["Enums"]["auction_status"]
+          tournament_name?: string
+          updated_at?: string
+        }
+        Update: {
+          base_price?: number
+          caster_stream_url?: string | null
+          current_bid?: number | null
+          current_bidder_id?: string | null
+          current_player_id?: string | null
+          id?: number
+          lot_counter?: number
+          max_ambassadors?: number
+          max_casters?: number
+          max_players?: number
+          min_increment?: number
+          status?: Database["public"]["Enums"]["auction_status"]
+          tournament_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auction_state_current_bidder_id_fkey"
+            columns: ["current_bidder_id"]
+            isOneToOne: false
+            referencedRelation: "ambassadors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auction_state_current_player_id_fkey"
+            columns: ["current_player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bids: {
+        Row: {
+          ambassador_id: string
+          amount: number
+          created_at: string
+          id: string
+          player_id: string
+        }
+        Insert: {
+          ambassador_id: string
+          amount: number
+          created_at?: string
+          id?: string
+          player_id: string
+        }
+        Update: {
+          ambassador_id?: string
+          amount?: number
+          created_at?: string
+          id?: string
+          player_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bids_ambassador_id_fkey"
+            columns: ["ambassador_id"]
+            isOneToOne: false
+            referencedRelation: "ambassadors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      players: {
+        Row: {
+          ambassador_id: string | null
+          created_at: string
+          game_id: string
+          id: string
+          info: string | null
+          ingame_name: string
+          lot_number: number | null
+          photo_url: string | null
+          player_name: string
+          primary_role: Database["public"]["Enums"]["game_role"]
+          secondary_role: Database["public"]["Enums"]["game_role"] | null
+          sold_at: string | null
+          sold_price: number | null
+          status: Database["public"]["Enums"]["player_status"]
+          user_id: string
+          video_url: string | null
+        }
+        Insert: {
+          ambassador_id?: string | null
+          created_at?: string
+          game_id: string
+          id?: string
+          info?: string | null
+          ingame_name: string
+          lot_number?: number | null
+          photo_url?: string | null
+          player_name: string
+          primary_role: Database["public"]["Enums"]["game_role"]
+          secondary_role?: Database["public"]["Enums"]["game_role"] | null
+          sold_at?: string | null
+          sold_price?: number | null
+          status?: Database["public"]["Enums"]["player_status"]
+          user_id: string
+          video_url?: string | null
+        }
+        Update: {
+          ambassador_id?: string | null
+          created_at?: string
+          game_id?: string
+          id?: string
+          info?: string | null
+          ingame_name?: string
+          lot_number?: number | null
+          photo_url?: string | null
+          player_name?: string
+          primary_role?: Database["public"]["Enums"]["game_role"]
+          secondary_role?: Database["public"]["Enums"]["game_role"] | null
+          sold_at?: string | null
+          sold_price?: number | null
+          status?: Database["public"]["Enums"]["player_status"]
+          user_id?: string
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "players_ambassador_id_fkey"
+            columns: ["ambassador_id"]
+            isOneToOne: false
+            referencedRelation: "ambassadors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      caster_end_bidding: { Args: never; Returns: Json }
+      caster_next_player: { Args: never; Returns: Json }
+      caster_set_status: {
+        Args: { p_status: Database["public"]["Enums"]["auction_status"] }
+        Returns: Json
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      place_bid: { Args: { p_amount: number }; Returns: Json }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "caster" | "ambassador" | "player"
+      auction_status: "not_started" | "live" | "paused" | "completed"
+      game_role:
+        | "primary_rusher"
+        | "secondary_rusher"
+        | "sniper"
+        | "nader"
+        | "supporter"
+      player_status: "pool" | "in_auction" | "sold" | "unsold"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +448,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "caster", "ambassador", "player"],
+      auction_status: ["not_started", "live", "paused", "completed"],
+      game_role: [
+        "primary_rusher",
+        "secondary_rusher",
+        "sniper",
+        "nader",
+        "supporter",
+      ],
+      player_status: ["pool", "in_auction", "sold", "unsold"],
+    },
   },
 } as const
