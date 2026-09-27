@@ -1,0 +1,44 @@
+const inr = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 0,
+});
+
+export function money(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "—";
+  return inr.format(value);
+}
+
+export function plainPoints(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "—";
+  return new Intl.NumberFormat("en-IN").format(value);
+}
+
+export const ROLE_LABELS: Record<string, string> = {
+  primary_rusher: "Primary Rusher",
+  secondary_rusher: "Secondary Rusher",
+  sniper: "Sniper",
+  nader: "Nader",
+  supporter: "Supporter",
+};
+
+export const GAME_ROLES = [
+  "primary_rusher",
+  "secondary_rusher",
+  "sniper",
+  "nader",
+  "supporter",
+] as const;
+
+export function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+export function usernameToEmail(username: string): string {
+  return `${username.trim().toLowerCase()}@auction.local`;
+}
