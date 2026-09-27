@@ -2,12 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
 import { useAuctionState } from "@/lib/auction";
 
-const NAV = [
-  { to: "/", label: "Live" },
-  { to: "/players", label: "Players" },
-  { to: "/sold-players", label: "Sold" },
-  { to: "/unsold-players", label: "Unsold" },
-] as const;
+const NAV = [{ to: "/", label: "Live" }] as const;
 
 export function SiteHeader() {
   const { session, roles, username, signOut } = useAuth();
