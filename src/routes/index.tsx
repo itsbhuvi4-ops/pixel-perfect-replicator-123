@@ -65,7 +65,7 @@ function LivePage() {
             </Link>
           </div>
         </div>
-        <TeamRail ambassadors={ambassadors} leaderId={state?.current_bidder_id} />
+        <TeamRail ambassadors={ambassadors} leaderId={state?.current_bidder_id ?? null} />
       </div>
     </main>
   );

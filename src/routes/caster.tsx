@@ -91,7 +91,7 @@ function Broadcast() {
           <button className="label-cond border border-gold px-3 text-[12px] text-gold">Save</button>
         </form>
       </div>
-      <TeamRail ambassadors={ambassadors} leaderId={state?.current_bidder_id} />
+      <TeamRail ambassadors={ambassadors} leaderId={state?.current_bidder_id ?? null} />
     </main>
   );
 }
