@@ -45,8 +45,8 @@ function RegisterPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (photo && photo.size > 10 * 1024 * 1024) return toast.error("Photo must be under 10 MB");
-    if (video && video.size > 200 * 1024 * 1024) return toast.error("Video must be under 200 MB");
+    if (photo && photo.size > 10 * 1024 * 1024) { toast.error("Photo must be under 10 MB"); return; }
+    if (video && video.size > 200 * 1024 * 1024) { toast.error("Video must be under 200 MB"); return; }
     setBusy(true);
     try {
       await register({
