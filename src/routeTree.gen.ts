@@ -10,33 +10,73 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AmbassadorRouteImport } from './routes/ambassador'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CasterRouteImport } from './routes/caster'
+import { Route as RegisterRouteImport } from './routes/register'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AmbassadorRoute = AmbassadorRouteImport.update({
+  id: '/ambassador',
+  path: '/ambassador',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CasterRoute = CasterRouteImport.update({
+  id: '/caster',
+  path: '/caster',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/ambassador': typeof AmbassadorRoute
+  '/auth': typeof AuthRoute
+  '/caster': typeof CasterRoute
+  '/register': typeof RegisterRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/ambassador': typeof AmbassadorRoute
+  '/auth': typeof AuthRoute
+  '/caster': typeof CasterRoute
+  '/register': typeof RegisterRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/ambassador': typeof AmbassadorRoute
+  '/auth': typeof AuthRoute
+  '/caster': typeof CasterRoute
+  '/register': typeof RegisterRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/ambassador' | '/auth' | '/caster' | '/register'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/ambassador' | '/auth' | '/caster' | '/register'
+  id: '__root__' | '/' | '/ambassador' | '/auth' | '/caster' | '/register'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AmbassadorRoute: typeof AmbassadorRoute
+  AuthRoute: typeof AuthRoute
+  CasterRoute: typeof CasterRoute
+  RegisterRoute: typeof RegisterRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +88,43 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ambassador': {
+      id: '/ambassador'
+      path: '/ambassador'
+      fullPath: '/ambassador'
+      preLoaderRoute: typeof AmbassadorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/caster': {
+      id: '/caster'
+      path: '/caster'
+      fullPath: '/caster'
+      preLoaderRoute: typeof CasterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AmbassadorRoute: AmbassadorRoute,
+  AuthRoute: AuthRoute,
+  CasterRoute: CasterRoute,
+  RegisterRoute: RegisterRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
