@@ -81,9 +81,9 @@ export function useAuth() {
 }
 
 export function homeForRoles(roles: AppRole[]): string {
-  if (roles.includes("admin")) return "/admin";
-  if (roles.includes("caster")) return "/caster";
-  if (roles.includes("ambassador")) return "/ambassador";
-  if (roles.includes("player")) return "/my-player";
-  return "/";
+  if (roles.includes("admin")) return "/admin/dashboard";
+  if (roles.includes("caster")) return "/caster/dashboard";
+  if (roles.includes("ambassador")) return "/ambassador/dashboard";
+  if (roles.includes("player")) return "/player/dashboard";
+  return "/auction";
 }

@@ -40,5 +40,14 @@ export function initials(name: string): string {
 }
 
 export function usernameToEmail(username: string): string {
-  return `${username.trim().toLowerCase()}@auction.local`;
+  return `${username.trim().toLowerCase().replace(/[^a-z0-9_.-]/g, "-")}@auction.local`;
+}
+
+export function statusLabel(s?: string | null): string {
+  return ({ not_started: "IDLE", live: "LIVE", paused: "PAUSED", stopped: "STOPPED", completed: "COMPLETED" } as Record<string, string>)[s ?? ""] ?? "IDLE";
+}
+
+export function pts(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "—";
+  return `${new Intl.NumberFormat("en-IN").format(value)} pts`;
 }
