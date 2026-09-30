@@ -299,6 +299,38 @@ export const updateSettings = createServerFn({ method: "POST" })
 
 /* ---------- Caster ---------- */
 
+export const adminRemovePlayer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ playerId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await requireRole(context, ["admin"]);
+    const sa = await admin();
+    const { data: pl } = await sa.from("players").select("status").eq("id", data.playerId).maybeSingle();
+    if (!pl) throw new Error("Player not found");
+    if (!["pool", "unsold"].includes(pl.status)) throw new Error("Only pool or unsold players can be removed");
+    const { error } = await sa.from("players").delete().eq("id", data.playerId);
+    if (error) throw new Error(friendly(error.message));
+    return { ok: true };
+  });
+
+export const adminRequeuePlayer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ playerId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await requireRole(context, ["admin"]);
+    const sa = await admin();
+    const { data: pl } = await sa.from("players").select("status").eq("id", data.playerId).maybeSingle();
+    if (!pl || pl.status !== "unsold") throw new Error("Only unsold players can be requeued");
+    // Clear the immutable unsold result so the next sale can record a new one.
+    await sa.from("auction_results").delete().eq("player_id", data.playerId).eq("status", "unsold");
+    const { error } = await sa
+      .from("players")
+      .update({ status: "pool", lot_number: null, updated_at: new Date().toISOString() })
+      .eq("id", data.playerId);
+    if (error) throw new Error(friendly(error.message));
+    return { ok: true };
+  });
+
 export const setCasterCam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ url: z.string().url().max(500).or(z.literal("")).optional(), live: z.boolean().optional() }).parse(d))

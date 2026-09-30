@@ -1,16 +1,9 @@
-# BidX Auction completion status
-
-- [x] Existing Supabase auction engine retained and extended
-- [x] Four account roles: Player, Admin, Ambassador, Caster
-- [x] One-time player registration with photo/video uploads and player metadata
-- [x] Ambassador points, realtime bidding and roster
-- [x] Caster auction controls: start, reveal, bidding, pause, resume, finalize, end
-- [x] SOLD/UNSOLD atomic finalization and duplicate-bid protection
-- [x] First-login password change for staff accounts
-- [x] Public audience auction view
-- [x] Broadcast fullscreen view
-- [x] WebRTC caster camera/microphone signaling flow
-- [x] Public/private data separation for auction views
-- [x] Responsive dashboard layouts
-- [ ] Production E2E verification against the connected Supabase project
-- [ ] Production WebRTC verification across real devices/networks
+# Roadmap
+- [x] Database upgrade: stop/retain states, results, retains, casters, safe bid/finalize/retain actions, private videos
+- [x] Login with role check, player registration, live page
+- [x] Ambassador, caster, admin, player dashboards; /auction page; WebRTC CasterCam; health check
+- [x] First admin setup screen (/setup) + create 24 ambassadors / 2 casters (seed button in Admin → Accounts)
+- [x] Broadcast view (/broadcast) — clean fullscreen output for OBS/YouTube
+- [x] Atomic SOLD system (points deduction + roster assignment via finalize_player_v3), unsold requeue
+- [x] Build verification: tsc clean, all routes render 200
+- [ ] Manual end-to-end run with real Supabase project (apply migration, seed accounts, run a live auction)

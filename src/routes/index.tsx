@@ -1,2 +1,14 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-export const Route=createFileRoute("/")({component:()=> <main className="mx-auto max-w-5xl px-4 py-16 text-center"><div className="label-cond text-[11px] text-gold">BIDX AUCTION</div><h1 className="mt-2 font-display text-7xl tracking-wide">LIVE ARENA</h1><p className="mx-auto mt-3 max-w-xl text-sm text-mut">Watch the public auction without an account. Realtime player reveals, bidding and SOLD events.</p><Link to="/auction" className="label-cond mt-6 inline-block bg-gold px-5 py-3 text-xs text-arena">ENTER LIVE AUCTION</Link></main>});
+import { createFileRoute } from "@tanstack/react-router";
+import { LiveAuction } from "@/components/LiveAuction";
+
+export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Live Auction — BidX" },
+      { name: "description", content: "Watch the esports player auction live: current player, highest bid and teams." },
+      { property: "og:title", content: "Live Auction — BidX" },
+      { property: "og:description", content: "Watch the esports player auction live with real-time bids." },
+    ],
+  }),
+  component: () => <LiveAuction />,
+});

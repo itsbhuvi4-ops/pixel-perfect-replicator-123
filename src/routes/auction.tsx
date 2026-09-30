@@ -1,1 +1,15 @@
-import { createFileRoute, Link } from "@tanstack/react-router";import { LiveTicker } from "@/components/LiveTicker";import { PlayerStage } from "@/components/PlayerStage";import { AudienceCaster } from "@/components/LiveCaster";import { usePublicTeams,useAuctionEvents,useAuctionState,usePublicPlayers,useRealtimeAuction,minimumNextBid } from "@/lib/auction";import { money,statusLabel } from "@/lib/format";export const Route=createFileRoute("/auction")({component:AuctionPage});function AuctionPage(){useRealtimeAuction();const{data:state}=useAuctionState();const{data:players=[]}=usePublicPlayers();const{data:teams=[]}=usePublicTeams();const{data:events=[]}=useAuctionEvents();const current=players.find(p=>p.id===state?.current_player_id)??null;const leader=teams.find(a=>a.id===state?.current_bidder_id);return <main className="mx-auto max-w-7xl px-4 py-5"><LiveTicker events={events}/><div className="mt-4 grid gap-4 lg:grid-cols-[1fr_360px]"><div className="space-y-4"><AudienceCaster live={!!state?.caster_cam_live}/><PlayerStage player={current} state={state}/><div className="grid gap-4 sm:grid-cols-2"><div className="rounded-2xl border border-line bg-panel p-5"><div className="label-cond text-[11px] text-mut">Current Bid</div><div className="mt-2 font-display text-5xl text-gold">{state?.current_bid?money(state.current_bid):"—"}</div><div className="mt-1 font-mono text-[11px] text-mut">Next minimum {money(minimumNextBid(state))}</div></div><div className="rounded-2xl border border-line bg-panel p-5"><div className="label-cond text-[11px] text-mut">Highest Bidder</div><div className="mt-2 font-display text-4xl">{leader?.team_name??"No bids yet"}</div><div className="mt-1 font-mono text-[11px] text-mut">{statusLabel(state?.status)} · {players.filter(p=>p.status==="sold").length} sold</div></div></div><Link to="/player/register" className="label-cond inline-block border border-line bg-panel px-4 py-2 text-[11px]">Register as player</Link></div><div className="rounded-2xl border border-line bg-panel p-4"><div className="label-cond text-[11px] text-mut">Live Teams</div><div className="mt-3 space-y-2">{teams.map(a=><div key={a.id} className={`flex items-center justify-between rounded-xl border px-3 py-2 ${a.id===state?.current_bidder_id?"border-gold/60 bg-gold/10":"border-line bg-panel2"}`}><span className="text-sm">{a.team_name}</span></div>)}</div></div></div></main>}
+import { createFileRoute } from "@tanstack/react-router";
+import { LiveAuction } from "@/components/LiveAuction";
+
+/** Audience view — watch the live auction without an account. */
+export const Route = createFileRoute("/auction")({
+  head: () => ({
+    meta: [
+      { title: "Watch Live — BidX Auction" },
+      { name: "description", content: "Watch the BidX player auction live, no account needed. Bids update in real time." },
+      { property: "og:title", content: "Watch Live — BidX Auction" },
+      { property: "og:description", content: "Live esports player auction with real-time bidding." },
+    ],
+  }),
+  component: () => <LiveAuction audience />,
+});

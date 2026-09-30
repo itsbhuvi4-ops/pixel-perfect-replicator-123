@@ -7,3 +7,4 @@ build/
 .vite/
 coverage/
 *.log
+package-lock.json
