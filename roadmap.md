@@ -1,5 +1,6 @@
 # Roadmap
-- [x] Login, player registration, ambassador console, caster broadcast, public live page
-- [ ] Admin dashboard (users, players, ambassadors, casters, settings, results)
-- [ ] Master brief (Free Fire): role-based dashboards, player profile page, 24 ambassadors @ 50,000 pts, 2 casters, retain flow, idempotent bids, stop state, auction results table, health check, browser CasterCam — blocked: out of credits
-- [ ] End-to-end testing with real accounts — blocked: out of credits
+- [x] Database upgrade: stop/retain states, results, retains, casters, safe bid/finalize/retain actions, private videos
+- [x] Login with role check, player registration, live page
+- [ ] Ambassador, caster, admin, player dashboards; /auction page; CasterCam; health check — blocked: out of credits
+- [ ] First admin setup screen + create 24 ambassadors / 2 casters — blocked: out of credits
+- [ ] End-to-end testing — blocked: out of credits

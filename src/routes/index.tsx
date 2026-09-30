@@ -60,7 +60,7 @@ function LivePage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-3 text-[13px]">
-            <Link to="/register" className="label-cond border border-line bg-panel2 px-3 py-2 hover:text-gold">
+            <Link to="/player/register" className="label-cond border border-line bg-panel2 px-3 py-2 hover:text-gold">
               Register as player
             </Link>
           </div>

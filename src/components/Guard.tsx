@@ -11,7 +11,7 @@ export function RoleGate({ role, children }: { role: AppRole | AppRole[]; childr
     return (
       <Center>
         <p>Please log in to continue.</p>
-        <Link to="/auth" className="label-cond mt-4 inline-block bg-gold px-4 py-2 text-[12px] text-arena">
+        <Link to="/login" className="label-cond mt-4 inline-block bg-gold px-4 py-2 text-[12px] text-arena">
           Login
         </Link>
       </Center>
