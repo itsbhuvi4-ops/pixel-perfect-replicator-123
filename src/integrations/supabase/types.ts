@@ -25,6 +25,7 @@ export type Database = {
           remaining_points: number
           starting_points: number
           team_name: string
+          updated_at: string
           user_id: string
         }
         Insert: {
@@ -37,6 +38,7 @@ export type Database = {
           remaining_points?: number
           starting_points?: number
           team_name: string
+          updated_at?: string
           user_id: string
         }
         Update: {
@@ -49,6 +51,7 @@ export type Database = {
           remaining_points?: number
           starting_points?: number
           team_name?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -83,51 +86,108 @@ export type Database = {
         }
         Relationships: []
       }
+      auction_results: {
+        Row: {
+          ambassador_id: string | null
+          created_at: string
+          id: string
+          player_id: string
+          sold_at: string
+          status: string
+          winning_bid: number | null
+        }
+        Insert: {
+          ambassador_id?: string | null
+          created_at?: string
+          id?: string
+          player_id: string
+          sold_at?: string
+          status: string
+          winning_bid?: number | null
+        }
+        Update: {
+          ambassador_id?: string | null
+          created_at?: string
+          id?: string
+          player_id?: string
+          sold_at?: string
+          status?: string
+          winning_bid?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auction_results_ambassador_id_fkey"
+            columns: ["ambassador_id"]
+            isOneToOne: false
+            referencedRelation: "ambassadors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auction_results_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: true
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       auction_state: {
         Row: {
           base_price: number
+          caster_cam_live: boolean
           caster_stream_url: string | null
           current_bid: number | null
           current_bidder_id: string | null
           current_player_id: string | null
+          default_starting_points: number
           id: number
           lot_counter: number
           max_ambassadors: number
           max_casters: number
           max_players: number
+          max_retains: number
           min_increment: number
+          retain_price: number
           status: Database["public"]["Enums"]["auction_status"]
           tournament_name: string
           updated_at: string
         }
         Insert: {
           base_price?: number
+          caster_cam_live?: boolean
           caster_stream_url?: string | null
           current_bid?: number | null
           current_bidder_id?: string | null
           current_player_id?: string | null
+          default_starting_points?: number
           id?: number
           lot_counter?: number
           max_ambassadors?: number
           max_casters?: number
           max_players?: number
+          max_retains?: number
           min_increment?: number
+          retain_price?: number
           status?: Database["public"]["Enums"]["auction_status"]
           tournament_name?: string
           updated_at?: string
         }
         Update: {
           base_price?: number
+          caster_cam_live?: boolean
           caster_stream_url?: string | null
           current_bid?: number | null
           current_bidder_id?: string | null
           current_player_id?: string | null
+          default_starting_points?: number
           id?: number
           lot_counter?: number
           max_ambassadors?: number
           max_casters?: number
           max_players?: number
+          max_retains?: number
           min_increment?: number
+          retain_price?: number
           status?: Database["public"]["Enums"]["auction_status"]
           tournament_name?: string
           updated_at?: string
@@ -155,6 +215,7 @@ export type Database = {
           amount: number
           created_at: string
           id: string
+          idempotency_key: string | null
           player_id: string
         }
         Insert: {
@@ -162,6 +223,7 @@ export type Database = {
           amount: number
           created_at?: string
           id?: string
+          idempotency_key?: string | null
           player_id: string
         }
         Update: {
@@ -169,6 +231,7 @@ export type Database = {
           amount?: number
           created_at?: string
           id?: string
+          idempotency_key?: string | null
           player_id?: string
         }
         Relationships: [
@@ -188,6 +251,30 @@ export type Database = {
           },
         ]
       }
+      casters: {
+        Row: {
+          caster_name: string
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          caster_name: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          caster_name?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       players: {
         Row: {
           ambassador_id: string | null
@@ -204,6 +291,7 @@ export type Database = {
           sold_at: string | null
           sold_price: number | null
           status: Database["public"]["Enums"]["player_status"]
+          updated_at: string
           user_id: string
           video_url: string | null
         }
@@ -222,6 +310,7 @@ export type Database = {
           sold_at?: string | null
           sold_price?: number | null
           status?: Database["public"]["Enums"]["player_status"]
+          updated_at?: string
           user_id: string
           video_url?: string | null
         }
@@ -240,6 +329,7 @@ export type Database = {
           sold_at?: string | null
           sold_price?: number | null
           status?: Database["public"]["Enums"]["player_status"]
+          updated_at?: string
           user_id?: string
           video_url?: string | null
         }
@@ -258,21 +348,69 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          is_active: boolean
+          updated_at: string
           username: string
         }
         Insert: {
           created_at?: string
           display_name?: string | null
           id: string
+          is_active?: boolean
+          updated_at?: string
           username: string
         }
         Update: {
           created_at?: string
           display_name?: string | null
           id?: string
+          is_active?: boolean
+          updated_at?: string
           username?: string
         }
         Relationships: []
+      }
+      retain_records: {
+        Row: {
+          ambassador_id: string
+          created_at: string
+          id: string
+          is_locked: boolean
+          player_id: string
+          retain_price: number
+        }
+        Insert: {
+          ambassador_id: string
+          created_at?: string
+          id?: string
+          is_locked?: boolean
+          player_id: string
+          retain_price: number
+        }
+        Update: {
+          ambassador_id?: string
+          created_at?: string
+          id?: string
+          is_locked?: boolean
+          player_id?: string
+          retain_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retain_records_ambassador_id_fkey"
+            columns: ["ambassador_id"]
+            isOneToOne: false
+            referencedRelation: "ambassadors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retain_records_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: true
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -303,6 +441,7 @@ export type Database = {
         Args: { p_status: Database["public"]["Enums"]["auction_status"] }
         Returns: Json
       }
+      finalize_player_v3: { Args: never; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -310,18 +449,30 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_active_user: { Args: { _uid: string }; Returns: boolean }
+      is_staff: { Args: { _uid: string }; Returns: boolean }
       place_bid: { Args: { p_amount: number }; Returns: Json }
+      place_bid_v3: {
+        Args: { p_amount: number; p_idempotency_key: string }
+        Returns: Json
+      }
+      retain_player_v3: { Args: never; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "caster" | "ambassador" | "player"
-      auction_status: "not_started" | "live" | "paused" | "completed"
+      auction_status:
+        | "not_started"
+        | "live"
+        | "paused"
+        | "completed"
+        | "stopped"
       game_role:
         | "primary_rusher"
         | "secondary_rusher"
         | "sniper"
         | "nader"
         | "supporter"
-      player_status: "pool" | "in_auction" | "sold" | "unsold"
+      player_status: "pool" | "in_auction" | "sold" | "unsold" | "retained"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -450,7 +601,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "caster", "ambassador", "player"],
-      auction_status: ["not_started", "live", "paused", "completed"],
+      auction_status: ["not_started", "live", "paused", "completed", "stopped"],
       game_role: [
         "primary_rusher",
         "secondary_rusher",
@@ -458,7 +609,7 @@ export const Constants = {
         "nader",
         "supporter",
       ],
-      player_status: ["pool", "in_auction", "sold", "unsold"],
+      player_status: ["pool", "in_auction", "sold", "unsold", "retained"],
     },
   },
 } as const
