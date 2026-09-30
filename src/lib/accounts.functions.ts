@@ -257,7 +257,7 @@ export const updateAmbassador = createServerFn({ method: "POST" })
     await requireRole(context, ["admin"]);
     const sa = await admin();
     const { data: st } = await sa.from("auction_state").select("status").eq("id", 1).single();
-    const patch: Record<string, unknown> = { team_name: data.team_name, updated_at: new Date().toISOString() };
+    const patch: { team_name: string; updated_at: string; starting_points?: number; remaining_points?: number } = { team_name: data.team_name, updated_at: new Date().toISOString() };
     if (st?.status === "not_started") {
       patch.starting_points = data.starting_points;
       patch.remaining_points = data.starting_points;
@@ -305,7 +305,7 @@ export const setCasterCam = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireRole(context, ["caster", "admin"]);
     const sa = await admin();
-    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    const patch: { updated_at: string; caster_stream_url?: string | null; caster_cam_live?: boolean } = { updated_at: new Date().toISOString() };
     if (data.url !== undefined) patch.caster_stream_url = data.url || null;
     if (data.live !== undefined) patch.caster_cam_live = data.live;
     const { error } = await sa.from("auction_state").update(patch).eq("id", 1);

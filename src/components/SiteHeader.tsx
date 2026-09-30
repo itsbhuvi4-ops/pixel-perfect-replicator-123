@@ -57,7 +57,7 @@ export function SiteHeader() {
           </div>
         ) : (
           <Link
-            to="/auth"
+            to="/login"
             className="label-cond bg-gold px-3 py-1.5 text-[12px] text-arena transition-opacity hover:opacity-90"
           >
             Login
