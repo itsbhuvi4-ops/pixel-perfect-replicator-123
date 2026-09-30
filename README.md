@@ -1,26 +1,20 @@
-# Pixel Perfect Match
+# BidX Auction
 
-Implement exactly the screenshot and nothing else
+Real-time esports player auction platform built from the existing BidX auction prototype.
 
-This project was built with [Lovable](https://lovable.dev).
+## Roles
+- Player — one-time registration and auction profile
+- Admin — player/staff/auction management and monitoring
+- Ambassador — live bidding, points and roster
+- Caster — auction control plus live camera/microphone broadcast
+- Audience — public read-only live auction
+- Broadcast View — fullscreen OBS/YouTube-friendly output
 
-**Live app**: https://pixel-perfect-replicator-123.lovable.app
+## Core flow
+Player registration → Caster auction start → player reveal → bidding → SOLD/UNSOLD → atomic points deduction and roster assignment → next player.
 
-## Build with Lovable
+## Stack
+React + TypeScript + TanStack Start/Router + Supabase + Tailwind CSS + WebRTC.
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/188be25d-7156-4607-be9d-45d39ef591e6).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
-
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
-```
+## Environment
+Keep `.env` local. Never commit Supabase service-role keys or other secrets.
