@@ -1,0 +1,1 @@
+import{n as e}from"./client-D8ej3mKm.js";import{t}from"./LiveAuction-CBzg1cXT.js";var n=e(),r=()=>(0,n.jsx)(t,{});export{r as component};
