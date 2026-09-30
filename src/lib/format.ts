@@ -1,12 +1,7 @@
-const inr = new Intl.NumberFormat("en-IN", {
-  style: "currency",
-  currency: "INR",
-  maximumFractionDigits: 0,
-});
 
 export function money(value: number | null | undefined): string {
   if (value === null || value === undefined) return "—";
-  return inr.format(value);
+  return `${new Intl.NumberFormat("en-IN").format(value)} pts`;
 }
 
 export function plainPoints(value: number | null | undefined): string {
