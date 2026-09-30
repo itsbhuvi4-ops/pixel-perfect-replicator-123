@@ -1,10 +1,29 @@
+# Dependencies
 node_modules/
+
+# Env
 .env
 .env.local
 .env.*.local
+
+# Build output
 dist/
 build/
 .vite/
+.output/
+.nitro/
+.tanstack/
+.wrangler/
 coverage/
+
+# Logs
 *.log
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+
+# Lockfile: project is managed with bun
 package-lock.json

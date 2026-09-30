@@ -1,1 +1,0 @@
-import{a as e,r as t}from"./client-D8ej3mKm.js";import{i as n}from"./LiveTicker-Dl2F4WWX.js";var r=e(t(),1);function i(e){let[t,i]=(0,r.useState)(null),[a,o]=(0,r.useState)(`idle`);return(0,r.useEffect)(()=>{if(!e){i(null),o(`idle`);return}return n(i,o)},[e]),{stream:t,status:a}}export{i as t};

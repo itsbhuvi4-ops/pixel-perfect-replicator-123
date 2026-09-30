@@ -1,1 +1,0 @@
-import{t as e}from"./client-D8ej3mKm.js";async function t(t,n,r){let i=`${n}/${Date.now()}-${r.name.replace(/[^a-zA-Z0-9.]/g,`_`)}`,{error:a}=await e.storage.from(t).upload(i,r);if(a)throw a;let{data:o,error:s}=await e.storage.from(t).createSignedUrl(i,31536e4);if(s)throw s;return o.signedUrl}export{t};
