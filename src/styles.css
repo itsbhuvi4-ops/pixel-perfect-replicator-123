@@ -169,3 +169,14 @@
   text-transform: uppercase;
   letter-spacing: 0.12em;
 }
+
+@utility field {
+  border: 1px solid var(--line);
+  background: var(--panel2);
+  padding: 0.6rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--foreground);
+  border-radius: 0.5rem;
+  outline: none;
+  &:focus { border-color: var(--gold); }
+}
