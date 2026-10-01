@@ -97,17 +97,34 @@ function AuctionControls() {
     ]);
   };
 
+  const pickRandomPlayer = async () => {
+    const { error, data } = await supabase.rpc("caster_next_player");
+    if (error) throw error;
+    return data as RpcResult;
+  };
+
   const changeStatus = async (key: "start" | "pause" | "resume" | "stop", next: "live" | "paused" | "stopped") => {
     setBusy(key);
     try {
       await setStatus({ data: { status: next } });
+
+      if (key === "start") {
+        const result = await pickRandomPlayer();
+        if (result?.completed) {
+          toast.info("No eligible players remain — auction completed");
+        } else {
+          toast.success("Auction started — player selected automatically");
+        }
+      }
+
       await refresh();
-      toast.success(
-        key === "start" ? "Auction started" :
-        key === "pause" ? "Auction paused" :
-        key === "resume" ? "Auction resumed" :
-        "Auction stopped",
-      );
+      if (key !== "start") {
+        toast.success(
+          key === "pause" ? "Auction paused" :
+          key === "resume" ? "Auction resumed" :
+          "Auction stopped",
+        );
+      }
     } catch (err) {
       toast.error(errText(err));
     } finally {
@@ -115,23 +132,50 @@ function AuctionControls() {
     }
   };
 
-  const runAuctionAction = async (key: "next" | "final", invoke: () => PromiseLike<{ error: { message: string } | null; data?: unknown }>) => {
-    setBusy(key);
+  const finalizeCurrent = async () => {
+    setBusy("final");
     try {
-      const { error, data } = await invoke();
+      const { error, data } = await supabase.rpc("finalize_player_v3");
       if (error) throw error;
       const result = data as RpcResult;
-      if (result?.completed) toast.info("Pool is empty — auction completed");
-      else if (result?.result === "sold") toast.success("SOLD! Points deducted and roster assigned");
-      else if (result?.result === "unsold") toast.info("No bids — marked UNSOLD");
-      else toast.success("Done");
       await refresh();
+
+      if (result?.completed) {
+        toast.info("Pool is empty — auction completed");
+        return;
+      }
+
+      if (result?.result === "sold") toast.success("SOLD! Points deducted and roster assigned");
+      else if (result?.result === "unsold") toast.info("UNSOLD — selecting the next player automatically");
+      else toast.success("Player finalized");
+
+      // The server-side RPC chooses the next eligible player; the caster never selects it manually.
+      const next = await pickRandomPlayer();
+      await refresh();
+      if (next?.completed) toast.info("Auction completed — no eligible players remain");
+      else toast.success("Next player revealed automatically");
     } catch (err) {
       toast.error(errText(err));
     } finally {
       setBusy(null);
     }
   };
+
+  // The database remains the source of truth for the reveal -> bidding transition.
+  // caster_next_player creates the next lot; caster_open_bidding opens bids for that lot.
+  useEffect(() => {
+    if (!isLive || !hasCurrent || state?.bidding_open) return;
+    const timer = window.setTimeout(async () => {
+      try {
+        const { error } = await supabase.rpc("caster_open_bidding");
+        if (error) throw error;
+        await refresh();
+      } catch (err) {
+        toast.error(errText(err));
+      }
+    }, 3500);
+    return () => window.clearTimeout(timer);
+  }, [isLive, hasCurrent, state?.bidding_open]);
 
   const disabled = (key: string) => busy !== null && busy !== key;
 
@@ -150,7 +194,7 @@ function AuctionControls() {
       <div className="grid gap-2 p-3 sm:grid-cols-4">
         <button
           type="button"
-          disabled={disabled("start") || !canStart}
+          disabled={disabled("start") || !canStart || hasCurrent}
           onClick={() => void changeStatus("start", "live")}
           className="label-cond min-h-12 border border-sold/40 bg-sold/10 px-4 py-3 text-left text-[12px] text-sold transition hover:bg-sold/15 disabled:cursor-not-allowed disabled:opacity-35"
         >
@@ -193,29 +237,27 @@ function AuctionControls() {
         </button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-t border-line px-3 py-3">
+      <div className="flex flex-col gap-3 border-t border-line px-3 py-3 sm:flex-row sm:items-center">
         <button
           type="button"
-          disabled={disabled("next") || !isLive || hasCurrent}
-          onClick={() => void runAuctionAction("next", () => supabase.rpc("caster_next_player"))}
-          className="label-cond border border-gold/50 bg-gold/10 px-4 py-2.5 text-[12px] text-gold disabled:cursor-not-allowed disabled:opacity-35"
-          title={!isLive ? "Start the auction first" : hasCurrent ? "Finalize the current player first" : "Pick the next player from the pool"}
+          disabled={disabled("final") || !hasCurrent || !isLive || !state?.bidding_open}
+          onClick={() => void finalizeCurrent()}
+          className="label-cond min-h-11 bg-gold px-5 py-2.5 text-[12px] text-arena disabled:cursor-not-allowed disabled:opacity-35"
+          title="Finalize the current player. The next player is selected automatically by the server."
         >
-          NEXT PLAYER
+          SOLD / FINISH LOT
         </button>
 
-        <button
-          type="button"
-          disabled={disabled("final") || !hasCurrent || !isLive}
-          onClick={() => void runAuctionAction("final", () => supabase.rpc("finalize_player_v3"))}
-          className="label-cond bg-gold px-5 py-2.5 text-[12px] text-arena disabled:cursor-not-allowed disabled:opacity-35"
-          title="Sell to the highest bidder or mark UNSOLD"
-        >
-          SOLD
-        </button>
-
-        <span className="ml-auto font-mono text-[10px] text-mut">
-          {isLive ? "BIDDING OPEN" : isPaused ? "BIDDING PAUSED" : status === "stopped" ? "AUCTION STOPPED" : "READY TO START"}
+        <span className="font-mono text-[10px] text-mut sm:ml-auto">
+          {isLive && hasCurrent && !state?.bidding_open
+            ? "PLAYER REVEAL — BIDDING OPENS AUTOMATICALLY"
+            : isLive
+              ? "BIDDING OPEN — NEXT PLAYER IS AUTOMATIC"
+              : isPaused
+                ? "BIDDING PAUSED"
+                : status === "stopped"
+                  ? "AUCTION STOPPED"
+                  : "READY TO START"}
         </span>
       </div>
     </section>
