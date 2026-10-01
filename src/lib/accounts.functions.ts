@@ -339,17 +339,11 @@ export const setAuctionStatus = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireRole(context, ["caster", "admin"]);
     const sa = await admin();
-    const biddingOpen = data.status === "live";
-    const { error } = await sa
-      .from("auction_state")
-      .update({
-        status: data.status,
-        bidding_open: biddingOpen,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", 1);
+    const { data: result, error } = await sa.rpc("caster_set_status", {
+      p_status: data.status,
+    });
     if (error) throw new Error(friendly(error.message));
-    return { ok: true, status: data.status };
+    return result as { ok: boolean; status: string; started?: boolean; selection?: unknown };
   });
 
 export const setCasterCam = createServerFn({ method: "POST" })
