@@ -33,7 +33,7 @@ function BroadcastPage() {
   const { data: players = [] } = usePlayers();
   const { data: ambassadors = [] } = useAmbassadors();
   const { data: events = [] } = useAuctionEvents();
-  const { stream: camStream, status: camStatus } = useCasterCamStream(state?.caster_cam_live ?? false);
+  const { stream: camStream, status: camStatus } = useCasterCamStream(true);
   const current = players.find((p) => p.id === state?.current_player_id) ?? null;
   const leader = ambassadors.find((a) => a.id === state?.current_bidder_id);
   const sold = players.filter((p) => ["sold", "retained"].includes(p.status));
