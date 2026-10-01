@@ -5,6 +5,17 @@ import { useAuctionState } from "@/lib/auction";
 
 type NavItem = { to: string; label: string };
 
+const publicLinks: NavItem[] = [
+  { to: "/auction", label: "Auction" },
+  { to: "/auction#top-sales", label: "Top Sales" },
+  { to: "/auction#unsold", label: "Unsold" },
+  { to: "/auction#teams", label: "Teams" },
+  { to: "/auction#points", label: "Points" },
+  { to: "/auction#total-players", label: "Total Players" },
+  { to: "/auction#about", label: "About" },
+  { to: "/auction#support", label: "Support" },
+];
+
 export function SiteHeader() {
   const { session, roles, username, signOut } = useAuth();
   const { data: state } = useAuctionState();
@@ -13,33 +24,29 @@ export function SiteHeader() {
 
   if (location.pathname.startsWith("/broadcast")) return null;
 
-  const links: NavItem[] = [];
-
-  if (roles.includes("admin")) {
-    links.push(
-      { to: "/admin", label: "Dashboard" },
-      { to: "/admin_/live-monitor", label: "Live Monitor" },
-    );
-  } else if (roles.includes("caster")) {
-    links.push(
-      { to: "/caster", label: "Profile" },
-      { to: "/caster", label: "Check" },
-      { to: "/caster_/auction-control", label: "Auction" },
-    );
-  } else if (roles.includes("ambassador")) {
-    links.push(
-      { to: "/ambassador", label: "Profile" },
-      { to: "/ambassador", label: "Team" },
-      { to: "/ambassador_/live-auction", label: "Auction" },
-    );
-  } else if (roles.includes("player")) {
-    links.push(
-      { to: "/my-player", label: "Profile" },
-      { to: "/auction", label: "Auction" },
+  let links: NavItem[] = publicLinks;
+  if (roles.includes("admin") && !location.pathname.startsWith("/auction")) {
+    links = [
+      { to: "/admin", label: "Auction" },
+      { to: "/admin#profile", label: "Profile" },
+      { to: "/admin#database", label: "Database" },
+      { to: "/admin#settings", label: "Settings" },
+    ];
+  } else if (roles.includes("caster") && !location.pathname.startsWith("/auction")) {
+    links = [{ to: "/caster", label: "Auction" }];
+  } else if (roles.includes("ambassador") && !location.pathname.startsWith("/auction")) {
+    links = [
+      { to: "/ambassador#profile", label: "Profile" },
+      { to: "/ambassador#auction", label: "Auction" },
+      { to: "/ambassador#team", label: "Team Information" },
+    ];
+  } else if (roles.includes("player") && !location.pathname.startsWith("/auction")) {
+    links = [
+      { to: "/my-player#profile", label: "Profile" },
       { to: "/my-player#information", label: "Information" },
-    );
-  } else {
-    links.push({ to: "/", label: "Home" }, { to: "/auction", label: "Auction" });
+      { to: "/my-player#uploads", label: "Uploads" },
+      { to: "/my-player#auction", label: "Auction" },
+    ];
   }
 
   const live = state?.status === "live";
@@ -51,13 +58,13 @@ export function SiteHeader() {
           BID<span className="text-gold">X</span>AUCTION
         </Link>
 
-        <nav className="hidden min-w-0 items-center gap-1 md:flex">
-          {links.map((item, index) => (
+        <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 md:flex">
+          {links.map((item) => (
             <Link
-              key={item.to + index}
+              key={item.label}
               to={item.to}
-              activeProps={{ className: "bg-panel2 text-foreground" }}
-              className="rounded-full px-3 py-2 font-cond text-[12px] uppercase tracking-[0.1em] text-mut transition-colors hover:bg-panel2 hover:text-foreground"
+              className="rounded-full px-3 py-2 font-cond text-[11px] uppercase tracking-[0.08em] text-mut transition-colors hover:bg-panel2 hover:text-foreground"
+              activeProps={{ className: "rounded-full bg-panel2 px-3 py-2 font-cond text-[11px] uppercase tracking-[0.08em] text-foreground" }}
             >
               {item.label}
             </Link>
@@ -72,15 +79,12 @@ export function SiteHeader() {
           )}
 
           {session ? (
-            <div className="hidden items-center gap-2 sm:flex">
-              <span className="max-w-32 truncate font-mono text-[10px] text-mut">{username}</span>
-              <button
-                onClick={() => void signOut()}
-                className="rounded-full border border-line bg-panel2 px-3 py-1.5 font-cond text-[11px] text-mut transition hover:text-foreground"
-              >
-                Sign out
-              </button>
-            </div>
+            <button
+              onClick={() => void signOut()}
+              className="hidden rounded-full border border-line bg-panel2 px-3 py-1.5 font-cond text-[11px] text-mut transition hover:text-foreground sm:inline-flex"
+            >
+              Sign out · {username}
+            </button>
           ) : (
             <Link
               to="/login"
@@ -105,13 +109,12 @@ export function SiteHeader() {
       {open && (
         <div className="mx-auto max-w-7xl border-t border-line py-3 md:hidden">
           <nav className="grid gap-1">
-            {links.map((item, index) => (
+            {links.map((item) => (
               <Link
-                key={item.to + index}
+                key={item.label}
                 to={item.to}
                 onClick={() => setOpen(false)}
                 className="rounded-xl px-4 py-3 font-cond text-[13px] uppercase tracking-[0.08em] text-mut hover:bg-panel2 hover:text-foreground"
-                activeProps={{ className: "bg-panel2 text-foreground" }}
               >
                 {item.label}
               </Link>
