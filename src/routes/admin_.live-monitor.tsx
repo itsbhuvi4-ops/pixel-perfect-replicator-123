@@ -4,7 +4,7 @@ import { CasterLivePanel } from "@/components/CasterLivePanel";
 import { useAuctionState, useAuctionEvents, usePlayers, useRealtimeAuction } from "@/lib/auction";
 import { useCasterCamStream } from "@/lib/use-caster-cam";
 
-export const Route = createFileRoute("/admin/live-monitor")({
+export const Route = createFileRoute("/admin_/live-monitor")({
   component: () => <RoleGate role="admin"><AdminLiveMonitor /></RoleGate>,
 });
 
