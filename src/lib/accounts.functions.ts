@@ -157,6 +157,29 @@ export const adminDeleteAccount = createServerFn({ method: "POST" })
     await requireRole(context, ["admin"]);
     if (data.userId === context.userId) throw new Error("You can't delete your own account");
     const sa = await admin();
+
+    // Remove auction-history rows that may reference a player/ambassador
+    // without CASCADE. This keeps account deletion reliable even if an
+    // older database migration is still present.
+    const [{ data: player }, { data: ambassador }] = await Promise.all([
+      sa.from("players").select("id").eq("user_id", data.userId).maybeSingle(),
+      sa.from("ambassadors").select("id").eq("user_id", data.userId).maybeSingle(),
+    ]);
+
+    if (player?.id) {
+      const { error } = await sa.from("auction_results").delete().eq("player_id", player.id);
+      if (error) throw new Error(friendly(error.message));
+      const { error: retainError } = await sa.from("retain_records").delete().eq("player_id", player.id);
+      if (retainError) throw new Error(friendly(retainError.message));
+    }
+
+    if (ambassador?.id) {
+      const { error } = await sa.from("auction_results").delete().eq("ambassador_id", ambassador.id);
+      if (error) throw new Error(friendly(error.message));
+      const { error: retainError } = await sa.from("retain_records").delete().eq("ambassador_id", ambassador.id);
+      if (retainError) throw new Error(friendly(retainError.message));
+    }
+
     const { error } = await sa.auth.admin.deleteUser(data.userId);
     if (error) throw new Error(friendly(error.message));
     return { ok: true };
