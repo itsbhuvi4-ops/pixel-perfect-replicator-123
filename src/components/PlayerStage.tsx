@@ -1,47 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { AuctionState, Player } from "@/lib/auction";
 import { ROLE_LABELS } from "@/lib/format";
-import { attachStream } from "@/lib/caster-cam";
-
-export function CasterCamPip({
-  stream,
-  embedUrl,
-  large,
-}: {
-  stream: MediaStream | null;
-  embedUrl?: string | null;
-  large?: boolean;
-}) {
-  const ref = useRef<HTMLVideoElement>(null);
-  useEffect(() => attachStream(ref.current, stream), [stream]);
-  if (!stream && !embedUrl) return null;
-  return (
-    <div
-      className={
-        large
-          ? "absolute top-4 right-4 w-40 overflow-hidden rounded-xl bg-panel ring-1 ring-gold/50 sm:w-52"
-          : "absolute top-3 right-3 w-28 overflow-hidden rounded-xl bg-panel ring-1 ring-gold/40"
-      }
-    >
-      <div className="aspect-square">
-        {stream ? (
-          <video ref={ref} autoPlay playsInline muted className="size-full object-cover" />
-        ) : (
-          <iframe
-            src={embedUrl!}
-            title="Caster face cam"
-            allow="autoplay; encrypted-media; picture-in-picture"
-            className="size-full"
-          />
-        )}
-      </div>
-      <span className="label-cond flex items-center justify-center gap-1 bg-black/60 py-0.5 text-center text-[9px]">
-        <i className="live-dot size-1 rounded-full bg-alert" />
-        Caster Cam
-      </span>
-    </div>
-  );
-}
 
 export function PlayerStage({
   player,
@@ -50,9 +9,7 @@ export function PlayerStage({
 }: {
   player: Player | null;
   state: AuctionState | null | undefined;
-  camStream?: MediaStream | null;
 }) {
-  const embed = state?.caster_stream_url ?? null;
   return (
     <div className="relative aspect-video overflow-hidden rounded-xl bg-panel2 outline-1 -outline-offset-1 outline-line">
       {player?.video_url ? (
