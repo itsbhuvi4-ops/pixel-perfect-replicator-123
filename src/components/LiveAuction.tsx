@@ -11,6 +11,7 @@ import {
   minimumNextBid,
 } from "@/lib/auction";
 import { useCasterCamStream } from "@/lib/use-caster-cam";
+import { CasterLivePanel } from "@/components/CasterLivePanel";
 import { money } from "@/lib/format";
 import { CasterLivePanel } from "@/components/CasterLivePanel";
 
