@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useAuctionEvents, useAuctionState, useAmbassadors, useBids, usePlayers, useRealtimeAuction } from "@/lib/auction";
 import { useCasterCamStream } from "@/lib/use-caster-cam";
 import { CasterLivePanel } from "@/components/CasterLivePanel";
@@ -145,7 +146,7 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
-function PublicSection({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+function PublicSection({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
     <section id={id} className="mt-8 scroll-mt-20 rounded-xl bg-panel p-4 ring-1 ring-line sm:p-5">
       <h2 className="font-display text-3xl">{title}</h2>
