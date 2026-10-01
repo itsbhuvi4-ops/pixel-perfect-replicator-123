@@ -129,11 +129,12 @@ function ConfigError() {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const isLandingPage = window.location.pathname === "/";
   if (!CONFIG_OK) return <ConfigError />;
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <SiteHeader />
+        {!isLandingPage && <SiteHeader />}
         <Outlet />
         <Toaster />
       </AuthProvider>
