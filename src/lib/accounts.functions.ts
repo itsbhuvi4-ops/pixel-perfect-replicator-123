@@ -333,13 +333,11 @@ export const adminRequeuePlayer = createServerFn({ method: "POST" })
 
 export const setCasterCam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ url: z.string().url().max(500).or(z.literal("")).optional(), live: z.boolean().optional() }).parse(d))
+  .inputValidator((d) => z.object({ live: z.boolean() }).parse(d))
   .handler(async ({ data, context }) => {
     await requireRole(context, ["caster", "admin"]);
     const sa = await admin();
-    const patch: { updated_at: string; caster_stream_url?: string | null; caster_cam_live?: boolean } = { updated_at: new Date().toISOString() };
-    if (data.url !== undefined) patch.caster_stream_url = data.url || null;
-    if (data.live !== undefined) patch.caster_cam_live = data.live;
+    const patch: { updated_at: string; caster_cam_live: boolean } = { updated_at: new Date().toISOString(), caster_cam_live: data.live };
     const { error } = await sa.from("auction_state").update(patch).eq("id", 1);
     if (error) throw new Error(friendly(error.message));
     return { ok: true };
