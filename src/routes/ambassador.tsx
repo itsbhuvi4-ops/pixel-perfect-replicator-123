@@ -144,7 +144,7 @@ function PlayerAuction({ meId }: { meId: string }) {
             <button
               key={amount}
               type="button"
-              disabled={!live || busy || amount > meId.length * 0 + ((me?.remaining_points ?? 0))}
+              disabled={!live || busy || amount > (me?.remaining_points ?? 0)}
               onClick={() => void bid(amount)}
               className="min-h-11 rounded-lg bg-gold px-4 py-2 font-cond text-[13px] text-arena disabled:cursor-not-allowed disabled:opacity-40"
             >
