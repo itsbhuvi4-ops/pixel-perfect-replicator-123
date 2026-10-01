@@ -74,7 +74,7 @@ export function CasterConsole() {
   );
 }
 
-type RpcResult = { completed?: boolean; result?: string } | null;
+type RpcResult = { completed?: boolean; result?: string; next?: { completed?: boolean; player_id?: string } } | null;
 
 function AuctionControls() {
   const qc = useQueryClient();
@@ -97,20 +97,13 @@ function AuctionControls() {
     ]);
   };
 
-  const pickRandomPlayer = async () => {
-    const { error, data } = await supabase.rpc("caster_next_player");
-    if (error) throw error;
-    return data as RpcResult;
-  };
-
   const changeStatus = async (key: "start" | "pause" | "resume" | "stop", next: "live" | "paused" | "stopped") => {
     setBusy(key);
     try {
-      await setStatus({ data: { status: next } });
+      const result = await setStatus({ data: { status: next } });
 
       if (key === "start") {
-        const result = await pickRandomPlayer();
-        if (result?.completed) {
+        if (result?.selection && typeof result.selection === "object" && "completed" in result.selection && result.selection.completed) {
           toast.info("No eligible players remain — auction completed");
         } else {
           toast.success("Auction started — player selected automatically");
@@ -140,20 +133,28 @@ function AuctionControls() {
       const result = data as RpcResult;
       await refresh();
 
-      if (result?.completed) {
-        toast.info("Pool is empty — auction completed");
-        return;
-      }
-
-      if (result?.result === "sold") toast.success("SOLD! Points deducted and roster assigned");
-      else if (result?.result === "unsold") toast.info("UNSOLD — selecting the next player automatically");
+      if (result?.result === "sold") toast.success("SOLD — points deducted and roster updated");
+      else if (result?.result === "unsold") toast.info("UNSOLD — next player revealed automatically");
       else toast.success("Player finalized");
 
-      // The server-side RPC chooses the next eligible player; the caster never selects it manually.
-      const next = await pickRandomPlayer();
+      if (result?.next?.completed) toast.info("Auction completed — no eligible players remain");
+      else if (result?.next?.player_id) toast.success("Next player revealed automatically");
+    } catch (err) {
+      toast.error(errText(err));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const markUnsold = async () => {
+    setBusy("unsold");
+    try {
+      const { error, data } = await supabase.rpc("caster_mark_unsold");
+      if (error) throw error;
+      const result = data as RpcResult;
       await refresh();
-      if (next?.completed) toast.info("Auction completed — no eligible players remain");
-      else toast.success("Next player revealed automatically");
+      if (result?.next?.completed) toast.info("Player unsold — auction completed");
+      else toast.info("Player UNSOLD — next player revealed automatically");
     } catch (err) {
       toast.error(errText(err));
     } finally {
@@ -162,7 +163,7 @@ function AuctionControls() {
   };
 
   // The database remains the source of truth for the reveal -> bidding transition.
-  // caster_next_player creates the next lot; caster_open_bidding opens bids for that lot.
+  // Player selection is performed only inside the server-side auction transaction.
   useEffect(() => {
     if (!isLive || !hasCurrent || state?.bidding_open) return;
     const timer = window.setTimeout(async () => {
@@ -248,9 +249,17 @@ function AuctionControls() {
           disabled={disabled("final") || !hasCurrent || !isLive || !state?.bidding_open}
           onClick={() => void finalizeCurrent()}
           className="label-cond min-h-11 bg-gold px-5 py-2.5 text-[12px] text-arena disabled:cursor-not-allowed disabled:opacity-35"
-          title="Finalize the current player. The next player is selected automatically by the server."
+          title="Finalize the current player. The server automatically reveals the next player."
         >
-          SOLD / FINISH LOT
+          SOLD / NEXT PLAYER
+        </button>
+        <button
+          type="button"
+          disabled={disabled("unsold") || !hasCurrent || !isLive || !!state?.current_bid}
+          onClick={() => void markUnsold()}
+          className="label-cond min-h-11 border border-line bg-panel2 px-5 py-2.5 text-[12px] text-mut disabled:cursor-not-allowed disabled:opacity-35"
+        >
+          UNSOLD / NEXT PLAYER
         </button>
 
         <span className="font-mono text-[10px] text-mut sm:ml-auto">
