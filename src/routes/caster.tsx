@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { RoleGate, Center, errText } from "@/components/Guard";
 import { PlayerStage } from "@/components/PlayerStage";
 import { LiveTicker } from "@/components/LiveTicker";
-import { useAuctionEvents, useAuctionState, usePlayers, useRealtimeAuction, useAmbassadors } from "@/lib/auction";
+import { useAuctionEvents, useAuctionState, usePlayers, useRealtimeAuction, useAmbassadors, useBids } from "@/lib/auction";
 import { setAuctionStatus, setCasterCam } from "@/lib/accounts.functions";
 import { startCasterBroadcast, type CamStatus } from "@/lib/caster-cam";
 import { money, statusLabel } from "@/lib/format";
@@ -34,40 +34,48 @@ export function CasterConsole() {
   const { data: events = [] } = useAuctionEvents();
   const current = players.find((p) => p.id === state?.current_player_id) ?? null;
   const leader = ambassadors.find((a) => a.id === state?.current_bidder_id);
+  const { data: bids = [] } = useBids(current?.id);
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-5 sm:px-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-display text-4xl">Caster Console</h1>
-        <div className="flex items-center gap-2">
-          <span className="label-cond border border-line bg-panel px-3 py-1 text-[12px] text-mut">
-            {statusLabel(state?.status)}
-          </span>
-          <Link to="/broadcast" className="label-cond border border-gold/50 px-3 py-1 text-[12px] text-gold">
-            Open Broadcast View ↗
-          </Link>
-        </div>
-      </div>
-
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_340px]">
-        <div className="flex flex-col gap-4">
-          <PlayerStage player={current} state={state} />
+    <main className="mx-auto max-w-7xl px-3 py-5 sm:px-5">
+      <h1 className="font-display text-4xl">Auction</h1>
+      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="min-w-0 space-y-4">
+          <section className="overflow-hidden rounded-xl bg-panel ring-1 ring-line">
+            <PlayerStage player={current} state={state} />
+          </section>
+          <section className="rounded-xl bg-panel p-4 ring-1 ring-line">
+            <div className="label-cond text-[12px] text-mut">Player Information</div>
+            {current ? (
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <Info label="Username" value={current.ingame_name} />
+                <Info label="UID" value={current.game_id} />
+                <Info label="Role" value={current.primary_role.replace("_", " ")} />
+                <Info label="Current Bid" value={state?.current_bid ? money(state.current_bid) : "—"} />
+              </div>
+            ) : <p className="mt-3 text-sm text-mut">Waiting for auction start.</p>}
+          </section>
+          <section className="rounded-xl bg-panel p-4 ring-1 ring-line">
+            <div className="label-cond text-[12px] text-mut">Ambassador Bids</div>
+            <div className="mt-3 space-y-2">
+              {bids.length ? bids.slice().sort((a,b)=>b.amount-a.amount).map((b) => (
+                <div key={b.id} className="flex justify-between rounded-lg bg-panel2 px-3 py-2 text-sm">
+                  <span>{ambassadors.find((a) => a.id === b.ambassador_id)?.team_name ?? "Ambassador"}</span>
+                  <span className="font-mono text-[12px] text-gold">{money(b.amount)}</span>
+                </div>
+              )) : <p className="text-sm text-mut">No bids yet.</p>}
+            </div>
+          </section>
           <AuctionControls />
           <LiveTicker events={events} />
         </div>
-        <div className="flex flex-col gap-4">
+        <div className="min-w-0 space-y-4">
           <CasterCamCard />
-          <div className="rounded-xl bg-panel p-4 ring-1 ring-line">
-            <div className="label-cond text-[12px] text-mut">On The Block</div>
-            <div className="mt-1 font-display text-3xl">{current?.ingame_name ?? "—"}</div>
-            <div className="mt-1 font-mono text-[11px] text-mut">
-              {state?.current_bid
-                ? `${leader?.team_name ?? "?"} · ${money(state.current_bid)}`
-                : current
-                  ? `Base ${money(state?.base_price ?? 0)} — no bids yet`
-                  : "No player selected"}
-            </div>
-          </div>
+          <section className="rounded-xl bg-panel p-4 ring-1 ring-line">
+            <div className="label-cond text-[12px] text-mut">Current Bid</div>
+            <div className="mt-1 font-display text-4xl text-gold">{state?.current_bid ? money(state.current_bid) : "—"}</div>
+            <div className="mt-1 font-mono text-[11px] text-mut">{leader?.team_name ?? "No bidder"}</div>
+          </section>
         </div>
       </div>
     </main>
@@ -394,3 +402,5 @@ function CasterCamCard() {
     </div>
   );
 }
+
+function Info({ label, value }: { label: string; value: string }) { return <div className="rounded-lg bg-panel2 p-3"><div className="label-cond text-[10px] text-mut">{label}</div><div className="mt-1 text-sm capitalize">{value}</div></div>; }
