@@ -230,7 +230,8 @@ function CasterCamCard() {
       toast.success("Caster cam is live — audience can see and hear you");
       await qc.invalidateQueries({ queryKey: ["auction_state"] });
     } catch (err) {
-      toast.error(errText(err));
+      const name = err instanceof DOMException ? err.name : "";
+      toast.error(name === "NotAllowedError" ? "CAMERA PERMISSION REQUIRED" : name === "NotFoundError" ? "CAMERA UNAVAILABLE" : errText(err));
     }
   };
 
