@@ -12,6 +12,7 @@ import {
 } from "@/lib/auction";
 import { useCasterCamStream } from "@/lib/use-caster-cam";
 import { money } from "@/lib/format";
+import { CasterLivePanel } from "@/components/CasterLivePanel";
 
 export function LiveAuction({ audience = false }: { audience?: boolean }) {
   useRealtimeAuction();
@@ -19,7 +20,7 @@ export function LiveAuction({ audience = false }: { audience?: boolean }) {
   const { data: players = [] } = usePlayers();
   const { data: ambassadors = [] } = useAmbassadors();
   const { data: events = [] } = useAuctionEvents();
-  const { stream: camStream } = useCasterCamStream(state?.caster_cam_live ?? false);
+  const { stream: camStream, status: camStatus } = useCasterCamStream(state?.caster_cam_live ?? false);
   const current = players.find((p) => p.id === state?.current_player_id) ?? null;
   const leader = ambassadors.find((a) => a.id === state?.current_bidder_id);
   const sold = players.filter((p) => p.status === "sold").length;
@@ -30,7 +31,8 @@ export function LiveAuction({ audience = false }: { audience?: boolean }) {
       <LiveTicker events={events} />
       <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_320px]">
         <div className="flex flex-col gap-4">
-          <PlayerStage player={current} state={state} camStream={camStream} />
+          <CasterLivePanel stream={camStream} status={camStatus} />
+          <PlayerStage player={current} state={state} />
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-xl bg-panel p-4 ring-1 ring-line">
               <div className="label-cond text-[12px] text-mut">Current Bid</div>
