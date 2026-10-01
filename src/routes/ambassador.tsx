@@ -21,6 +21,7 @@ import {
 import { ROLE_LABELS, money, plainPoints } from "@/lib/format";
 import { useCasterCamStream } from "@/lib/use-caster-cam";
 import { supabase } from "@/integrations/supabase/client";
+import { CasterLivePanel } from "@/components/CasterLivePanel";
 
 export const Route = createFileRoute("/ambassador")({
   head: () => ({
@@ -45,7 +46,7 @@ function AmbassadorConsole() {
   const { data: players = [] } = usePlayers();
   const { data: ambassadors = [] } = useAmbassadors();
   const { data: events = [] } = useAuctionEvents();
-  const { stream: camStream } = useCasterCamStream(state?.caster_cam_live ?? false);
+  const { stream: camStream, status: camStatus } = useCasterCamStream(state?.caster_cam_live ?? false);
   const current = players.find((p) => p.id === state?.current_player_id) ?? null;
   const leader = ambassadors.find((a) => a.id === state?.current_bidder_id);
   const iLead = !!me && state?.current_bidder_id === me.id;
@@ -70,7 +71,8 @@ function AmbassadorConsole() {
             <Stat label="Roster" value={`${roster.length} players`} />
             <Stat label="Lot" value={current ? `#${current.lot_number ?? "—"}` : "—"} />
           </div>
-          <PlayerStage player={current} state={state} camStream={camStream} />
+          <CasterLivePanel stream={camStream} status={camStatus} />
+          <PlayerStage player={current} state={state} />
           <BidPanel />
         </div>
         <div className="flex flex-col gap-4">
