@@ -214,6 +214,27 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/admin/live-monitor': {
+      id: '/admin/live-monitor'
+      path: '/admin/live-monitor'
+      fullPath: '/admin/live-monitor'
+      preLoaderRoute: typeof AdminLiveMonitorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ambassador/live-auction': {
+      id: '/ambassador/live-auction'
+      path: '/ambassador/live-auction'
+      fullPath: '/ambassador/live-auction'
+      preLoaderRoute: typeof AmbassadorLiveAuctionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/caster/auction-control': {
+      id: '/caster/auction-control'
+      path: '/caster/auction-control'
+      fullPath: '/caster/auction-control'
+      preLoaderRoute: typeof CasterAuctionControlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
