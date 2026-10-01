@@ -37,7 +37,7 @@ export const Route = createFileRoute("/ambassador")({
   ),
 });
 
-function AmbassadorConsole() {
+export function AmbassadorConsole() {
   const { user } = useAuth();
   useRealtimeAuction();
   const { data: state } = useAuctionState();
