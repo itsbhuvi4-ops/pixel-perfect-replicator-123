@@ -94,6 +94,20 @@ export function startCasterBroadcast(
 
       // hello is deliberately not targeted: every active caster can receive viewer discovery.
       if (payload.kind === "hello") {
+        const existing = peers.get(payload.from);
+        if (existing) {
+          // Viewers send discovery heartbeats. Keep a healthy peer stable, but
+          // replace a stale/failed connection so a viewer can recover without
+          // refreshing the page.
+          if (
+            existing.connectionState === "connected" ||
+            existing.connectionState === "connecting" ||
+            existing.connectionState === "new"
+          ) {
+            return;
+          }
+          drop(payload.from);
+        }
         await connect(payload.from);
         return;
       }
@@ -188,6 +202,14 @@ export function watchCasterCam(
         });
       }
     };
+    next.oniceconnectionstatechange = () => {
+      if (next.iceConnectionState === "failed") {
+        onStream(null);
+        onStatus("connecting");
+        cleanup();
+        ask();
+      }
+    };
     next.onconnectionstatechange = () => {
       if (next.connectionState === "connected") {
         if (retryTimer) clearTimeout(retryTimer);
@@ -195,6 +217,7 @@ export function watchCasterCam(
       } else if (["failed", "closed"].includes(next.connectionState)) {
         onStream(null);
         onStatus("connecting");
+        cleanup();
         ask();
       } else if (next.connectionState === "disconnected") {
         onStream(null);
