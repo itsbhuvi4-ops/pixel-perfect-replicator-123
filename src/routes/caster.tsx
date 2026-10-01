@@ -26,7 +26,7 @@ export const Route = createFileRoute("/caster")({
   ),
 });
 
-function CasterConsole() {
+export function CasterConsole() {
   useRealtimeAuction();
   const { data: state } = useAuctionState();
   const { data: players = [] } = usePlayers();
@@ -68,7 +68,6 @@ function CasterConsole() {
                   : "No player selected"}
             </div>
           </div>
-          <EmbedUrlCard />
         </div>
       </div>
     </main>
@@ -104,7 +103,8 @@ function AuctionControls() {
       else toast.success("Done");
       await refresh();
     } catch (err) {
-      toast.error(errText(err));
+      const name = err instanceof DOMException ? err.name : "";
+      toast.error(name === "NotAllowedError" ? "CAMERA PERMISSION REQUIRED" : name === "NotFoundError" ? "CAMERA UNAVAILABLE" : errText(err));
     } finally {
       setBusy(null);
     }
@@ -294,37 +294,3 @@ function CasterCamCard() {
   );
 }
 
-function EmbedUrlCard() {
-  const qc = useQueryClient();
-  const setCaster = useServerFn(setCasterCam);
-  const currentUrl = useAuctionState().data?.caster_stream_url ?? "";
-  const [url, setUrl] = useState(currentUrl);
-  const [busy, setBusy] = useState(false);
-
-  const save = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    try {
-      await setCaster({ data: { url } });
-      toast.success("Embed URL saved");
-      await qc.invalidateQueries({ queryKey: ["auction_state"] });
-    } catch (err) {
-      toast.error(errText(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <form onSubmit={save} className="rounded-xl bg-panel p-4 ring-1 ring-line">
-      <div className="label-cond text-[12px] text-mut">External embed URL (optional)</div>
-      <p className="mt-1 font-mono text-[11px] text-mut">
-        Legacy fallback shown in the stage PiP when the WebRTC cam is off (e.g. a YouTube embed).
-      </p>
-      <input className="field mt-2 w-full" placeholder="https://…" value={url} onChange={(e) => setUrl(e.target.value)} />
-      <button disabled={busy} className="label-cond mt-2 border border-line bg-panel2 px-3 py-1.5 text-[12px] text-mut hover:text-foreground disabled:opacity-40">
-        {busy ? "Saving…" : "Save URL"}
-      </button>
-    </form>
-  );
-}
