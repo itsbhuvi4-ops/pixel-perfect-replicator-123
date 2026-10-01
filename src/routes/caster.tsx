@@ -169,7 +169,12 @@ function AuctionControls() {
       try {
         const { error } = await supabase.rpc("caster_open_bidding");
         if (error) throw error;
-        await refresh();
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: ["auction_state"] }),
+          qc.invalidateQueries({ queryKey: ["players"] }),
+          qc.invalidateQueries({ queryKey: ["auction_events"] }),
+          qc.invalidateQueries({ queryKey: ["bids"] }),
+        ]);
       } catch (err) {
         toast.error(errText(err));
       }
