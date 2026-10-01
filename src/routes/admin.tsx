@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -199,7 +200,7 @@ function useAdminUsers() {
   });
 }
 
-function DataTable({ headers, children }: { headers: string[]; children: React.ReactNode }) {
+function DataTable({ headers, children }: { headers: string[]; children: ReactNode }) {
   return (
     <div className="overflow-x-auto rounded-lg bg-panel2">
       <table className="min-w-[720px] w-full text-left">
