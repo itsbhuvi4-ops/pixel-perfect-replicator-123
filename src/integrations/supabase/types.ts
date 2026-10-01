@@ -134,6 +134,7 @@ export type Database = {
       auction_state: {
         Row: {
           base_price: number
+          bidding_open: boolean
           caster_cam_live: boolean
           caster_stream_url: string | null
           current_bid: number | null
@@ -154,6 +155,7 @@ export type Database = {
         }
         Insert: {
           base_price?: number
+          bidding_open?: boolean
           caster_cam_live?: boolean
           caster_stream_url?: string | null
           current_bid?: number | null
@@ -174,6 +176,7 @@ export type Database = {
         }
         Update: {
           base_price?: number
+          bidding_open?: boolean
           caster_cam_live?: boolean
           caster_stream_url?: string | null
           current_bid?: number | null
@@ -275,10 +278,73 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          read_at?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          read_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      player_contacts: {
+        Row: {
+          created_at: string
+          phone_number: string
+          player_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          phone_number: string
+          player_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          phone_number?: string
+          player_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_contacts_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: true
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       players: {
         Row: {
           ambassador_id: string | null
           created_at: string
+          experience: string | null
           game_id: string
           id: string
           info: string | null
@@ -291,6 +357,8 @@ export type Database = {
           sold_at: string | null
           sold_price: number | null
           status: Database["public"]["Enums"]["player_status"]
+          submitted_at: string | null
+          team_name: string | null
           updated_at: string
           user_id: string
           video_url: string | null
@@ -298,6 +366,7 @@ export type Database = {
         Insert: {
           ambassador_id?: string | null
           created_at?: string
+          experience?: string | null
           game_id: string
           id?: string
           info?: string | null
@@ -310,6 +379,8 @@ export type Database = {
           sold_at?: string | null
           sold_price?: number | null
           status?: Database["public"]["Enums"]["player_status"]
+          submitted_at?: string | null
+          team_name?: string | null
           updated_at?: string
           user_id: string
           video_url?: string | null
@@ -317,6 +388,7 @@ export type Database = {
         Update: {
           ambassador_id?: string | null
           created_at?: string
+          experience?: string | null
           game_id?: string
           id?: string
           info?: string | null
@@ -329,6 +401,8 @@ export type Database = {
           sold_at?: string | null
           sold_price?: number | null
           status?: Database["public"]["Enums"]["player_status"]
+          submitted_at?: string | null
+          team_name?: string | null
           updated_at?: string
           user_id?: string
           video_url?: string | null
@@ -349,6 +423,7 @@ export type Database = {
           display_name: string | null
           id: string
           is_active: boolean
+          must_change_password: boolean
           updated_at: string
           username: string
         }
@@ -357,6 +432,7 @@ export type Database = {
           display_name?: string | null
           id: string
           is_active?: boolean
+          must_change_password?: boolean
           updated_at?: string
           username: string
         }
@@ -365,6 +441,7 @@ export type Database = {
           display_name?: string | null
           id?: string
           is_active?: boolean
+          must_change_password?: boolean
           updated_at?: string
           username?: string
         }
@@ -436,7 +513,9 @@ export type Database = {
     }
     Functions: {
       caster_end_bidding: { Args: never; Returns: Json }
+      caster_mark_unsold: { Args: never; Returns: Json }
       caster_next_player: { Args: never; Returns: Json }
+      caster_open_bidding: { Args: never; Returns: Json }
       caster_set_status: {
         Args: { p_status: Database["public"]["Enums"]["auction_status"] }
         Returns: Json
