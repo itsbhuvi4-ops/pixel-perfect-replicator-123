@@ -131,10 +131,21 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const isLandingPage = window.location.pathname === "/";
   // The landing hero is a static visual and must remain accessible even when Supabase runtime configuration is missing.\n  if (!CONFIG_OK && !isLandingPage) return <ConfigError />;
+
+  // The landing page is intentionally independent of Supabase/auth so the hero
+  // can always render even if deployment environment variables are missing.
+  if (isLandingPage) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <Outlet />
+      </QueryClientProvider>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        {!isLandingPage && <SiteHeader />}
+        <SiteHeader />
         <Outlet />
         <Toaster />
       </AuthProvider>
