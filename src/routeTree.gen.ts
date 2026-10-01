@@ -11,17 +11,17 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
-import { Route as AdminLiveMonitorRouteImport } from './routes/admin_.live-monitor'
 import { Route as AmbassadorRouteImport } from './routes/ambassador'
-import { Route as AmbassadorLiveAuctionRouteImport } from './routes/ambassador_.live-auction'
 import { Route as AuctionRouteImport } from './routes/auction'
 import { Route as BroadcastRouteImport } from './routes/broadcast'
 import { Route as CasterRouteImport } from './routes/caster'
-import { Route as CasterAuctionControlRouteImport } from './routes/caster_.auction-control'
 import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MyPlayerRouteImport } from './routes/my-player'
 import { Route as SetupRouteImport } from './routes/setup'
+import { Route as AdminLiveMonitorRouteImport } from './routes/admin_.live-monitor'
+import { Route as AmbassadorLiveAuctionRouteImport } from './routes/ambassador_.live-auction'
+import { Route as CasterAuctionControlRouteImport } from './routes/caster_.auction-control'
 import { Route as PlayerRegisterRouteImport } from './routes/player/register'
 
 const IndexRoute = IndexRouteImport.update({
@@ -29,19 +29,9 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminLiveMonitorRoute = AdminLiveMonitorRouteImport.update({
-  id: '/admin/live-monitor',
-  path: '/admin/live-monitor',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AmbassadorLiveAuctionRoute = AmbassadorLiveAuctionRouteImport.update({
-  id: '/ambassador/live-auction',
-  path: '/ambassador/live-auction',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AmbassadorRoute = AmbassadorRouteImport.update({
@@ -57,11 +47,6 @@ const AuctionRoute = AuctionRouteImport.update({
 const BroadcastRoute = BroadcastRouteImport.update({
   id: '/broadcast',
   path: '/broadcast',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CasterAuctionControlRoute = CasterAuctionControlRouteImport.update({
-  id: '/caster/auction-control',
-  path: '/caster/auction-control',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CasterRoute = CasterRouteImport.update({
@@ -89,6 +74,21 @@ const SetupRoute = SetupRouteImport.update({
   path: '/setup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminLiveMonitorRoute = AdminLiveMonitorRouteImport.update({
+  id: '/admin_/live-monitor',
+  path: '/admin/live-monitor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AmbassadorLiveAuctionRoute = AmbassadorLiveAuctionRouteImport.update({
+  id: '/ambassador_/live-auction',
+  path: '/ambassador/live-auction',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CasterAuctionControlRoute = CasterAuctionControlRouteImport.update({
+  id: '/caster_/auction-control',
+  path: '/caster/auction-control',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlayerRegisterRoute = PlayerRegisterRouteImport.update({
   id: '/player/register',
   path: '/player/register',
@@ -96,9 +96,6 @@ const PlayerRegisterRoute = PlayerRegisterRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/admin/live-monitor': typeof AdminLiveMonitorRoute
-  '/ambassador/live-auction': typeof AmbassadorLiveAuctionRoute
-  '/caster/auction-control': typeof CasterAuctionControlRoute
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/ambassador': typeof AmbassadorRoute
@@ -109,12 +106,12 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/my-player': typeof MyPlayerRoute
   '/setup': typeof SetupRoute
+  '/admin/live-monitor': typeof AdminLiveMonitorRoute
+  '/ambassador/live-auction': typeof AmbassadorLiveAuctionRoute
+  '/caster/auction-control': typeof CasterAuctionControlRoute
   '/player/register': typeof PlayerRegisterRoute
 }
 export interface FileRoutesByTo {
-  '/admin/live-monitor': typeof AdminLiveMonitorRoute
-  '/ambassador/live-auction': typeof AmbassadorLiveAuctionRoute
-  '/caster/auction-control': typeof CasterAuctionControlRoute
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/ambassador': typeof AmbassadorRoute
@@ -125,12 +122,12 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/my-player': typeof MyPlayerRoute
   '/setup': typeof SetupRoute
-  '/player/register': typeof PlayerRegisterRoute
-}
-export interface FileRoutesById {
   '/admin/live-monitor': typeof AdminLiveMonitorRoute
   '/ambassador/live-auction': typeof AmbassadorLiveAuctionRoute
   '/caster/auction-control': typeof CasterAuctionControlRoute
+  '/player/register': typeof PlayerRegisterRoute
+}
+export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
@@ -142,14 +139,14 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/my-player': typeof MyPlayerRoute
   '/setup': typeof SetupRoute
+  '/admin_/live-monitor': typeof AdminLiveMonitorRoute
+  '/ambassador_/live-auction': typeof AmbassadorLiveAuctionRoute
+  '/caster_/auction-control': typeof CasterAuctionControlRoute
   '/player/register': typeof PlayerRegisterRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/admin/live-monitor'
-    | '/ambassador/live-auction'
-    | '/caster/auction-control'
     | '/'
     | '/admin'
     | '/ambassador'
@@ -160,12 +157,12 @@ export interface FileRouteTypes {
     | '/login'
     | '/my-player'
     | '/setup'
+    | '/admin/live-monitor'
+    | '/ambassador/live-auction'
+    | '/caster/auction-control'
     | '/player/register'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/admin/live-monitor'
-    | '/ambassador/live-auction'
-    | '/caster/auction-control'
     | '/'
     | '/admin'
     | '/ambassador'
@@ -176,12 +173,12 @@ export interface FileRouteTypes {
     | '/login'
     | '/my-player'
     | '/setup'
+    | '/admin/live-monitor'
+    | '/ambassador/live-auction'
+    | '/caster/auction-control'
     | '/player/register'
   id:
     | '__root__'
-    | '/admin/live-monitor'
-    | '/ambassador/live-auction'
-    | '/caster/auction-control'
     | '/'
     | '/admin'
     | '/ambassador'
@@ -192,49 +189,31 @@ export interface FileRouteTypes {
     | '/login'
     | '/my-player'
     | '/setup'
+    | '/admin_/live-monitor'
+    | '/ambassador_/live-auction'
+    | '/caster_/auction-control'
     | '/player/register'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
-  AdminLiveMonitorRoute: typeof AdminLiveMonitorRoute
   AmbassadorRoute: typeof AmbassadorRoute
-  AmbassadorLiveAuctionRoute: typeof AmbassadorLiveAuctionRoute
   AuctionRoute: typeof AuctionRoute
   BroadcastRoute: typeof BroadcastRoute
   CasterRoute: typeof CasterRoute
-  CasterAuctionControlRoute: typeof CasterAuctionControlRoute
   ChangePasswordRoute: typeof ChangePasswordRoute
   LoginRoute: typeof LoginRoute
   MyPlayerRoute: typeof MyPlayerRoute
   SetupRoute: typeof SetupRoute
+  AdminLiveMonitorRoute: typeof AdminLiveMonitorRoute
+  AmbassadorLiveAuctionRoute: typeof AmbassadorLiveAuctionRoute
+  CasterAuctionControlRoute: typeof CasterAuctionControlRoute
   PlayerRegisterRoute: typeof PlayerRegisterRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/admin/live-monitor': {
-      id: '/admin/live-monitor'
-      path: '/admin/live-monitor'
-      fullPath: '/admin/live-monitor'
-      preLoaderRoute: typeof AdminLiveMonitorRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ambassador/live-auction': {
-      id: '/ambassador/live-auction'
-      path: '/ambassador/live-auction'
-      fullPath: '/ambassador/live-auction'
-      preLoaderRoute: typeof AmbassadorLiveAuctionRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/caster/auction-control': {
-      id: '/caster/auction-control'
-      path: '/caster/auction-control'
-      fullPath: '/caster/auction-control'
-      preLoaderRoute: typeof CasterAuctionControlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -242,14 +221,14 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-      '/admin': {
+    '/admin': {
       id: '/admin'
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-      '/ambassador': {
+    '/ambassador': {
       id: '/ambassador'
       path: '/ambassador'
       fullPath: '/ambassador'
@@ -270,7 +249,7 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BroadcastRouteImport
       parentRoute: typeof rootRouteImport
     }
-      '/caster': {
+    '/caster': {
       id: '/caster'
       path: '/caster'
       fullPath: '/caster'
@@ -305,6 +284,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SetupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin_/live-monitor': {
+      id: '/admin_/live-monitor'
+      path: '/admin/live-monitor'
+      fullPath: '/admin/live-monitor'
+      preLoaderRoute: typeof AdminLiveMonitorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ambassador_/live-auction': {
+      id: '/ambassador_/live-auction'
+      path: '/ambassador/live-auction'
+      fullPath: '/ambassador/live-auction'
+      preLoaderRoute: typeof AmbassadorLiveAuctionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/caster_/auction-control': {
+      id: '/caster_/auction-control'
+      path: '/caster/auction-control'
+      fullPath: '/caster/auction-control'
+      preLoaderRoute: typeof CasterAuctionControlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/player/register': {
       id: '/player/register'
       path: '/player/register'
@@ -316,9 +316,6 @@ declare module '@tanstack/react-router' {
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  AdminLiveMonitorRoute: AdminLiveMonitorRoute,
-  AmbassadorLiveAuctionRoute: AmbassadorLiveAuctionRoute,
-  CasterAuctionControlRoute: CasterAuctionControlRoute,
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   AmbassadorRoute: AmbassadorRoute,
@@ -329,6 +326,9 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MyPlayerRoute: MyPlayerRoute,
   SetupRoute: SetupRoute,
+  AdminLiveMonitorRoute: AdminLiveMonitorRoute,
+  AmbassadorLiveAuctionRoute: AmbassadorLiveAuctionRoute,
+  CasterAuctionControlRoute: CasterAuctionControlRoute,
   PlayerRegisterRoute: PlayerRegisterRoute,
 }
 export const routeTree = rootRouteImport
