@@ -15,20 +15,23 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
 });
 
+import ArrowFillButton from "@/components/ui/arrow-fill-button";
+
 function ArrowButton({ to, children }: { to: "/login" | "/auction"; children: string }) {
   return (
-    <Link
-      to={to}
-      className="group relative inline-flex min-h-14 items-center overflow-hidden rounded-full border border-gold bg-gold px-6 pr-16 font-cond text-sm font-semibold uppercase tracking-[0.14em] text-arena transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-arena"
-    >
-      <span className="relative z-10">{children}</span>
-      <span
-        className="absolute right-1.5 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-arena text-gold transition-transform duration-300 group-hover:translate-x-1"
-        aria-hidden="true"
-      >
-        →
-      </span>
-    </Link>
+    <ArrowFillButton
+      btnText={children}
+      href={to}
+      bgColor="#c99a2e"
+      textColor="#0b0b0b"
+      fillBgColor="#0b0b0b"
+      fillTextColor="#c99a2e"
+      hoverFillBgColor="#ffffff"
+      hoverFillTextColor="#0b0b0b"
+      arrowColor="#c99a2e"
+      hoverArrowColor="#0b0b0b"
+      aria-label={children}
+    />
   );
 }
 
@@ -68,7 +71,7 @@ function LandingPage() {
             <p className="label-cond mb-6 flex items-center gap-3 text-xs text-gold">
               <span className="size-2 rounded-full bg-gold live-dot" /> Live player auction platform
             </p>
-            <h1 className="font-display text-[clamp(4.5rem,10vw,9rem)] leading-[0.82] tracking-[-0.03em] text-foreground">
+            <h1 className="font-display text-[clamp(3.7rem,10vw,9rem)] leading-[0.82] tracking-[-0.03em] text-foreground">
               Build your
               <br />
               <span className="text-gold">winning</span> squad.
