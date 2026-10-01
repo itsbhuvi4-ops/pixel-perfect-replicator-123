@@ -193,16 +193,18 @@ function CasterCamCard() {
   const [status, setStatus] = useState<CamStatus>("idle");
   const [viewers, setViewers] = useState(0);
   const [live, setLive] = useState(false);
+  const [micMuted, setMicMuted] = useState(false);
   const stopRef = useRef<null | (() => void)>(null);
   const previewRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    navigator.mediaDevices
-      ?.enumerateDevices()
+    navigator.mediaDevices?.enumerateDevices()
       .then((all) => setDevices(all.filter((d) => d.kind === "videoinput" || d.kind === "audioinput")))
       .catch(() => {});
     return () => {
       stopRef.current?.();
+      preview?.getTracks().forEach((track) => track.stop());
+      void setCaster({ data: { live: false } }).catch(() => {});
     };
   }, []);
 
@@ -213,38 +215,70 @@ function CasterCamCard() {
     }
   }, [preview]);
 
-  const goLive = async () => {
+  const startCamera = async () => {
+    if (preview) return;
     try {
-      const constraints: MediaStreamConstraints = {
+      const stream = await navigator.mediaDevices.getUserMedia({
         video: videoId === "default" ? true : { deviceId: { exact: videoId } },
         audio: audioId === "default" ? true : { deviceId: { exact: audioId } },
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      });
       setPreview(stream);
-      stopRef.current = startCasterBroadcast(stream, (s, n) => {
-        setStatus(s);
-        if (n !== undefined) setViewers(n);
+      setStatus("idle");
+      setMicMuted(false);
+    } catch (err) {
+      const name = err instanceof DOMException ? err.name : "";
+      setStatus("error");
+      toast.error(name === "NotAllowedError" ? "CAMERA PERMISSION REQUIRED" : name === "NotFoundError" ? "CAMERA UNAVAILABLE" : errText(err));
+    }
+  };
+
+  const startLive = async () => {
+    if (!preview || live) return;
+    try {
+      stopRef.current = startCasterBroadcast(preview, (next, count) => {
+        setStatus(next);
+        if (count !== undefined) setViewers(count);
+        if (next === "error") {
+          setLive(false);
+          void setCaster({ data: { live: false } }).catch(() => {});
+        }
       });
       await setCaster({ data: { live: true } });
       setLive(true);
       toast.success("Caster cam is live — audience can see and hear you");
       await qc.invalidateQueries({ queryKey: ["auction_state"] });
     } catch (err) {
-      const name = err instanceof DOMException ? err.name : "";
-      toast.error(name === "NotAllowedError" ? "CAMERA PERMISSION REQUIRED" : name === "NotFoundError" ? "CAMERA UNAVAILABLE" : errText(err));
+      stopRef.current?.();
+      stopRef.current = null;
+      setStatus("error");
+      toast.error(errText(err));
     }
   };
 
   const stopLive = async () => {
     stopRef.current?.();
     stopRef.current = null;
-    preview?.getTracks().forEach((t) => t.stop());
-    setPreview(null);
     setLive(false);
     setViewers(0);
-    await setCaster({ data: { live: false } });
+    setStatus(preview ? "idle" : "ended");
+    await setCaster({ data: { live: false } }).catch(() => {});
     await qc.invalidateQueries({ queryKey: ["auction_state"] });
-    toast.info("Caster cam stopped");
+  };
+
+  const stopCamera = async () => {
+    await stopLive();
+    preview?.getTracks().forEach((track) => track.stop());
+    setPreview(null);
+    setMicMuted(false);
+    setStatus("idle");
+    toast.info("Camera stopped");
+  };
+
+  const toggleMic = () => {
+    if (!preview) return;
+    const nextMuted = !micMuted;
+    preview.getAudioTracks().forEach((track) => { track.enabled = !nextMuted; });
+    setMicMuted(nextMuted);
   };
 
   const videoDevices = devices.filter((d) => d.kind === "videoinput");
@@ -253,45 +287,58 @@ function CasterCamCard() {
   return (
     <div className="rounded-xl bg-panel p-4 ring-1 ring-line">
       <div className="flex items-center justify-between">
-        <div className="label-cond text-[12px] text-mut">Caster Cam (WebRTC)</div>
+        <div className="label-cond text-[12px] text-mut">Caster Cam — WebRTC</div>
         {(live || flagLive) && (
           <span className="label-cond flex items-center gap-1.5 bg-alert px-2 py-0.5 text-[10px] text-white">
-            <i className="live-dot size-1.5 rounded-full bg-white" /> CAM LIVE · {viewers} 👁
+            <i className="live-dot size-1.5 rounded-full bg-white" /> LIVE · {viewers} viewers
           </span>
         )}
       </div>
-      <div className="mt-3 aspect-video overflow-hidden rounded-lg bg-panel2">
+      <div className="mt-3 aspect-video min-h-[220px] overflow-hidden rounded-lg bg-black">
         {preview ? (
           <video ref={previewRef} muted playsInline autoPlay className="size-full object-cover" />
         ) : (
-          <div className="label-cond grid size-full place-items-center text-[12px] text-mut">Camera preview</div>
+          <div className="label-cond grid size-full place-items-center text-[12px] text-mut">
+            {status === "error" ? "CAMERA UNAVAILABLE" : "YOUR CAMERA"}
+          </div>
         )}
       </div>
       <div className="mt-3 grid gap-2">
-        <select className="field" value={videoId} onChange={(e) => setVideoId(e.target.value)} disabled={live}>
+        <select className="field" value={videoId} onChange={(e) => setVideoId(e.target.value)} disabled={!!preview}>
           <option value="default">Default camera</option>
-          {videoDevices.map((d) => (
-            <option key={d.deviceId} value={d.deviceId}>{d.label || "Camera"}</option>
-          ))}
+          {videoDevices.map((d) => <option key={d.deviceId} value={d.deviceId}>{d.label || "Camera"}</option>)}
         </select>
-        <select className="field" value={audioId} onChange={(e) => setAudioId(e.target.value)} disabled={live}>
+        <select className="field" value={audioId} onChange={(e) => setAudioId(e.target.value)} disabled={!!preview}>
           <option value="default">Default microphone</option>
-          {audioDevices.map((d) => (
-            <option key={d.deviceId} value={d.deviceId}>{d.label || "Microphone"}</option>
-          ))}
+          {audioDevices.map((d) => <option key={d.deviceId} value={d.deviceId}>{d.label || "Microphone"}</option>)}
         </select>
-        {live ? (
-          <button onClick={stopLive} className="label-cond border border-alert/50 bg-alert/10 py-2 text-[13px] text-alert">
-            ⏹ Stop Camera
+        <div className="grid grid-cols-2 gap-2">
+          {!preview ? (
+            <button onClick={() => void startCamera()} className="label-cond bg-panel2 py-2 text-[13px] ring-1 ring-line">
+              Start Camera
+            </button>
+          ) : (
+            <button onClick={() => void stopCamera()} className="label-cond border border-alert/50 bg-alert/10 py-2 text-[13px] text-alert">
+              Stop Camera
+            </button>
+          )}
+          <button disabled={!preview} onClick={toggleMic} className="label-cond border border-line bg-panel2 py-2 text-[13px] disabled:opacity-40">
+            {micMuted ? "Unmute Microphone" : "Mute Microphone"}
+          </button>
+        </div>
+        {preview && !live ? (
+          <button onClick={() => void startLive()} className="label-cond bg-alert py-2 text-[13px] text-white">
+            🔴 Start Live
           </button>
         ) : (
-          <button onClick={goLive} className="label-cond bg-alert py-2 text-[13px] text-white">
-            🔴 Go Live (Camera + Mic)
+          <button disabled={!live} onClick={() => void stopLive()} className="label-cond border border-alert/50 bg-alert/10 py-2 text-[13px] text-alert disabled:opacity-40">
+            ⏹ Stop Live
           </button>
         )}
-        <p className="font-mono text-[11px] text-mut">Status: {status} — streamed peer-to-peer to every audience and broadcast page.</p>
+        <p className="font-mono text-[11px] text-mut">
+          Status: {live ? status : preview ? "camera ready" : status} · {viewers} viewers · camera/audio stay peer-to-peer.
+        </p>
       </div>
     </div>
   );
 }
-
