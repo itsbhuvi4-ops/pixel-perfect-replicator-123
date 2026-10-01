@@ -12,10 +12,10 @@ export function PlayerStage({ player, state }: { player: Player | null; state: A
           poster={player.photo_url ?? undefined}
           controls
           playsInline
-          className="absolute inset-0 size-full object-cover"
+          className="absolute inset-0 size-full object-contain bg-black"
         />
       ) : player?.photo_url ? (
-        <img src={player.photo_url} alt={player.ingame_name} className="absolute inset-0 size-full object-cover" />
+        <img src={player.photo_url} alt={player.ingame_name} className="absolute inset-0 size-full object-contain bg-black" />
       ) : (
         <div className="absolute inset-0 grid place-items-center">
           <span className="label-cond text-[12px] text-mut">
