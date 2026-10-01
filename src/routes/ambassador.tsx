@@ -52,7 +52,7 @@ function AmbassadorPage() {
         <h2 className="mb-3 font-display text-4xl">Auction</h2>
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
           <div className="space-y-4">
-            <PlayerAuction meId={me.id} />
+            <PlayerAuction />
           </div>
           <div className="min-w-0">
             <CasterCamera />
@@ -76,7 +76,7 @@ function AmbassadorPage() {
   );
 }
 
-function PlayerAuction({ meId }: { meId: string }) {
+function PlayerAuction() {
   const { data: state } = useAuctionState();
   const { data: players = [] } = usePlayers();
   const current = players.find((p) => p.id === state?.current_player_id) ?? null;
