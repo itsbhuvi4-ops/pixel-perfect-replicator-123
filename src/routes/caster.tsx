@@ -185,7 +185,6 @@ function AuctionControls() {
 function CasterCamCard() {
   const qc = useQueryClient();
   const setCaster = useServerFn(setCasterCam);
-  const flagLive = useAuctionState().data?.caster_cam_live ?? false;
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [videoId, setVideoId] = useState("default");
   const [audioId, setAudioId] = useState("default");
@@ -193,7 +192,6 @@ function CasterCamCard() {
   const [status, setStatus] = useState<CamStatus>("idle");
   const [viewers, setViewers] = useState(0);
   const [live, setLive] = useState(false);
-  const [micMuted, setMicMuted] = useState(false);
   const stopRef = useRef<null | (() => void)>(null);
   const previewRef = useRef<HTMLVideoElement>(null);
 
@@ -201,18 +199,13 @@ function CasterCamCard() {
     navigator.mediaDevices?.enumerateDevices()
       .then((all) => setDevices(all.filter((d) => d.kind === "videoinput" || d.kind === "audioinput")))
       .catch(() => {});
-    return () => {
-      stopRef.current?.();
-      preview?.getTracks().forEach((track) => track.stop());
-      void setCaster({ data: { live: false } }).catch(() => {});
-    };
+    return () => stopRef.current?.();
   }, []);
 
   useEffect(() => {
-    if (previewRef.current && preview) {
-      previewRef.current.srcObject = preview;
-      void previewRef.current.play().catch(() => {});
-    }
+    if (!previewRef.current) return;
+    previewRef.current.srcObject = preview;
+    if (preview) void previewRef.current.play().catch(() => {});
   }, [preview]);
 
   const startCamera = async () => {
@@ -223,34 +216,31 @@ function CasterCamCard() {
         audio: audioId === "default" ? true : { deviceId: { exact: audioId } },
       });
       setPreview(stream);
-      setStatus("idle");
-      setMicMuted(false);
+      setStatus("connecting");
+      toast.success("Camera + microphone ready");
     } catch (err) {
       const name = err instanceof DOMException ? err.name : "";
-      setStatus("error");
       toast.error(name === "NotAllowedError" ? "CAMERA PERMISSION REQUIRED" : name === "NotFoundError" ? "CAMERA UNAVAILABLE" : errText(err));
     }
   };
 
   const startLive = async () => {
-    if (!preview || live) return;
+    if (!preview) {
+      await startCamera();
+      return;
+    }
     try {
-      stopRef.current = startCasterBroadcast(preview, (next, count) => {
-        setStatus(next);
+      stopRef.current = startCasterBroadcast(preview, (nextStatus, count) => {
+        setStatus(nextStatus);
         if (count !== undefined) setViewers(count);
-        if (next === "error") {
-          setLive(false);
-          void setCaster({ data: { live: false } }).catch(() => {});
-        }
       });
       await setCaster({ data: { live: true } });
       setLive(true);
-      toast.success("Caster cam is live — audience can see and hear you");
+      toast.success("● LIVE — Caster camera is broadcasting");
       await qc.invalidateQueries({ queryKey: ["auction_state"] });
     } catch (err) {
       stopRef.current?.();
       stopRef.current = null;
-      setStatus("error");
       toast.error(errText(err));
     }
   };
@@ -258,50 +248,34 @@ function CasterCamCard() {
   const stopLive = async () => {
     stopRef.current?.();
     stopRef.current = null;
+    if (preview) preview.getTracks().forEach((track) => track.stop());
+    setPreview(null);
     setLive(false);
+    setStatus("idle");
     setViewers(0);
-    setStatus(preview ? "idle" : "ended");
-    await setCaster({ data: { live: false } }).catch(() => {});
+    await setCaster({ data: { live: false } });
     await qc.invalidateQueries({ queryKey: ["auction_state"] });
   };
 
-  const stopCamera = async () => {
-    await stopLive();
-    preview?.getTracks().forEach((track) => track.stop());
-    setPreview(null);
-    setMicMuted(false);
-    setStatus("idle");
-    toast.info("Camera stopped");
-  };
-
   const toggleMic = () => {
-    if (!preview) return;
-    const nextMuted = !micMuted;
-    preview.getAudioTracks().forEach((track) => { track.enabled = !nextMuted; });
-    setMicMuted(nextMuted);
+    const track = preview?.getAudioTracks()[0];
+    if (!track) return;
+    track.enabled = !track.enabled;
   };
 
   const videoDevices = devices.filter((d) => d.kind === "videoinput");
   const audioDevices = devices.filter((d) => d.kind === "audioinput");
+  const micEnabled = preview?.getAudioTracks()[0]?.enabled ?? false;
 
   return (
     <div className="rounded-xl bg-panel p-4 ring-1 ring-line">
       <div className="flex items-center justify-between">
-        <div className="label-cond text-[12px] text-mut">Caster Cam — WebRTC</div>
-        {(live || flagLive) && (
-          <span className="label-cond flex items-center gap-1.5 bg-alert px-2 py-0.5 text-[10px] text-white">
-            <i className="live-dot size-1.5 rounded-full bg-white" /> LIVE · {viewers} viewers
-          </span>
-        )}
+        <div><div className="label-cond text-[12px] text-mut">Caster Camera</div><div className="font-display text-2xl">YOUR LIVE CAMERA</div></div>
+        <span className="label-cond border border-line bg-panel2 px-2 py-1 text-[10px] text-mut">{live ? "● LIVE" : status === "connecting" ? "CONNECTING..." : "OFFLINE"}</span>
       </div>
-      <div className="mt-3 aspect-video min-h-[220px] overflow-hidden rounded-lg bg-black">
-        {preview ? (
-          <video ref={previewRef} muted playsInline autoPlay className="size-full object-cover" />
-        ) : (
-          <div className="label-cond grid size-full place-items-center text-[12px] text-mut">
-            {status === "error" ? "CAMERA UNAVAILABLE" : "YOUR CAMERA"}
-          </div>
-        )}
+      <div className="relative mt-3 aspect-video min-h-[220px] overflow-hidden rounded-lg bg-black">
+        {preview ? <video ref={previewRef} muted playsInline autoPlay controls={false} className="size-full object-cover" /> :
+          <div className="label-cond grid size-full place-items-center text-[12px] text-mut">YOUR CAMERA</div>}
       </div>
       <div className="mt-3 grid gap-2">
         <select className="field" value={videoId} onChange={(e) => setVideoId(e.target.value)} disabled={!!preview}>
@@ -313,31 +287,13 @@ function CasterCamCard() {
           {audioDevices.map((d) => <option key={d.deviceId} value={d.deviceId}>{d.label || "Microphone"}</option>)}
         </select>
         <div className="grid grid-cols-2 gap-2">
-          {!preview ? (
-            <button onClick={() => void startCamera()} className="label-cond bg-panel2 py-2 text-[13px] ring-1 ring-line">
-              Start Camera
-            </button>
-          ) : (
-            <button onClick={() => void stopCamera()} className="label-cond border border-alert/50 bg-alert/10 py-2 text-[13px] text-alert">
-              Stop Camera
-            </button>
-          )}
-          <button disabled={!preview} onClick={toggleMic} className="label-cond border border-line bg-panel2 py-2 text-[13px] disabled:opacity-40">
-            {micMuted ? "Unmute Microphone" : "Mute Microphone"}
-          </button>
+          {!preview ? <button onClick={() => void startCamera()} className="label-cond bg-panel2 py-2 text-[12px] text-foreground">Start Camera</button> :
+            <button onClick={toggleMic} disabled={live} className="label-cond border border-line py-2 text-[12px] text-mut">{micEnabled ? "Mute Microphone" : "Unmute Microphone"}</button>}
+          {!live ? <button onClick={() => void startLive()} disabled={!preview} className="label-cond bg-alert py-2 text-[12px] text-white disabled:opacity-40">Start Live</button> :
+            <button onClick={() => void stopLive()} className="label-cond border border-alert/50 bg-alert/10 py-2 text-[12px] text-alert">Stop Live</button>}
         </div>
-        {preview && !live ? (
-          <button onClick={() => void startLive()} className="label-cond bg-alert py-2 text-[13px] text-white">
-            🔴 Start Live
-          </button>
-        ) : (
-          <button disabled={!live} onClick={() => void stopLive()} className="label-cond border border-alert/50 bg-alert/10 py-2 text-[13px] text-alert disabled:opacity-40">
-            ⏹ Stop Live
-          </button>
-        )}
-        <p className="font-mono text-[11px] text-mut">
-          Status: {live ? status : preview ? "camera ready" : status} · {viewers} viewers · camera/audio stay peer-to-peer.
-        </p>
+        {preview && !live && <button onClick={() => void stopLive()} className="label-cond border border-line py-2 text-[12px] text-mut">Stop Camera</button>}
+        <p className="font-mono text-[11px] text-mut">Status: {status} · {viewers} viewer{viewers === 1 ? "" : "s"} · WebRTC peer-to-peer</p>
       </div>
     </div>
   );
