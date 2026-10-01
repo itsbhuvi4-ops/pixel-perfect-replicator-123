@@ -3,11 +3,21 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const CAM_CHANNEL = "bidx-caster-cam";
 
+const turnUrl = import.meta.env["VITE_TURN_URL"] as string | undefined;
+const turnUsername = import.meta.env["VITE_TURN_USERNAME"] as string | undefined;
+const turnCredential = import.meta.env["VITE_TURN_CREDENTIAL"] as string | undefined;
+
 const ICE_CONFIG: RTCConfiguration = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
+    ...(turnUrl && turnUsername && turnCredential
+      ? [{ urls: turnUrl, username: turnUsername, credential: turnCredential }]
+      : []),
   ],
+  iceCandidatePoolSize: 10,
+  bundlePolicy: "max-bundle",
+  rtcpMuxPolicy: "require",
 };
 
 export type CamStatus = "idle" | "connecting" | "live" | "ended" | "error";
@@ -178,6 +188,7 @@ export function watchCasterCam(
 
   const ask = () => {
     if (stopped || !channel) return;
+    if (retryTimer) clearTimeout(retryTimer);
     void send(channel, { kind: "hello", from: viewerId });
     retryTimer = setTimeout(ask, 5000);
   };
@@ -188,9 +199,12 @@ export function watchCasterCam(
     const next = new RTCPeerConnection(ICE_CONFIG);
     pc = next;
 
+    const remoteStream = new MediaStream();
     next.ontrack = (event) => {
-      const stream = event.streams[0];
-      if (stream) onStream(stream);
+      if (!remoteStream.getTracks().some((track) => track.id === event.track.id)) {
+        remoteStream.addTrack(event.track);
+      }
+      onStream(remoteStream);
     };
     next.onicecandidate = (event) => {
       if (event.candidate && channel) {
@@ -250,6 +264,7 @@ export function watchCasterCam(
     .on("broadcast", { event: "signal" }, async ({ payload }: { payload: Signal }) => {
       if (stopped || !targeted(payload, viewerId)) return;
       if (payload.kind === "offer") {
+        if (payload.from === casterId && pc?.signalingState === "stable") return;
         await connect(payload);
       } else if (payload.kind === "ice") {
         if (pc && remoteDescriptionSet) await pc.addIceCandidate(payload.candidate).catch(() => {});
