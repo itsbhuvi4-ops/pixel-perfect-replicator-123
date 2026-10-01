@@ -147,6 +147,9 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/admin/live-monitor'
+    | '/ambassador/live-auction'
+    | '/caster/auction-control'
     | '/'
     | '/admin'
     | '/ambassador'
