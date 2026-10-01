@@ -1,3 +1,147 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/")({\n  head: () => ({\n    meta: [\n      { title: "BidX Auction — Live Player Auction" },\n      { name: "description", content: "BidX Auction — the ultimate live player auction experience." },\n      { property: "og:title", content: "BidX Auction" },\n      { property: "og:description", content: "The Ultimate Live Player Auction Experience" },\n    ],\n  }),\n  component: LandingPage,\n});\n\nfunction ArrowButton({ to, children }: { to: "/login" | "/auction"; children: string }) {\n  return (\n    <Link\n      to={to}\n      className="group relative inline-flex min-h-14 items-center overflow-hidden rounded-full border border-gold bg-gold px-6 pr-16 font-cond text-sm font-semibold uppercase tracking-[0.14em] text-arena transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-arena"\n    >\n      <span className="relative z-10">{children}</span>\n      <span className="absolute right-1.5 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-arena text-gold transition-transform duration-300 group-hover:translate-x-1 group-focus-visible:translate-x-1" aria-hidden="true">\n        →\n      </span>\n    </Link>\n  );\n}\n\nfunction LandingPage() {\n  return (\n    <main className="relative min-h-screen overflow-hidden bg-arena">\n      <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_38%,color-mix(in_oklab,var(--gold)_16%,transparent),transparent_30%),linear-gradient(120deg,var(--arena)_0%,var(--arena)_52%,oklch(0.22_0.018_268)_100%)]" />\n      <div className="absolute -right-40 top-24 size-[34rem] rounded-full border border-gold/10 bg-gold/[0.03] blur-sm" />\n      <div className="absolute -right-16 top-40 size-[25rem] rounded-full border border-gold/10" />\n\n      <header className="relative z-10 flex items-center justify-between px-6 py-6 sm:px-10 lg:px-16">\n        <Link to="/" className="font-display text-2xl tracking-tight text-foreground sm:text-3xl">\n          BidX<span className="text-gold">.</span>\n        </Link>\n        <nav className="flex items-center gap-5 font-cond text-xs uppercase tracking-[0.14em] text-mut sm:gap-8">\n          <a href="#how-it-works" className="hidden transition-colors hover:text-foreground sm:block">How it works</a>\n          <Link to="/login" className="rounded-full border border-line px-4 py-2.5 text-foreground transition-colors hover:border-gold hover:text-gold">Sign in</Link>\n        </nav>\n      </header>\n\n      <section className="relative z-10 mx-auto flex min-h-[calc(100vh-92px)] max-w-7xl items-center px-6 pb-16 pt-10 sm:px-10 lg:px-16">\n        <div className="max-w-3xl">\n          <p className="label-cond mb-7 flex items-center gap-3 text-xs text-gold"><span className="live-dot size-2 rounded-full bg-gold" /> Live esports player auction</p>\n          <h1 className="max-w-4xl font-display text-[clamp(4rem,10vw,9.5rem)] leading-[0.86] tracking-[-0.03em] text-foreground">\n            Build your team.<br /><span className="text-gold">Own the moment.</span>\n          </h1>\n          <p className="mt-8 max-w-xl text-base leading-7 text-mut sm:text-lg">BidX brings every player, bid and decision into one fast-moving arena. Discover talent, compete live and create a roster built to win.</p>\n          <div className="mt-10 flex flex-wrap items-center gap-4">\n            <ArrowButton to="/auction">Enter the auction</ArrowButton>\n            <Link to="/player/register" className="font-cond text-sm font-semibold uppercase tracking-[0.14em] text-foreground underline decoration-line/80 underline-offset-8 transition-colors hover:text-gold">Register as a player</Link>\n          </div>\n          <div id="how-it-works" className="mt-20 flex flex-wrap gap-x-10 gap-y-5 border-t border-line pt-6 text-xs text-mut">\n            <span><strong className="mr-2 font-mono text-foreground">01</strong> Create your profile</span>\n            <span><strong className="mr-2 font-mono text-foreground">02</strong> Follow the live bids</span>\n            <span><strong className="mr-2 font-mono text-foreground">03</strong> Build your winning roster</span>\n          </div>\n        </div>\n        <div className="pointer-events-none absolute bottom-16 right-[8%] hidden text-right lg:block">\n          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-mut">The next pick is yours</p>\n          <div className="mt-4 h-px w-32 bg-gold/60" />\n        </div>\n      </section>\n    </main>\n  );\n}
+export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "BidX Auction — Live Player Auction" },
+      {
+        name: "description",
+        content: "BidX Auction — the ultimate live player auction experience.",
+      },
+      { property: "og:title", content: "BidX Auction" },
+      { property: "og:description", content: "The Ultimate Live Player Auction Experience" },
+    ],
+  }),
+  component: LandingPage,
+});
+
+function ArrowButton({ to, children }: { to: "/login" | "/auction"; children: string }) {
+  return (
+    <Link
+      to={to}
+      className="group relative inline-flex min-h-14 items-center overflow-hidden rounded-full border border-gold bg-gold px-6 pr-16 font-cond text-sm font-semibold uppercase tracking-[0.14em] text-arena transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-arena"
+    >
+      <span className="relative z-10">{children}</span>
+      <span
+        className="absolute right-1.5 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-arena text-gold transition-transform duration-300 group-hover:translate-x-1"
+        aria-hidden="true"
+      >
+        →
+      </span>
+    </Link>
+  );
+}
+
+function LandingPage() {
+  return (
+    <main className="relative min-h-screen overflow-hidden bg-arena">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_40%,color-mix(in_oklab,var(--gold)_16%,transparent),transparent_30%),linear-gradient(120deg,var(--arena)_0%,var(--arena)_52%,oklch(0.22_0.018_268)_100%)]" />
+      <div
+        className="absolute -right-40 top-24 size-[34rem] rounded-full border border-gold/10 bg-gold/[0.03] blur-sm"
+        aria-hidden="true"
+      />
+      <div
+        className="absolute -right-16 top-40 size-[25rem] rounded-full border border-gold/10"
+        aria-hidden="true"
+      />
+
+      <header className="relative z-10 flex items-center justify-between px-6 py-6 sm:px-10 lg:px-16">
+        <Link to="/" className="font-display text-2xl tracking-wide text-foreground">
+          BID<span className="text-gold">X</span>
+        </Link>
+        <nav className="flex items-center gap-5 font-cond text-xs uppercase tracking-[0.14em] text-muted-foreground">
+          <Link to="/login" className="transition-colors hover:text-gold">
+            Sign in
+          </Link>
+          <Link
+            to="/player/register"
+            className="hidden rounded-full border border-line px-4 py-2 text-foreground transition-colors hover:border-gold hover:text-gold sm:inline-flex"
+          >
+            Join player pool
+          </Link>
+        </nav>
+      </header>
+
+      <section className="relative z-10 mx-auto flex min-h-[calc(100vh-88px)] max-w-7xl items-center px-6 pb-16 pt-8 sm:px-10 lg:px-16">
+        <div className="grid w-full items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="max-w-2xl">
+            <p className="label-cond mb-6 flex items-center gap-3 text-xs text-gold">
+              <span className="size-2 rounded-full bg-gold live-dot" /> Live player auction platform
+            </p>
+            <h1 className="font-display text-[clamp(4.5rem,10vw,9rem)] leading-[0.82] tracking-[-0.03em] text-foreground">
+              Build your
+              <br />
+              <span className="text-gold">winning</span> squad.
+            </h1>
+            <p className="mt-8 max-w-lg text-base leading-7 text-muted-foreground sm:text-lg">
+              BidX brings players, teams, casters and ambassadors together for a faster, fairer live
+              auction experience.
+            </p>
+            <div className="mt-9 flex flex-wrap items-center gap-4">
+              <ArrowButton to="/login">Enter auction</ArrowButton>
+              <Link
+                to="/player/register"
+                className="font-cond text-sm uppercase tracking-[0.14em] text-foreground underline decoration-line underline-offset-8 transition-colors hover:text-gold"
+              >
+                Register as a player
+              </Link>
+            </div>
+            <div className="mt-16 flex gap-8 border-t border-line pt-5 font-cond uppercase tracking-[0.12em]">
+              <div>
+                <p className="font-display text-3xl text-foreground">4</p>
+                <p className="text-[10px] text-muted-foreground">Roles, one arena</p>
+              </div>
+              <div>
+                <p className="font-display text-3xl text-foreground">Live</p>
+                <p className="text-[10px] text-muted-foreground">Real-time bidding</p>
+              </div>
+              <div>
+                <p className="font-display text-3xl text-foreground">24/7</p>
+                <p className="text-[10px] text-muted-foreground">Built for competition</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative hidden min-h-[32rem] lg:block" aria-label="Auction preview">
+            <div className="absolute inset-8 rounded-[2rem] border border-gold/20 bg-panel/70 p-5 shadow-2xl shadow-black/20 backdrop-blur-sm">
+              <div className="flex items-center justify-between border-b border-line pb-4">
+                <span className="label-cond text-xs text-gold">Live auction</span>
+                <span className="flex items-center gap-2 font-mono text-[10px] text-alert">
+                  <span className="size-1.5 rounded-full bg-alert live-dot" /> ON AIR
+                </span>
+              </div>
+              <div className="mt-8 flex items-end justify-between">
+                <div>
+                  <p className="label-cond text-[10px] text-muted-foreground">Current player</p>
+                  <p className="mt-2 font-display text-5xl text-foreground">NOVA</p>
+                  <p className="mt-1 font-mono text-xs text-muted-foreground">
+                    UID 7842 · PRIMARY RUSHER
+                  </p>
+                </div>
+                <span className="rounded-full bg-gold/10 px-3 py-1 font-cond text-xs uppercase text-gold">
+                  01 / 12
+                </span>
+              </div>
+              <div className="mt-10 border-y border-line py-6">
+                <p className="label-cond text-[10px] text-muted-foreground">Current bid</p>
+                <p className="bid-flash mt-1 font-display text-7xl text-gold">₹12,500</p>
+                <div className="mt-4 h-1 overflow-hidden rounded-full bg-line">
+                  <div className="h-full w-3/4 bg-gold" />
+                </div>
+              </div>
+              <div className="mt-5 flex items-center justify-between">
+                <span className="font-cond text-xs uppercase tracking-widest text-muted-foreground">
+                  Highest bidder
+                </span>
+                <span className="font-display text-lg text-foreground">TEAM ALPHA</span>
+              </div>
+            </div>
+            <div className="absolute -bottom-1 right-0 rounded-full border border-gold/40 bg-arena px-5 py-3 font-cond text-xs uppercase tracking-[0.14em] text-gold">
+              Your next pick is waiting →
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
