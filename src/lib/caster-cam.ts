@@ -2,6 +2,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
 export const CAM_CHANNEL = "bidx-caster-cam";
+
 const ICE_CONFIG: RTCConfiguration = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
@@ -10,97 +11,119 @@ const ICE_CONFIG: RTCConfiguration = {
 };
 
 export type CamStatus = "idle" | "connecting" | "live" | "ended" | "error";
+
 type Signal =
   | { kind: "hello"; from: string }
   | { kind: "offer"; from: string; to: string; sdp: string }
   | { kind: "answer"; from: string; to: string; sdp: string }
   | { kind: "ice"; from: string; to: string; candidate: RTCIceCandidateInit }
-  | { kind: "bye"; from: string };
+  | { kind: "bye"; from: string; to?: string };
 
-const newId = () => crypto.randomUUID();
+const id = () => crypto.randomUUID();
+
 async function send(channel: RealtimeChannel | null, payload: Signal) {
   if (channel) await channel.send({ type: "broadcast", event: "signal", payload });
 }
-function addressedTo(payload: Signal, id: string) {
-  return "to" in payload ? payload.to === id : payload.kind === "bye";
+
+function targeted(payload: Signal, receiver: string) {
+  return !("to" in payload) || !payload.to || payload.to === receiver;
 }
 
 export function startCasterBroadcast(
   stream: MediaStream,
   onStatus: (status: CamStatus, viewers?: number) => void,
 ): () => void {
-  const id = newId();
+  const casterId = id();
   const peers = new Map<string, RTCPeerConnection>();
+  const pendingIce = new Map<string, RTCIceCandidateInit[]>();
   let channel: RealtimeChannel | null = null;
   let stopped = false;
 
   const report = () => onStatus("live", peers.size);
-  const drop = (viewer: string) => {
-    const pc = peers.get(viewer);
-    pc?.close();
-    peers.delete(viewer);
-    report();
+  const drop = (viewerId: string) => {
+    peers.get(viewerId)?.close();
+    peers.delete(viewerId);
+    pendingIce.delete(viewerId);
+    if (!stopped) report();
   };
 
-  const connect = async (viewer: string) => {
-    if (stopped || !channel || peers.has(viewer)) return;
+  const connect = async (viewerId: string) => {
+    if (stopped || !channel || peers.has(viewerId)) return;
     const pc = new RTCPeerConnection(ICE_CONFIG);
-    peers.set(viewer, pc);
-    for (const track of stream.getTracks()) pc.addTrack(track, stream);
+    peers.set(viewerId, pc);
+    pendingIce.set(viewerId, []);
+    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+
     pc.onicecandidate = (event) => {
       if (event.candidate && channel) {
         void send(channel, {
           kind: "ice",
-          from: id,
-          to: viewer,
+          from: casterId,
+          to: viewerId,
           candidate: event.candidate.toJSON(),
         });
       }
     };
+
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === "connected") report();
-      if (["failed", "closed"].includes(pc.connectionState)) drop(viewer);
+      if (["failed", "closed"].includes(pc.connectionState)) drop(viewerId);
       if (pc.connectionState === "disconnected") {
         window.setTimeout(() => {
-          if (pc.connectionState === "disconnected") drop(viewer);
-        }, 5000);
+          if (!stopped && peers.get(viewerId) === pc && pc.connectionState === "disconnected") drop(viewerId);
+        }, 4000);
       }
     };
+
     try {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      if (pc.localDescription?.sdp) {
-        await send(channel, { kind: "offer", from: id, to: viewer, sdp: pc.localDescription.sdp });
+      if (channel && pc.localDescription?.sdp) {
+        await send(channel, { kind: "offer", from: casterId, to: viewerId, sdp: pc.localDescription.sdp });
       }
-      report();
     } catch {
-      drop(viewer);
+      drop(viewerId);
     }
   };
 
   onStatus("connecting");
   channel = supabase
-    .channel(CAM_CHANNEL, { config: { broadcast: { self: false }, presence: { key: id } } })
+    .channel(CAM_CHANNEL, { config: { broadcast: { self: false }, presence: { key: casterId } } })
     .on("broadcast", { event: "signal" }, async ({ payload }: { payload: Signal }) => {
       if (stopped) return;
+
+      // hello is deliberately not targeted: every active caster can receive viewer discovery.
       if (payload.kind === "hello") {
         await connect(payload.from);
         return;
       }
-      if (!addressedTo(payload, id)) return;
+      if (!targeted(payload, casterId)) return;
+
       if (payload.kind === "answer") {
         const pc = peers.get(payload.from);
-        if (pc && pc.signalingState !== "stable") {
-          await pc.setRemoteDescription({ type: "answer", sdp: payload.sdp }).catch(() => {});
+        if (!pc || pc.signalingState === "closed") return;
+        try {
+          await pc.setRemoteDescription({ type: "answer", sdp: payload.sdp });
+          for (const candidate of pendingIce.get(payload.from) ?? []) {
+            await pc.addIceCandidate(candidate).catch(() => {});
+          }
+          pendingIce.delete(payload.from);
+        } catch {
+          drop(payload.from);
         }
       } else if (payload.kind === "ice") {
         const pc = peers.get(payload.from);
-        if (pc?.remoteDescription) await pc.addIceCandidate(payload.candidate).catch(() => {});
+        if (!pc) return;
+        if (pc.remoteDescription) await pc.addIceCandidate(payload.candidate).catch(() => {});
+        else pendingIce.get(payload.from)?.push(payload.candidate);
+      } else if (payload.kind === "bye") {
+        drop(payload.from);
       }
     })
     .subscribe((status) => {
+      if (stopped) return;
       if (status === "SUBSCRIBED") {
-        onStatus("live", peers.size);
+        report();
         void channel?.track({ role: "caster" });
       } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
         onStatus("error");
@@ -111,8 +134,9 @@ export function startCasterBroadcast(
     stopped = true;
     peers.forEach((pc) => pc.close());
     peers.clear();
-    if (channel) void send(channel, { kind: "bye", from: id });
+    pendingIce.clear();
     if (channel) void supabase.removeChannel(channel);
+    channel = null;
     onStatus("idle", 0);
   };
 }
@@ -121,101 +145,96 @@ export function watchCasterCam(
   onStream: (stream: MediaStream | null) => void,
   onStatus: (status: CamStatus) => void,
 ): () => void {
-  const id = newId();
+  const viewerId = id();
   let channel: RealtimeChannel | null = null;
   let pc: RTCPeerConnection | null = null;
-  let helloTimer: ReturnType<typeof setTimeout> | null = null;
+  let casterId: string | null = null;
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
   let stopped = false;
+  let remoteDescriptionSet = false;
   const pendingIce: RTCIceCandidateInit[] = [];
 
-  const clearRetry = () => {
-    if (helloTimer) clearTimeout(helloTimer);
-    helloTimer = null;
-  };
-  const teardown = () => {
+  const cleanup = () => {
     pc?.close();
     pc = null;
+    casterId = null;
+    remoteDescriptionSet = false;
     pendingIce.length = 0;
   };
+
   const ask = () => {
     if (stopped || !channel) return;
-    void send(channel, { kind: "hello", from: id });
-    clearRetry();
-    helloTimer = setTimeout(ask, 5000);
+    void send(channel, { kind: "hello", from: viewerId });
+    retryTimer = setTimeout(ask, 5000);
+  };
+
+  const connect = async (offer: Extract<Signal, { kind: "offer" }>) => {
+    cleanup();
+    casterId = offer.from;
+    const next = new RTCPeerConnection(ICE_CONFIG);
+    pc = next;
+
+    next.ontrack = (event) => {
+      const stream = event.streams[0];
+      if (stream) onStream(stream);
+    };
+    next.onicecandidate = (event) => {
+      if (event.candidate && channel) {
+        void send(channel, {
+          kind: "ice",
+          from: viewerId,
+          to: offer.from,
+          candidate: event.candidate.toJSON(),
+        });
+      }
+    };
+    next.onconnectionstatechange = () => {
+      if (next.connectionState === "connected") {
+        if (retryTimer) clearTimeout(retryTimer);
+        onStatus("live");
+      } else if (["failed", "closed"].includes(next.connectionState)) {
+        onStream(null);
+        onStatus("connecting");
+        ask();
+      } else if (next.connectionState === "disconnected") {
+        onStream(null);
+        onStatus("connecting");
+        window.setTimeout(() => {
+          if (!stopped && pc === next && next.connectionState === "disconnected") ask();
+        }, 1500);
+      }
+    };
+
+    try {
+      await next.setRemoteDescription({ type: "offer", sdp: offer.sdp });
+      remoteDescriptionSet = true;
+      for (const candidate of pendingIce.splice(0)) await next.addIceCandidate(candidate).catch(() => {});
+      const answer = await next.createAnswer();
+      await next.setLocalDescription(answer);
+      if (channel && next.localDescription?.sdp) {
+        await send(channel, { kind: "answer", from: viewerId, to: offer.from, sdp: next.localDescription.sdp });
+      }
+    } catch {
+      cleanup();
+      onStream(null);
+      onStatus("error");
+    }
   };
 
   onStatus("connecting");
   channel = supabase
-    .channel(CAM_CHANNEL, { config: { broadcast: { self: false }, presence: { key: id } } })
+    .channel(CAM_CHANNEL, { config: { broadcast: { self: false }, presence: { key: viewerId } } })
     .on("broadcast", { event: "signal" }, async ({ payload }: { payload: Signal }) => {
-      if (stopped) return;
-      if (payload.kind === "bye") {
-        teardown();
+      if (stopped || !targeted(payload, viewerId)) return;
+      if (payload.kind === "offer") {
+        await connect(payload);
+      } else if (payload.kind === "ice") {
+        if (pc && remoteDescriptionSet) await pc.addIceCandidate(payload.candidate).catch(() => {});
+        else pendingIce.push(payload.candidate);
+      } else if (payload.kind === "bye") {
+        cleanup();
         onStream(null);
         onStatus("ended");
-        setTimeout(() => { if (!stopped) { onStatus("connecting"); ask(); } }, 500);
-        return;
-      }
-      if (!addressedTo(payload, id)) return;
-
-      if (payload.kind === "offer") {
-        teardown();
-        const current = new RTCPeerConnection(ICE_CONFIG);
-        pc = current;
-        current.ontrack = (event) => {
-          const stream = event.streams[0];
-          if (stream) onStream(stream);
-        };
-        current.onicecandidate = (event) => {
-          if (event.candidate && channel) {
-            void send(channel, {
-              kind: "ice",
-              from: id,
-              to: payload.from,
-              candidate: event.candidate.toJSON(),
-            });
-          }
-        };
-        current.onconnectionstatechange = () => {
-          if (current.connectionState === "connected") {
-            clearRetry();
-            onStatus("live");
-          } else if (["failed", "closed"].includes(current.connectionState)) {
-            onStream(null);
-            onStatus("connecting");
-            ask();
-          } else if (current.connectionState === "disconnected") {
-            onStatus("connecting");
-            setTimeout(() => {
-              if (!stopped && current.connectionState === "disconnected") {
-                teardown();
-                onStream(null);
-                ask();
-              }
-            }, 5000);
-          }
-        };
-
-        try {
-          await current.setRemoteDescription({ type: "offer", sdp: payload.sdp });
-          for (const candidate of pendingIce.splice(0)) {
-            await current.addIceCandidate(candidate).catch(() => {});
-          }
-          const answer = await current.createAnswer();
-          await current.setLocalDescription(answer);
-          if (current.localDescription?.sdp) {
-            await send(channel, { kind: "answer", from: id, to: payload.from, sdp: current.localDescription.sdp });
-          }
-        } catch {
-          onStream(null);
-          onStatus("error");
-        }
-      } else if (payload.kind === "ice") {
-        if (pc?.remoteDescription) {
-          await pc.addIceCandidate(payload.candidate).catch(() => {});
-        } else {
-          pendingIce.push(payload.candidate);
-        }
       }
     })
     .subscribe((status) => {
@@ -230,9 +249,11 @@ export function watchCasterCam(
 
   return () => {
     stopped = true;
-    clearRetry();
-    teardown();
+    if (retryTimer) clearTimeout(retryTimer);
+    if (channel && casterId) void send(channel, { kind: "bye", from: viewerId, to: casterId });
+    cleanup();
     if (channel) void supabase.removeChannel(channel);
+    channel = null;
     onStream(null);
     onStatus("idle");
   };
