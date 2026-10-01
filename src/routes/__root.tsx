@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -129,7 +130,8 @@ function ConfigError() {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const isLandingPage = window.location.pathname === "/";
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const isLandingPage = pathname === "/";
   // The landing hero is a static visual and must remain accessible even when Supabase runtime configuration is missing.\n  if (!CONFIG_OK && !isLandingPage) return <ConfigError />;
 
   // The landing page is intentionally independent of Supabase/auth so the hero
