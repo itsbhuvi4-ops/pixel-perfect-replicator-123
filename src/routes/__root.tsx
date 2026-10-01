@@ -130,7 +130,7 @@ function ConfigError() {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const isLandingPage = window.location.pathname === "/";
-  if (!CONFIG_OK) return <ConfigError />;
+  // The landing hero is a static visual and must remain accessible even when Supabase runtime configuration is missing.\n  if (!CONFIG_OK && !isLandingPage) return <ConfigError />;
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
