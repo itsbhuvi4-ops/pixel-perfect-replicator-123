@@ -7,7 +7,7 @@ import { RoleGate, Center, errText } from "@/components/Guard";
 import { PlayerStage } from "@/components/PlayerStage";
 import { LiveTicker } from "@/components/LiveTicker";
 import { useAuctionEvents, useAuctionState, usePlayers, useRealtimeAuction, useAmbassadors } from "@/lib/auction";
-import { setCasterCam } from "@/lib/accounts.functions";
+import { setAuctionStatus, setCasterCam } from "@/lib/accounts.functions";
 import { startCasterBroadcast, type CamStatus } from "@/lib/caster-cam";
 import { money, statusLabel } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
@@ -78,107 +78,147 @@ type RpcResult = { completed?: boolean; result?: string } | null;
 
 function AuctionControls() {
   const qc = useQueryClient();
+  const setStatus = useServerFn(setAuctionStatus);
   const [busy, setBusy] = useState<string | null>(null);
-  const state = useAuctionState().data;
+  const { data: state } = useAuctionState();
   const status = state?.status;
   const hasCurrent = !!state?.current_player_id;
+  const canStart = status === "not_started" || status === "stopped";
+  const isLive = status === "live";
+  const isPaused = status === "paused";
 
   const refresh = async () => {
-    await qc.invalidateQueries({ queryKey: ["auction_state"] });
-    await qc.invalidateQueries({ queryKey: ["players"] });
-    await qc.invalidateQueries({ queryKey: ["ambassadors"] });
-    await qc.invalidateQueries({ queryKey: ["auction_events"] });
-    await qc.invalidateQueries({ queryKey: ["bids"] });
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["auction_state"] }),
+      qc.invalidateQueries({ queryKey: ["players"] }),
+      qc.invalidateQueries({ queryKey: ["ambassadors"] }),
+      qc.invalidateQueries({ queryKey: ["auction_events"] }),
+      qc.invalidateQueries({ queryKey: ["bids"] }),
+    ]);
   };
 
-  const rpc = async (key: string, invoke: () => PromiseLike<{ error: { message: string } | null; data?: unknown }>) => {
+  const changeStatus = async (key: "start" | "pause" | "resume" | "stop", next: "live" | "paused" | "stopped") => {
     setBusy(key);
     try {
-      const { error, data } = (await invoke()) as { error: { message: string } | null; data: RpcResult };
-      if (error) throw error;
-      const res = data as RpcResult;
-      if (res?.completed) toast.info("Pool is empty — auction completed");
-      else if (res?.result === "sold") toast.success("SOLD! Points deducted and roster assigned");
-      else if (res?.result === "unsold") toast.info("No bids — marked UNSOLD");
-      else toast.success("Done");
+      await setStatus({ data: { status: next } });
       await refresh();
+      toast.success(
+        key === "start" ? "Auction started" :
+        key === "pause" ? "Auction paused" :
+        key === "resume" ? "Auction resumed" :
+        "Auction stopped",
+      );
     } catch (err) {
-      const name = err instanceof DOMException ? err.name : "";
-      toast.error(name === "NotAllowedError" ? "CAMERA PERMISSION REQUIRED" : name === "NotFoundError" ? "CAMERA UNAVAILABLE" : errText(err));
+      toast.error(errText(err));
     } finally {
       setBusy(null);
     }
   };
 
-  const disabled = (k: string) => busy !== null && busy !== k;
+  const runAuctionAction = async (key: "next" | "final", invoke: () => PromiseLike<{ error: { message: string } | null; data?: unknown }>) => {
+    setBusy(key);
+    try {
+      const { error, data } = await invoke();
+      if (error) throw error;
+      const result = data as RpcResult;
+      if (result?.completed) toast.info("Pool is empty — auction completed");
+      else if (result?.result === "sold") toast.success("SOLD! Points deducted and roster assigned");
+      else if (result?.result === "unsold") toast.info("No bids — marked UNSOLD");
+      else toast.success("Done");
+      await refresh();
+    } catch (err) {
+      toast.error(errText(err));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const disabled = (key: string) => busy !== null && busy !== key;
 
   return (
-    <div className="rounded-xl bg-panel p-4 ring-1 ring-line">
-      <div className="label-cond text-[12px] text-mut">Auction Controls</div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {status === "not_started" && (
-          <button
-            disabled={disabled("start")}
-            onClick={() => void rpc("start", () => supabase.rpc("caster_set_status", { p_status: "live" }))}
-            className="label-cond bg-sold px-4 py-2 text-[13px] text-arena disabled:opacity-40"
-          >
-            ▶ Start Auction
-          </button>
-        )}
-        {status === "live" && (
-          <button
-            disabled={disabled("pause")}
-            onClick={() => void rpc("pause", () => supabase.rpc("caster_set_status", { p_status: "paused" }))}
-            className="label-cond border border-line bg-panel2 px-4 py-2 text-[13px] text-mut hover:text-foreground disabled:opacity-40"
-          >
-            ⏸ Pause
-          </button>
-        )}
-        {status === "paused" && (
-          <button
-            disabled={disabled("resume")}
-            onClick={() => void rpc("resume", () => supabase.rpc("caster_set_status", { p_status: "live" }))}
-            className="label-cond bg-sold px-4 py-2 text-[13px] text-arena disabled:opacity-40"
-          >
-            ▶ Resume
-          </button>
-        )}
-        {(status === "live" || status === "paused") && (
-          <button
-            disabled={disabled("stop")}
-            onClick={() => {
-              if (confirm("Stop the auction? Bidding closes for everyone.")) void rpc("stop", () => supabase.rpc("caster_set_status", { p_status: "stopped" }));
-            }}
-            className="label-cond border border-alert/50 bg-alert/10 px-4 py-2 text-[13px] text-alert disabled:opacity-40"
-          >
-            ⏹ Stop
-          </button>
-        )}
+    <section className="overflow-hidden rounded-xl bg-panel ring-1 ring-line">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
+        <div>
+          <div className="label-cond text-[12px] text-mut">Auction Control</div>
+          <div className="mt-1 font-display text-2xl">LIVE AUCTION</div>
+        </div>
+        <span className={`label-cond border px-3 py-1 text-[11px] ${isLive ? "border-sold/50 text-sold" : isPaused ? "border-gold/50 text-gold" : "border-line text-mut"}`}>
+          {statusLabel(status)}
+        </span>
+      </div>
 
-        <span className="mx-1 w-px bg-line" />
-
+      <div className="grid gap-2 p-3 sm:grid-cols-4">
         <button
-          disabled={disabled("next") || status !== "live" || hasCurrent}
-          onClick={() => void rpc("next", () => supabase.rpc("caster_next_player"))}
-          className="label-cond border border-gold/50 bg-gold/10 px-4 py-2 text-[13px] text-gold disabled:opacity-40"
-          title={status !== "live" ? "Start the auction first" : hasCurrent ? "Finalize the current player first" : "Pick the next player from the pool"}
+          type="button"
+          disabled={disabled("start") || !canStart}
+          onClick={() => void changeStatus("start", "live")}
+          className="label-cond min-h-12 border border-sold/40 bg-sold/10 px-4 py-3 text-left text-[12px] text-sold transition hover:bg-sold/15 disabled:cursor-not-allowed disabled:opacity-35"
         >
-          ⏭ Next Player
+          <span className="block text-lg leading-none">▶</span>
+          <span className="mt-2 block">START AUCTION</span>
         </button>
+
         <button
-          disabled={disabled("final") || !hasCurrent || status !== "live"}
-          onClick={() => void rpc("final", () => supabase.rpc("finalize_player_v3"))}
-          className="label-cond bg-gold px-5 py-2 text-[14px] text-arena disabled:opacity-40"
-          title="Sell to the highest bidder (or mark UNSOLD if no bids)"
+          type="button"
+          disabled={disabled("pause") || !isLive}
+          onClick={() => void changeStatus("pause", "paused")}
+          className="label-cond min-h-12 border border-line bg-panel2 px-4 py-3 text-left text-[12px] text-foreground transition hover:border-gold/50 disabled:cursor-not-allowed disabled:opacity-35"
         >
-          🔨 SOLD
+          <span className="block text-lg leading-none">Ⅱ</span>
+          <span className="mt-2 block">PAUSE AUCTION</span>
+        </button>
+
+        <button
+          type="button"
+          disabled={disabled("resume") || !isPaused}
+          onClick={() => void changeStatus("resume", "live")}
+          className="label-cond min-h-12 border border-gold/40 bg-gold/10 px-4 py-3 text-left text-[12px] text-gold transition hover:bg-gold/15 disabled:cursor-not-allowed disabled:opacity-35"
+        >
+          <span className="block text-lg leading-none">▶</span>
+          <span className="mt-2 block">RESUME AUCTION</span>
+        </button>
+
+        <button
+          type="button"
+          disabled={disabled("stop") || (!isLive && !isPaused)}
+          onClick={() => {
+            if (confirm("Stop the auction? Bidding will close for everyone.")) {
+              void changeStatus("stop", "stopped");
+            }
+          }}
+          className="label-cond min-h-12 border border-alert/40 bg-alert/10 px-4 py-3 text-left text-[12px] text-alert transition hover:bg-alert/15 disabled:cursor-not-allowed disabled:opacity-35"
+        >
+          <span className="block text-lg leading-none">■</span>
+          <span className="mt-2 block">STOP AUCTION</span>
         </button>
       </div>
-      <p className="mt-2 font-mono text-[11px] text-mut">
-        SOLD assigns the player to the highest bidder, deducts their points atomically and locks the result.
-        No bids → the player goes UNSOLD automatically.
-      </p>
-    </div>
+
+      <div className="flex flex-wrap items-center gap-2 border-t border-line px-3 py-3">
+        <button
+          type="button"
+          disabled={disabled("next") || !isLive || hasCurrent}
+          onClick={() => void runAuctionAction("next", () => supabase.rpc("caster_next_player"))}
+          className="label-cond border border-gold/50 bg-gold/10 px-4 py-2.5 text-[12px] text-gold disabled:cursor-not-allowed disabled:opacity-35"
+          title={!isLive ? "Start the auction first" : hasCurrent ? "Finalize the current player first" : "Pick the next player from the pool"}
+        >
+          NEXT PLAYER
+        </button>
+
+        <button
+          type="button"
+          disabled={disabled("final") || !hasCurrent || !isLive}
+          onClick={() => void runAuctionAction("final", () => supabase.rpc("finalize_player_v3"))}
+          className="label-cond bg-gold px-5 py-2.5 text-[12px] text-arena disabled:cursor-not-allowed disabled:opacity-35"
+          title="Sell to the highest bidder or mark UNSOLD"
+        >
+          SOLD
+        </button>
+
+        <span className="ml-auto font-mono text-[10px] text-mut">
+          {isLive ? "BIDDING OPEN" : isPaused ? "BIDDING PAUSED" : status === "stopped" ? "AUCTION STOPPED" : "READY TO START"}
+        </span>
+      </div>
+    </section>
   );
 }
 
