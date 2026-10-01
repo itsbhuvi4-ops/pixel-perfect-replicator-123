@@ -39,7 +39,7 @@ function BroadcastPage() {
   const sold = players.filter((p) => ["sold", "retained"].includes(p.status));
 
   return (
-    <main className="flex h-screen min-h-0 flex-col gap-3 overflow-hidden p-3">
+    <main className="flex min-h-screen flex-col gap-3 overflow-x-hidden p-2 sm:p-3">
       <div className="flex items-center gap-4 border-b border-line pb-2">
         <span className="font-display text-2xl tracking-wide">
           {state?.tournament_name ?? "BIDX AUCTION"}
@@ -57,9 +57,9 @@ function BroadcastPage() {
         </span>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-[1fr_260px] gap-3">
+      <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_260px]">
         <div className="flex min-h-0 flex-col gap-3">
-          <CasterLivePanel stream={camStream} status={camStatus} className="max-h-[42vh]" />
+          <CasterLivePanel stream={camStream} status={camStatus} className="lg:max-h-[42vh]" />
           <PlayerStage player={current} state={state} />
         </div>
         <div className="flex min-h-0 flex-col gap-3">
