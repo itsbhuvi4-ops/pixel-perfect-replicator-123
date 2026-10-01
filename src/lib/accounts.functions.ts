@@ -150,6 +150,18 @@ export const listUsers = createServerFn({ method: "GET" })
     return (profiles ?? []).map((p) => ({ ...p, roles: (roles ?? []).filter((r) => r.user_id === p.id).map((r) => r.role) }));
   });
 
+export const adminDeleteAccount = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ userId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await requireRole(context, ["admin"]);
+    if (data.userId === context.userId) throw new Error("You can't delete your own account");
+    const sa = await admin();
+    const { error } = await sa.auth.admin.deleteUser(data.userId);
+    if (error) throw new Error(friendly(error.message));
+    return { ok: true };
+  });
+
 export const setUserActive = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ userId: z.string().uuid(), active: z.boolean() }).parse(d))
@@ -271,28 +283,33 @@ export const updateSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
     z.object({
-      tournament_name: z.string().trim().min(2).max(60),
       base_price: z.number().int().min(1),
-      min_increment: z.number().int().min(1),
       default_starting_points: z.number().int().min(0).max(10_000_000),
       retain_price: z.number().int().min(0),
-      max_retains: z.number().int().min(0).max(10),
       max_players: z.number().int().min(1).max(1000),
       max_ambassadors: z.number().int().min(1).max(100),
       max_casters: z.number().int().min(1).max(20),
-      apply_points_to_all: z.boolean(),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
     await requireRole(context, ["admin"]);
     const sa = await admin();
-    const { apply_points_to_all, ...rest } = data;
     const { data: st } = await sa.from("auction_state").select("status").eq("id", 1).single();
-    const { error } = await sa.from("auction_state").update({ ...rest, updated_at: new Date().toISOString() }).eq("id", 1);
+    const { error } = await sa.from("auction_state").update({
+      base_price: data.base_price,
+      default_starting_points: data.default_starting_points,
+      retain_price: data.retain_price,
+      max_players: data.max_players,
+      max_ambassadors: data.max_ambassadors,
+      max_casters: data.max_casters,
+      updated_at: new Date().toISOString(),
+    }).eq("id", 1);
     if (error) throw new Error(friendly(error.message));
-    if (apply_points_to_all) {
-      if (st?.status !== "not_started") throw new Error("Settings saved, but team points can only be reset before the auction starts");
-      await sa.from("ambassadors").update({ starting_points: data.default_starting_points, remaining_points: data.default_starting_points }).gte("starting_points", 0);
+    if (st?.status === "not_started") {
+      await sa.from("ambassadors").update({
+        starting_points: data.default_starting_points,
+        remaining_points: data.default_starting_points,
+      }).gte("starting_points", 0);
     }
     return { ok: true };
   });
