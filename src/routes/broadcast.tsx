@@ -11,6 +11,7 @@ import {
 } from "@/lib/auction";
 import { useCasterCamStream } from "@/lib/use-caster-cam";
 import { initials, money } from "@/lib/format";
+import { CasterLivePanel } from "@/components/CasterLivePanel";
 
 /**
  * Broadcast View — clean fullscreen output for OBS / YouTube capture.
@@ -32,7 +33,7 @@ function BroadcastPage() {
   const { data: players = [] } = usePlayers();
   const { data: ambassadors = [] } = useAmbassadors();
   const { data: events = [] } = useAuctionEvents();
-  const { stream: camStream } = useCasterCamStream(state?.caster_cam_live ?? false);
+  const { stream: camStream, status: camStatus } = useCasterCamStream(state?.caster_cam_live ?? false);
   const current = players.find((p) => p.id === state?.current_player_id) ?? null;
   const leader = ambassadors.find((a) => a.id === state?.current_bidder_id);
   const sold = players.filter((p) => ["sold", "retained"].includes(p.status));
@@ -57,7 +58,10 @@ function BroadcastPage() {
       </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-[1fr_260px] gap-3">
-        <PlayerStage player={current} state={state} camStream={camStream} />
+        <div className="flex min-h-0 flex-col gap-3">
+          <CasterLivePanel stream={camStream} status={camStatus} className="max-h-[42vh]" />
+          <PlayerStage player={current} state={state} />
+        </div>
         <div className="flex min-h-0 flex-col gap-3">
           <div className="rounded-xl bg-panel p-4 ring-1 ring-line">
             <div className="label-cond text-[12px] text-mut">Current Bid</div>
