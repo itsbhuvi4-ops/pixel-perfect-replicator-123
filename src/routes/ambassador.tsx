@@ -24,12 +24,12 @@ export const Route = createFileRoute("/ambassador")({
   head: () => ({ meta: [{ title: "Ambassador — Bid X Auction" }, { name: "robots", content: "noindex" }] }),
   component: () => (
     <RoleGate role="ambassador">
-      <AmbassadorPage />
+      <AmbassadorConsole />
     </RoleGate>
   ),
 });
 
-function AmbassadorPage() {
+export function AmbassadorConsole() {
   const { user } = useAuth();
   useRealtimeAuction();
   const { data: me } = useMyAmbassador(user?.id);
