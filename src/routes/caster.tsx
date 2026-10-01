@@ -26,7 +26,7 @@ export const Route = createFileRoute("/caster")({
   ),
 });
 
-export function CasterConsole() {
+export export function CasterConsole() {
   useRealtimeAuction();
   const { data: state } = useAuctionState();
   const { data: players = [] } = usePlayers();
