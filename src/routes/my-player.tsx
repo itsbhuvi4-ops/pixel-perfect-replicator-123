@@ -200,7 +200,7 @@ function InformationSection({
         <select className="field" value={f.primary_role} onChange={(e) => setF({ ...f, primary_role: e.target.value as Player["primary_role"] })} disabled={count >= 3}>
           {GAME_ROLES.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}
         </select>
-        <select className="field" value={f.secondary_role ?? ""} onChange={(e) => setF({ ...f, secondary_role: (e.target.value || null) as Player["secondary_role"] })} disabled={count >= 3}>
+        <select className="field" value={f.secondary_role} onChange={(e) => setF({ ...f, secondary_role: e.target.value })} disabled={count >= 3}>
           <option value="">No secondary role</option>
           {GAME_ROLES.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}
         </select>
