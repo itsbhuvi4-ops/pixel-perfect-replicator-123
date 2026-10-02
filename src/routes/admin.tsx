@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { RoleGate, Center, errText } from "@/components/Guard";
 import { useAuth } from "@/lib/auth";
 import { useAuctionState, useAmbassadors, usePlayers, useRealtimeAuction } from "@/lib/auction";
-import { adminDeleteAccount, updateSettings } from "@/lib/accounts.functions";
+import { adminDeleteAccount, adminDeletePlayer, updateSettings } from "@/lib/accounts.functions";
 import { money } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -102,28 +102,51 @@ function TotalPlayers() {
 
 function PlayerTable() {
   const { data: players = [] } = usePlayers();
+  const { data: ambassadors = [] } = useAmbassadors();
   const { data: users = [] } = useAdminUsers();
-  const deleteAccount = useServerFn(adminDeleteAccount);
+  const deletePlayer = useServerFn(adminDeletePlayer);
   const qc = useQueryClient();
-  const remove = async (userId: string, name: string) => {
-    if (!window.confirm(`Delete player ${name}?`)) return;
+
+  const remove = async (playerId: string, name: string) => {
+    if (!window.confirm(`Delete player ${name}? This permanently removes the player account.`)) return;
     try {
-      await deleteAccount({ data: { userId } });
+      await deletePlayer({ data: { playerId } });
       toast.success("Player deleted");
-      await qc.invalidateQueries({ queryKey: ["players"] });
-      await qc.invalidateQueries({ queryKey: ["admin_users"] });
-    } catch (err) { toast.error(errText(err)); }
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["players"] }),
+        qc.invalidateQueries({ queryKey: ["admin_users"] }),
+      ]);
+    } catch (err) {
+      toast.error(errText(err));
+    }
   };
-  return <DataTable headers={["Username", "Password", "Information", "Photo", "Video", "Delete"]}>
+
+  return <DataTable headers={["Username", "Information", "Photo", "Video", "Status", "Ambassador Team", "Sold Price", "Delete"]}>
     {players.map((p) => {
       const u = users.find((x) => x.id === p.user_id);
+      const team = p.ambassador_id ? ambassadors.find((a) => a.id === p.ambassador_id)?.team_name : null;
+      const deletable = p.status === "pool" || p.status === "unsold";
       return <tr key={p.id} className="border-b border-line/50 text-[12px]">
         <td className="px-3 py-3">{u?.username ?? p.ingame_name}</td>
-        <td className="px-3 py-3 text-mut">••••••••</td>
-        <td className="max-w-64 px-3 py-3 text-mut">{p.info || "—"}</td>
+        <td className="max-w-56 px-3 py-3 text-mut">{p.info || "—"}</td>
         <td className="px-3 py-3">{p.photo_url ? "Uploaded" : "Missing"}</td>
         <td className="px-3 py-3">{p.video_url ? "Uploaded" : "Missing"}</td>
-        <td className="px-3 py-3"><button onClick={() => void remove(p.user_id, p.ingame_name)} className="label-cond border border-alert/40 px-3 py-1 text-[11px] text-alert">Delete</button></td>
+        <td className="px-3 py-3">
+          <span className={p.status === "sold" ? "text-sold" : p.status === "in_auction" ? "text-gold" : "text-mut"}>
+            {p.status.replace("_", " ").toUpperCase()}
+          </span>
+        </td>
+        <td className="px-3 py-3">{team ?? "—"}</td>
+        <td className="px-3 py-3 font-mono text-gold">{p.sold_price != null ? money(p.sold_price) : "—"}</td>
+        <td className="px-3 py-3">
+          {deletable ? (
+            <button onClick={() => void remove(p.id, p.ingame_name)} className="label-cond border border-alert/40 px-3 py-1 text-[11px] text-alert">
+              Delete
+            </button>
+          ) : (
+            <span className="text-[10px] text-mut">{p.status === "sold" ? "ASSIGNED" : "ON AUCTION"}</span>
+          )}
+        </td>
       </tr>;
     })}
   </DataTable>;
