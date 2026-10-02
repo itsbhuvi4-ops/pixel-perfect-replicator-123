@@ -30,9 +30,8 @@ export function CasterLivePanel({
       return;
     }
 
-    // Start muted so mobile/browser autoplay policies cannot block the actual video.
-    // Audio can be enabled explicitly by the viewer.
-    el.muted = true;
+    // Request live audio. Browsers may reject autoplay with sound; the overlay
+    // then gives the viewer an explicit one-tap audio unlock.
     void el.play().then(() => setNeedsPlayback(false)).catch(() => setNeedsPlayback(true));
   }, [stream]);
 
@@ -54,7 +53,6 @@ export function CasterLivePanel({
           <video
             ref={ref}
             autoPlay
-            muted
             playsInline
             controls={false}
             className="block aspect-video w-full object-cover"

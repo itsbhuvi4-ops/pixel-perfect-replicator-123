@@ -150,6 +150,41 @@ export const listUsers = createServerFn({ method: "GET" })
     return (profiles ?? []).map((p) => ({ ...p, roles: (roles ?? []).filter((r) => r.user_id === p.id).map((r) => r.role) }));
   });
 
+export const adminDeleteAccount = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ userId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await requireRole(context, ["admin"]);
+    if (data.userId === context.userId) throw new Error("You can't delete your own account");
+    const sa = await admin();
+
+    // Remove auction-history rows that may reference a player/ambassador
+    // without CASCADE. This keeps account deletion reliable even if an
+    // older database migration is still present.
+    const [{ data: player }, { data: ambassador }] = await Promise.all([
+      sa.from("players").select("id").eq("user_id", data.userId).maybeSingle(),
+      sa.from("ambassadors").select("id").eq("user_id", data.userId).maybeSingle(),
+    ]);
+
+    if (player?.id) {
+      const { error } = await sa.from("auction_results").delete().eq("player_id", player.id);
+      if (error) throw new Error(friendly(error.message));
+      const { error: retainError } = await sa.from("retain_records").delete().eq("player_id", player.id);
+      if (retainError) throw new Error(friendly(retainError.message));
+    }
+
+    if (ambassador?.id) {
+      const { error } = await sa.from("auction_results").delete().eq("ambassador_id", ambassador.id);
+      if (error) throw new Error(friendly(error.message));
+      const { error: retainError } = await sa.from("retain_records").delete().eq("ambassador_id", ambassador.id);
+      if (retainError) throw new Error(friendly(retainError.message));
+    }
+
+    const { error } = await sa.auth.admin.deleteUser(data.userId);
+    if (error) throw new Error(friendly(error.message));
+    return { ok: true };
+  });
+
 export const setUserActive = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ userId: z.string().uuid(), active: z.boolean() }).parse(d))
@@ -271,33 +306,73 @@ export const updateSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
     z.object({
-      tournament_name: z.string().trim().min(2).max(60),
       base_price: z.number().int().min(1),
-      min_increment: z.number().int().min(1),
       default_starting_points: z.number().int().min(0).max(10_000_000),
       retain_price: z.number().int().min(0),
-      max_retains: z.number().int().min(0).max(10),
       max_players: z.number().int().min(1).max(1000),
       max_ambassadors: z.number().int().min(1).max(100),
       max_casters: z.number().int().min(1).max(20),
-      apply_points_to_all: z.boolean(),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
     await requireRole(context, ["admin"]);
     const sa = await admin();
-    const { apply_points_to_all, ...rest } = data;
     const { data: st } = await sa.from("auction_state").select("status").eq("id", 1).single();
-    const { error } = await sa.from("auction_state").update({ ...rest, updated_at: new Date().toISOString() }).eq("id", 1);
+    const { error } = await sa.from("auction_state").update({
+      base_price: data.base_price,
+      default_starting_points: data.default_starting_points,
+      retain_price: data.retain_price,
+      max_players: data.max_players,
+      max_ambassadors: data.max_ambassadors,
+      max_casters: data.max_casters,
+      updated_at: new Date().toISOString(),
+    }).eq("id", 1);
     if (error) throw new Error(friendly(error.message));
-    if (apply_points_to_all) {
-      if (st?.status !== "not_started") throw new Error("Settings saved, but team points can only be reset before the auction starts");
-      await sa.from("ambassadors").update({ starting_points: data.default_starting_points, remaining_points: data.default_starting_points }).gte("starting_points", 0);
+    if (st?.status === "not_started") {
+      await sa.from("ambassadors").update({
+        starting_points: data.default_starting_points,
+        remaining_points: data.default_starting_points,
+      }).gte("starting_points", 0);
     }
     return { ok: true };
   });
 
 /* ---------- Caster ---------- */
+
+export const adminDeletePlayer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ playerId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await requireRole(context, ["admin"]);
+    const sa = await admin();
+
+    const [{ data: player }, { data: state }] = await Promise.all([
+      sa.from("players").select("id,user_id,status").eq("id", data.playerId).maybeSingle(),
+      sa.from("auction_state").select("current_player_id").eq("id", 1).maybeSingle(),
+    ]);
+
+    if (!player) throw new Error("Player not found");
+    if (state?.current_player_id === player.id || player.status === "in_auction") {
+      throw new Error("This player is currently on the auction block");
+    }
+    if (player.status === "sold") {
+      throw new Error("Sold players cannot be deleted. They remain assigned to their ambassador team.");
+    }
+    if (!["pool", "unsold"].includes(player.status)) {
+      throw new Error("Only pool or unsold players can be deleted");
+    }
+
+    const { error: resultError } = await sa.from("auction_results").delete().eq("player_id", player.id);
+    if (resultError) throw new Error(friendly(resultError.message));
+
+    const { error: retainError } = await sa.from("retain_records").delete().eq("player_id", player.id);
+    if (retainError) throw new Error(friendly(retainError.message));
+
+    const { error } = await sa.auth.admin.deleteUser(player.user_id);
+    if (error) throw new Error(friendly(error.message));
+
+    return { ok: true };
+  });
 
 export const adminRemovePlayer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -339,17 +414,11 @@ export const setAuctionStatus = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireRole(context, ["caster", "admin"]);
     const sa = await admin();
-    const biddingOpen = data.status === "live";
-    const { error } = await sa
-      .from("auction_state")
-      .update({
-        status: data.status,
-        bidding_open: biddingOpen,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", 1);
+    const { data: result, error } = await sa.rpc("caster_set_status", {
+      p_status: data.status,
+    });
     if (error) throw new Error(friendly(error.message));
-    return { ok: true, status: data.status };
+    return result as { ok: boolean; status: string; started?: boolean; selection?: { completed?: boolean } | null };
   });
 
 export const setCasterCam = createServerFn({ method: "POST" })

@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { RoleGate, Center, errText } from "@/components/Guard";
 import { PlayerStage } from "@/components/PlayerStage";
 import { LiveTicker } from "@/components/LiveTicker";
-import { useAuctionEvents, useAuctionState, usePlayers, useRealtimeAuction, useAmbassadors } from "@/lib/auction";
+import { useAuctionEvents, useAuctionState, usePlayers, useRealtimeAuction, useAmbassadors, useBids } from "@/lib/auction";
 import { setAuctionStatus, setCasterCam } from "@/lib/accounts.functions";
 import { startCasterBroadcast, type CamStatus } from "@/lib/caster-cam";
 import { money, statusLabel } from "@/lib/format";
@@ -34,47 +34,55 @@ export function CasterConsole() {
   const { data: events = [] } = useAuctionEvents();
   const current = players.find((p) => p.id === state?.current_player_id) ?? null;
   const leader = ambassadors.find((a) => a.id === state?.current_bidder_id);
+  const { data: bids = [] } = useBids(current?.id);
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-5 sm:px-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-display text-4xl">Caster Console</h1>
-        <div className="flex items-center gap-2">
-          <span className="label-cond border border-line bg-panel px-3 py-1 text-[12px] text-mut">
-            {statusLabel(state?.status)}
-          </span>
-          <Link to="/broadcast" className="label-cond border border-gold/50 px-3 py-1 text-[12px] text-gold">
-            Open Broadcast View ↗
-          </Link>
-        </div>
-      </div>
-
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_340px]">
-        <div className="flex flex-col gap-4">
-          <PlayerStage player={current} state={state} />
+    <main className="mx-auto max-w-7xl px-3 py-5 sm:px-5">
+      <h1 className="font-display text-4xl">Auction</h1>
+      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="min-w-0 space-y-4">
+          <section className="overflow-hidden rounded-xl bg-panel ring-1 ring-line">
+            <PlayerStage player={current} state={state} />
+          </section>
+          <section className="rounded-xl bg-panel p-4 ring-1 ring-line">
+            <div className="label-cond text-[12px] text-mut">Player Information</div>
+            {current ? (
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <Info label="Username" value={current.ingame_name} />
+                <Info label="UID" value={current.game_id} />
+                <Info label="Role" value={current.primary_role.replace("_", " ")} />
+                <Info label="Current Bid" value={state?.current_bid ? money(state.current_bid) : "—"} />
+              </div>
+            ) : <p className="mt-3 text-sm text-mut">Waiting for auction start.</p>}
+          </section>
+          <section className="rounded-xl bg-panel p-4 ring-1 ring-line">
+            <div className="label-cond text-[12px] text-mut">Ambassador Bids</div>
+            <div className="mt-3 space-y-2">
+              {bids.length ? bids.slice().sort((a,b)=>b.amount-a.amount).map((b) => (
+                <div key={b.id} className="flex justify-between rounded-lg bg-panel2 px-3 py-2 text-sm">
+                  <span>{ambassadors.find((a) => a.id === b.ambassador_id)?.team_name ?? "Ambassador"}</span>
+                  <span className="font-mono text-[12px] text-gold">{money(b.amount)}</span>
+                </div>
+              )) : <p className="text-sm text-mut">No bids yet.</p>}
+            </div>
+          </section>
           <AuctionControls />
           <LiveTicker events={events} />
         </div>
-        <div className="flex flex-col gap-4">
+        <div className="min-w-0 space-y-4">
           <CasterCamCard />
-          <div className="rounded-xl bg-panel p-4 ring-1 ring-line">
-            <div className="label-cond text-[12px] text-mut">On The Block</div>
-            <div className="mt-1 font-display text-3xl">{current?.ingame_name ?? "—"}</div>
-            <div className="mt-1 font-mono text-[11px] text-mut">
-              {state?.current_bid
-                ? `${leader?.team_name ?? "?"} · ${money(state.current_bid)}`
-                : current
-                  ? `Base ${money(state?.base_price ?? 0)} — no bids yet`
-                  : "No player selected"}
-            </div>
-          </div>
+          <section className="rounded-xl bg-panel p-4 ring-1 ring-line">
+            <div className="label-cond text-[12px] text-mut">Current Bid</div>
+            <div className="mt-1 font-display text-4xl text-gold">{state?.current_bid ? money(state.current_bid) : "—"}</div>
+            <div className="mt-1 font-mono text-[11px] text-mut">{leader?.team_name ?? "No bidder"}</div>
+          </section>
         </div>
       </div>
     </main>
   );
 }
 
-type RpcResult = { completed?: boolean; result?: string } | null;
+type RpcResult = { completed?: boolean; result?: string; next?: { completed?: boolean; player_id?: string } } | null;
 
 function AuctionControls() {
   const qc = useQueryClient();
@@ -97,20 +105,13 @@ function AuctionControls() {
     ]);
   };
 
-  const pickRandomPlayer = async () => {
-    const { error, data } = await supabase.rpc("caster_next_player");
-    if (error) throw error;
-    return data as RpcResult;
-  };
-
   const changeStatus = async (key: "start" | "pause" | "resume" | "stop", next: "live" | "paused" | "stopped") => {
     setBusy(key);
     try {
-      await setStatus({ data: { status: next } });
+      const result = await setStatus({ data: { status: next } });
 
       if (key === "start") {
-        const result = await pickRandomPlayer();
-        if (result?.completed) {
+        if (result?.selection?.completed) {
           toast.info("No eligible players remain — auction completed");
         } else {
           toast.success("Auction started — player selected automatically");
@@ -140,20 +141,28 @@ function AuctionControls() {
       const result = data as RpcResult;
       await refresh();
 
-      if (result?.completed) {
-        toast.info("Pool is empty — auction completed");
-        return;
-      }
-
-      if (result?.result === "sold") toast.success("SOLD! Points deducted and roster assigned");
-      else if (result?.result === "unsold") toast.info("UNSOLD — selecting the next player automatically");
+      if (result?.result === "sold") toast.success("SOLD — points deducted and roster updated");
+      else if (result?.result === "unsold") toast.info("UNSOLD — next player revealed automatically");
       else toast.success("Player finalized");
 
-      // The server-side RPC chooses the next eligible player; the caster never selects it manually.
-      const next = await pickRandomPlayer();
+      if (result?.next?.completed) toast.info("Auction completed — no eligible players remain");
+      else if (result?.next?.player_id) toast.success("Next player revealed automatically");
+    } catch (err) {
+      toast.error(errText(err));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const markUnsold = async () => {
+    setBusy("unsold");
+    try {
+      const { error, data } = await supabase.rpc("caster_mark_unsold");
+      if (error) throw error;
+      const result = data as RpcResult;
       await refresh();
-      if (next?.completed) toast.info("Auction completed — no eligible players remain");
-      else toast.success("Next player revealed automatically");
+      if (result?.next?.completed) toast.info("Player unsold — auction completed");
+      else toast.info("Player UNSOLD — next player revealed automatically");
     } catch (err) {
       toast.error(errText(err));
     } finally {
@@ -162,7 +171,7 @@ function AuctionControls() {
   };
 
   // The database remains the source of truth for the reveal -> bidding transition.
-  // caster_next_player creates the next lot; caster_open_bidding opens bids for that lot.
+  // Player selection is performed only inside the server-side auction transaction.
   useEffect(() => {
     if (!isLive || !hasCurrent || state?.bidding_open) return;
     const timer = window.setTimeout(async () => {
@@ -248,9 +257,17 @@ function AuctionControls() {
           disabled={disabled("final") || !hasCurrent || !isLive || !state?.bidding_open}
           onClick={() => void finalizeCurrent()}
           className="label-cond min-h-11 bg-gold px-5 py-2.5 text-[12px] text-arena disabled:cursor-not-allowed disabled:opacity-35"
-          title="Finalize the current player. The next player is selected automatically by the server."
+          title="Finalize the current player. The server automatically reveals the next player."
         >
-          SOLD / FINISH LOT
+          SOLD / NEXT PLAYER
+        </button>
+        <button
+          type="button"
+          disabled={disabled("unsold") || !hasCurrent || !isLive || !!state?.current_bid}
+          onClick={() => void markUnsold()}
+          className="label-cond min-h-11 border border-line bg-panel2 px-5 py-2.5 text-[12px] text-mut disabled:cursor-not-allowed disabled:opacity-35"
+        >
+          UNSOLD / NEXT PLAYER
         </button>
 
         <span className="font-mono text-[10px] text-mut sm:ml-auto">
@@ -385,3 +402,5 @@ function CasterCamCard() {
     </div>
   );
 }
+
+function Info({ label, value }: { label: string; value: string }) { return <div className="rounded-lg bg-panel2 p-3"><div className="label-cond text-[10px] text-mut">{label}</div><div className="mt-1 text-sm capitalize">{value}</div></div>; }

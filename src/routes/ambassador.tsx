@@ -4,11 +4,10 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { RoleGate, Center, errText } from "@/components/Guard";
 import { PlayerStage } from "@/components/PlayerStage";
-import { LiveTicker } from "@/components/LiveTicker";
+import { CasterLivePanel } from "@/components/CasterLivePanel";
 import { useAuth } from "@/lib/auth";
 import {
   useAmbassadors,
-  useAuctionEvents,
   useAuctionState,
   useBids,
   useMyAmbassador,
@@ -16,20 +15,13 @@ import {
   usePlayers,
   useRealtimeAuction,
   minimumNextBid,
-  type Player,
 } from "@/lib/auction";
-import { ROLE_LABELS, money, plainPoints } from "@/lib/format";
+import { money } from "@/lib/format";
 import { useCasterCamStream } from "@/lib/use-caster-cam";
 import { supabase } from "@/integrations/supabase/client";
-import { CasterLivePanel } from "@/components/CasterLivePanel";
 
 export const Route = createFileRoute("/ambassador")({
-  head: () => ({
-    meta: [
-      { title: "Team Console — BidX Auction" },
-      { name: "robots", content: "noindex" },
-    ],
-  }),
+  head: () => ({ meta: [{ title: "Ambassador — Bid X Auction" }, { name: "robots", content: "noindex" }] }),
   component: () => (
     <RoleGate role="ambassador">
       <AmbassadorConsole />
@@ -40,107 +32,77 @@ export const Route = createFileRoute("/ambassador")({
 export function AmbassadorConsole() {
   const { user } = useAuth();
   useRealtimeAuction();
-  const { data: state } = useAuctionState();
   const { data: me } = useMyAmbassador(user?.id);
   const { data: roster = [] } = useMyRoster(me?.id);
-  const { data: players = [] } = usePlayers();
-  const { data: ambassadors = [] } = useAmbassadors();
-  const { data: events = [] } = useAuctionEvents();
-  const { stream: camStream, status: camStatus } = useCasterCamStream(true);
-  const current = players.find((p) => p.id === state?.current_player_id) ?? null;
-  const leader = ambassadors.find((a) => a.id === state?.current_bidder_id);
-  const iLead = !!me && state?.current_bidder_id === me.id;
-  const rank =
-    ambassadors.slice().sort((a, b) => b.remaining_points - a.remaining_points).findIndex((a) => a.id === me?.id) + 1;
 
-  if (!me)
-    return (
-      <Center>
-        <p>No ambassador profile is linked to this account. Ask the admin to create your team.</p>
-      </Center>
-    );
+  if (!me) return <Center>No ambassador profile is linked to this account.</Center>;
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-5 sm:px-5">
-      <LiveTicker events={events} />
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_340px]">
-        <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <Stat label="My Points" value={plainPoints(me.remaining_points)} gold />
-            <Stat label="Rank" value={`#${rank || "—"} / ${ambassadors.length}`} />
-            <Stat label="Roster" value={`${roster.length} players`} />
-            <Stat label="Lot" value={current ? `#${current.lot_number ?? "—"}` : "—"} />
-          </div>
-          <CasterLivePanel stream={camStream} status={camStatus} />
-          <PlayerStage player={current} state={state} />
-          <BidPanel />
+    <main className="mx-auto max-w-6xl px-3 py-5 sm:px-5">
+      <section id="profile" className="scroll-mt-20 rounded-xl bg-panel p-4 ring-1 ring-line sm:p-5">
+        <h1 className="font-display text-4xl">Profile</h1>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <Field label="Username" value={me.ambassador_name} />
+          <Field label="Password" value="••••••••" />
+          <Field label="Team Name" value={me.team_name} />
         </div>
-        <div className="flex flex-col gap-4">
-          <div className="rounded-xl bg-panel p-4 ring-1 ring-line">
-            <div className="label-cond text-[12px] text-mut">Current Lot</div>
-            <div className="mt-1 font-display text-3xl">{current?.ingame_name ?? "—"}</div>
-            <div className="mt-1 font-mono text-[11px] text-mut">
-              {state?.current_bid
-                ? iLead
-                  ? `You lead with ${money(state.current_bid)}`
-                  : `${leader?.team_name ?? "Someone"} leads ${money(state.current_bid)}`
-                : `Base price ${money(state?.base_price ?? 0)}`}
-            </div>
-            <div className="mt-2 font-mono text-[11px]">
-              {iLead ? (
-                <span className="text-sold">★ You are the highest bidder</span>
-              ) : (
-                <span className="text-mut">Next min {money(minimumNextBid(state))}</span>
-              )}
-            </div>
+      </section>
+
+      <section id="auction" className="mt-5 scroll-mt-20">
+        <h2 className="mb-3 font-display text-4xl">Auction</h2>
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="space-y-4">
+            <PlayerAuction />
           </div>
-          <RosterPanel roster={roster} />
+          <div className="min-w-0">
+            <CasterCamera />
+          </div>
         </div>
-      </div>
+      </section>
+
+      <section id="team" className="mt-5 scroll-mt-20 rounded-xl bg-panel p-4 ring-1 ring-line sm:p-5">
+        <h2 className="font-display text-4xl">Team Information</h2>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {roster.length ? roster.map((player) => (
+            <div key={player.id} className="rounded-lg bg-panel2 p-3">
+              <div className="text-sm">{player.ingame_name}</div>
+              <div className="mt-1 font-mono text-[11px] text-mut">{player.primary_role.replace("_", " ")}</div>
+              {player.sold_price != null && <div className="mt-2 font-mono text-[12px] text-gold">{money(player.sold_price)}</div>}
+            </div>
+          )) : <p className="text-sm text-mut">No players in the team yet.</p>}
+        </div>
+      </section>
     </main>
   );
 }
 
-function Stat({ label, value, gold }: { label: string; value: string; gold?: boolean }) {
-  return (
-    <div className={`rounded-xl p-4 ring-1 ${gold ? "bg-gold/10 ring-gold/40" : "bg-panel ring-line"}`}>
-      <div className="label-cond text-[12px] text-mut">{label}</div>
-      <div className={`font-display text-3xl ${gold ? "text-gold" : ""}`}>{value}</div>
-    </div>
-  );
-}
-
-function BidPanel() {
-  const qc = useQueryClient();
-  const { user } = useAuth();
+function PlayerAuction() {
   const { data: state } = useAuctionState();
-  const { data: me } = useMyAmbassador(user?.id);
+  const { data: players = [] } = usePlayers();
+  const current = players.find((p) => p.id === state?.current_player_id) ?? null;
+  const { data: bids = [] } = useBids(current?.id);
   const { data: ambassadors = [] } = useAmbassadors();
-  const { data: bids = [] } = useBids(state?.current_player_id);
-  const { data: roster = [] } = useMyRoster(me?.id);
-  const [custom, setCustom] = useState("");
+  const { data: me } = useMyAmbassador(useAuth().user?.id);
+  const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
-  const live = state?.status === "live" && !!state?.current_player_id;
+  const live = state?.status === "live" && !!current && !!state?.bidding_open;
   const minNext = minimumNextBid(state);
-  const inc = state?.min_increment ?? 0;
-  const retainCount = roster.filter((p) => p.status === "retained").length;
-  const retainsLeft = Math.max(0, (state?.max_retains ?? 1) - retainCount);
-  const canRetain = live && state?.current_bid === null && !!me && retainsLeft > 0;
-  const affordable = !!me && minNext <= me.remaining_points;
 
-  const teamName = (id: string) => ambassadors.find((a) => a.id === id)?.team_name ?? "—";
-
-  type RpcInvoke = () => PromiseLike<{ error: { message: string } | null; data?: unknown }>;
-  const call = async (invoke: RpcInvoke, okMsg: string) => {
-    if (!user) return;
+  const bid = async (amount: number) => {
+    if (!me) return;
     setBusy(true);
     try {
-      const { error } = await invoke();
+      const { error } = await supabase.rpc("place_bid_v3", {
+        p_amount: amount,
+        p_idempotency_key: crypto.randomUUID(),
+      });
       if (error) throw error;
-      toast.success(okMsg);
-      setCustom("");
-      await qc.invalidateQueries({ queryKey: ["auction_state"] });
-      await qc.invalidateQueries({ queryKey: ["bids"] });
+      toast.success(`Bid ${money(amount)} placed`);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["auction_state"] }),
+        qc.invalidateQueries({ queryKey: ["bids"] }),
+        qc.invalidateQueries({ queryKey: ["ambassadors"] }),
+      ]);
     } catch (err) {
       toast.error(errText(err));
     } finally {
@@ -148,132 +110,63 @@ function BidPanel() {
     }
   };
 
-  const bid = (amount: number) =>
-    void call(
-      () => supabase.rpc("place_bid_v3", { p_amount: amount, p_idempotency_key: crypto.randomUUID() }),
-      `Bid of ${money(amount)} placed`,
-    );
-
-  const customBid = () => {
-    const n = Number(custom.replace(/[^0-9]/g, ""));
-    if (!n) {
-      toast.error("Enter a valid amount");
-      return;
-    }
-    bid(n);
-  };
-
-  const steps = [minNext, minNext + inc, minNext + 2 * inc].filter((v, i, a) => a.indexOf(v) === i);
+  const amounts = [minNext, minNext + (state?.min_increment ?? 0), minNext + 2 * (state?.min_increment ?? 0)]
+    .filter((v, i, a) => v > 0 && a.indexOf(v) === i);
 
   return (
-    <div className="rounded-xl bg-panel p-4 ring-1 ring-line">
-      <div className="flex items-center justify-between">
-        <div className="label-cond text-[12px] text-mut">Bid Control</div>
-        <div className="font-mono text-[11px] text-mut">
-          {live ? `${bids.length} bids this lot` : "Waiting for a lot"}
-        </div>
+    <div className="space-y-4">
+      <div className="overflow-hidden rounded-xl bg-panel ring-1 ring-line">
+        <PlayerStage player={current} state={state} />
       </div>
-
-      {!live ? (
-        <p className="mt-3 text-sm text-mut">
-          {state?.status === "paused"
-            ? "Auction is paused — bidding is locked."
-            : "Bidding opens when the caster puts a player on the block."}
-        </p>
-      ) : (
-        <>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {steps.map((amount, i) => (
-              <button
-                key={amount}
-                disabled={busy || !me || amount > (me?.remaining_points ?? 0)}
-                onClick={() => bid(amount)}
-                className={
-                  i === 0
-                    ? "label-cond bg-gold px-4 py-2 text-[13px] text-arena transition-opacity hover:opacity-90 disabled:opacity-40"
-                    : "label-cond border border-gold/40 bg-gold/10 px-3 py-2 text-[12px] text-gold transition-colors hover:bg-gold/20 disabled:opacity-40"
-                }
-              >
-                {i === 0 ? `Bid ${plainPoints(amount)}` : `+${plainPoints(amount - (state?.current_bid ?? 0))}`}
-              </button>
-            ))}
+      <div className="rounded-xl bg-panel p-4 ring-1 ring-line">
+        <div className="label-cond text-[12px] text-mut">Player Information</div>
+        {current ? (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Field label="Username" value={current.ingame_name} />
+            <Field label="UID" value={current.game_id} />
+            <Field label="Role" value={current.primary_role.replace("_", " ")} />
+            <Field label="Current Bid" value={state?.current_bid ? money(state.current_bid) : "—"} />
           </div>
-          {!affordable && (
-            <p className="mt-2 text-[12px] text-alert">
-              You need {plainPoints(minNext)} points to bid next — you have {plainPoints(me?.remaining_points ?? 0)}.
-            </p>
-          )}
-          <div className="mt-3 flex gap-2">
-            <input
-              className="field flex-1"
-              inputMode="numeric"
-              placeholder={`Custom amount ≥ ${plainPoints(minNext)}`}
-              value={custom}
-              onChange={(e) => setCustom(e.target.value)}
-            />
-            <button
-              disabled={busy || !me || !custom}
-              onClick={customBid}
-              className="label-cond border border-line bg-panel2 px-4 py-2 text-[12px] text-mut hover:text-foreground disabled:opacity-40"
-            >
-              Place
-            </button>
-          </div>
-          <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
-            <span className="font-mono text-[11px] text-mut">
-              {retainsLeft > 0
-                ? `Retain (${retainsLeft} left) — only before the first bid`
-                : "No retains left"}
-            </span>
-            <button
-              disabled={busy || !canRetain || (me?.remaining_points ?? 0) < (state?.retain_price ?? 0)}
-              onClick={() => void call(() => supabase.rpc("retain_player_v3"), "Player retained to your roster")}
-              className="label-cond border border-gold/50 px-3 py-1.5 text-[12px] text-gold disabled:opacity-40"
-            >
-              Retain for {plainPoints(state?.retain_price ?? 0)}
-            </button>
-          </div>
-        </>
-      )}
-
-      {bids.length > 0 && (
-        <div className="mt-3 max-h-40 overflow-y-auto border-t border-line pt-2">
-          {bids.map((b) => (
-            <div key={b.id} className="flex items-center justify-between py-1 font-mono text-[11px] text-mut">
-              <span className={b.ambassador_id === me?.id ? "text-gold" : ""}>{teamName(b.ambassador_id)}</span>
-              <span>{money(b.amount)}</span>
+        ) : <p className="mt-3 text-sm text-mut">Waiting for the auction.</p>}
+      </div>
+      <div className="rounded-xl bg-panel p-4 ring-1 ring-line">
+        <div className="label-cond text-[12px] text-mut">Current Bidders</div>
+        <div className="mt-3 space-y-2">
+          {bids.length ? bids.slice().sort((a,b)=>b.amount-a.amount).map((b) => (
+            <div key={b.id} className="flex justify-between rounded-lg bg-panel2 px-3 py-2 text-sm">
+              <span>{ambassadors.find((a) => a.id === b.ambassador_id)?.team_name ?? "Ambassador"}</span>
+              <span className="font-mono text-[12px] text-gold">{money(b.amount)}</span>
             </div>
+          )) : <p className="text-sm text-mut">No bids yet.</p>}
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {amounts.map((amount) => (
+            <button
+              key={amount}
+              type="button"
+              disabled={!live || busy || amount > (me?.remaining_points ?? 0)}
+              onClick={() => void bid(amount)}
+              className="min-h-11 rounded-lg bg-gold px-4 py-2 font-cond text-[13px] text-arena disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Bid {money(amount)}
+            </button>
           ))}
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
-function RosterPanel({ roster }: { roster: Player[] }) {
+function CasterCamera() {
+  const { stream, status } = useCasterCamStream(true);
+  return <CasterLivePanel stream={stream} status={status} />;
+}
+
+function Field({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-panel p-4 ring-1 ring-line">
-      <div className="flex items-center justify-between">
-        <div className="label-cond text-[12px] text-mut">My Roster</div>
-        <div className="font-mono text-[11px] text-mut">{roster.length} players</div>
-      </div>
-      <div className="mt-2 flex flex-col gap-1">
-        {roster.length === 0 && <p className="font-mono text-[11px] text-mut">No players yet — start bidding!</p>}
-        {roster.map((p) => (
-          <div key={p.id} className="flex items-center gap-2 rounded-lg bg-panel2 px-2.5 py-2">
-            <span
-              className={`label-cond px-1.5 py-0.5 text-[10px] ${
-                p.status === "retained" ? "bg-gold/15 text-gold" : "bg-sold/15 text-sold"
-              }`}
-            >
-              {p.status === "retained" ? "RET" : `#${p.lot_number ?? ""}`}
-            </span>
-            <span className="label-cond truncate text-[13px]">{p.ingame_name}</span>
-            <span className="ml-auto font-mono text-[11px] text-mut">{ROLE_LABELS[p.primary_role]}</span>
-            <span className="font-mono text-[11px] text-gold">{plainPoints(p.sold_price)}</span>
-          </div>
-        ))}
-      </div>
+    <div className="rounded-lg bg-panel2 p-3">
+      <div className="label-cond text-[10px] text-mut">{label}</div>
+      <div className="mt-1 text-sm">{value}</div>
     </div>
   );
 }

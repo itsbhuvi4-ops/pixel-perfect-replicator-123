@@ -1,257 +1,118 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { RoleGate, Center, errText } from "@/components/Guard";
 import { useAuth } from "@/lib/auth";
-import { useMyPlayer, useRealtimeAuction, useAuctionState, type Player } from "@/lib/auction";
-import { changeUsername } from "@/lib/accounts.functions";
-import { GAME_ROLES, ROLE_LABELS, pts } from "@/lib/format";
+import { useMyPlayer, useAuctionState, useRealtimeAuction, type Player } from "@/lib/auction";
+import { GAME_ROLES, ROLE_LABELS, money } from "@/lib/format";
 import { uploadPlayerFile } from "@/lib/storage";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/my-player")({
-  head: () => ({
-    meta: [
-      { title: "My Player Profile — BidX Auction" },
-      { name: "robots", content: "noindex" },
-    ],
-  }),
+  head: () => ({ meta: [{ title: "Player — Bid X Auction" }, { name: "robots", content: "noindex" }] }),
   component: () => (
     <RoleGate role="player">
-      <PlayerDashboard />
+      <PlayerPage />
     </RoleGate>
   ),
 });
 
-function PlayerDashboard() {
-  const { user } = useAuth();
+function PlayerPage() {
+  const { user, username } = useAuth();
   useRealtimeAuction();
   const { data: state } = useAuctionState();
   const { data: player, isLoading } = useMyPlayer(user?.id);
+  const qc = useQueryClient();
+  const [editCount, setEditCount] = useState(0);
 
   if (isLoading) return <Center>Loading…</Center>;
-  if (!player)
+  if (!player || !user) {
     return (
       <Center>
         <div>
-          <h1 className="font-display text-4xl">You're not registered yet</h1>
-          <p className="mt-3 max-w-sm text-mut">
-            Submit your profile once — name, UID and game role — and you'll enter the auction pool.
-          </p>
-          <Link to="/player/register" className="label-cond mt-6 inline-block bg-gold px-4 py-2 text-[13px] text-arena">
-            Register as player
+          <h1 className="font-display text-4xl">Player profile not found</h1>
+          <Link to="/player/register" className="label-cond mt-5 inline-block bg-gold px-4 py-2 text-sm text-arena">
+            Register
           </Link>
         </div>
       </Center>
     );
+  }
+
+  const refresh = async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["my_player"] }),
+      qc.invalidateQueries({ queryKey: ["players"] }),
+    ]);
+  };
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8 sm:px-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-display text-4xl">My Player Profile</h1>
-        <StatusBadge player={player} />
-      </div>
+    <main className="mx-auto max-w-5xl px-3 py-5 sm:px-5">
+      <nav className="sticky top-14 z-30 mb-5 flex gap-1 overflow-x-auto rounded-xl bg-panel p-2 ring-1 ring-line">
+        <a href="#profile" className="shrink-0 rounded-lg px-3 py-2 font-cond text-[12px] uppercase text-mut hover:bg-panel2 hover:text-foreground">Profile</a>
+        <a href="#information" className="shrink-0 rounded-lg px-3 py-2 font-cond text-[12px] uppercase text-mut hover:bg-panel2 hover:text-foreground">Information</a>
+        <a href="#uploads" className="shrink-0 rounded-lg px-3 py-2 font-cond text-[12px] uppercase text-mut hover:bg-panel2 hover:text-foreground">Uploads</a>
+        <a href="#auction" className="shrink-0 rounded-lg px-3 py-2 font-cond text-[12px] uppercase text-mut hover:bg-panel2 hover:text-foreground">Auction</a>
+      </nav>
 
-      <div className="mt-5 grid gap-4 md:grid-cols-[240px_1fr]">
-        <div className="rounded-xl bg-panel p-4 ring-1 ring-line">
+      <section id="profile" className="scroll-mt-24 rounded-xl bg-panel p-4 ring-1 ring-line sm:p-5">
+        <h1 className="font-display text-4xl">Profile</h1>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-lg bg-panel2 p-3">
+            <div className="label-cond text-[10px] text-mut">Username</div>
+            <div className="mt-1 text-sm">{username ?? "—"}</div>
+          </div>
+          <div className="rounded-lg bg-panel2 p-3">
+            <div className="label-cond text-[10px] text-mut">Password</div>
+            <div className="mt-1 flex items-center justify-between gap-3">
+              <span className="text-sm">••••••••</span>
+              <Link to="/change-password" className="label-cond border border-line px-3 py-1 text-[11px] text-mut hover:text-foreground">Change Password</Link>
+            </div>
+          </div>
+        </div>
+        <UsernameForm current={username ?? ""} />
+      </section>
+
+      <InformationSection player={player} editCount={editCount} setEditCount={setEditCount} onSaved={refresh} />
+
+      <UploadsSection player={player} userId={user.id} onSaved={refresh} />
+
+      <section id="auction" className="mt-5 scroll-mt-24 rounded-xl bg-panel p-4 ring-1 ring-line sm:p-5">
+        <h2 className="font-display text-4xl">Auction</h2>
+        <div className="mt-4 grid gap-4 sm:grid-cols-[180px_1fr]">
           {player.photo_url ? (
             <img src={player.photo_url} alt={player.ingame_name} className="aspect-square w-full rounded-lg object-cover" />
           ) : (
-            <div className="grid aspect-square w-full place-items-center rounded-lg bg-panel2 label-cond text-[12px] text-mut">
-              No photo
-            </div>
+            <div className="grid aspect-square place-items-center rounded-lg bg-panel2 label-cond text-[11px] text-mut">Photo required</div>
           )}
-          <div className="mt-3 font-display text-2xl">{player.ingame_name}</div>
-          <div className="font-mono text-[11px] text-mut">UID {player.game_id}</div>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <span className="label-cond border border-gold/50 px-2 py-0.5 text-[11px] text-gold">
-              {ROLE_LABELS[player.primary_role]}
-            </span>
-            {player.secondary_role && (
-              <span className="label-cond border border-line px-2 py-0.5 text-[11px] text-mut">
-                {ROLE_LABELS[player.secondary_role]}
-              </span>
-            )}
+          <div>
+            <div className="font-display text-3xl">{player.ingame_name}</div>
+            <div className="mt-2 text-sm text-mut">{player.info || "No player information saved."}</div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+              <Info label="Auction status" value={player.status.replace("_", " ")} />
+              <Info label="Current bid" value={state?.current_bid ? money(state.current_bid) : "—"} />
+              <Info label="Auction player" value={state?.current_player_id === player.id ? "Current" : "Waiting"} />
+            </div>
+            {player.video_url && <video src={player.video_url} controls className="mt-4 aspect-video w-full rounded-lg object-cover" />}
           </div>
         </div>
-
-        <div className="flex flex-col gap-4">
-          {player.status === "in_auction" && state?.current_player_id === player.id && (
-            <div className="result-stamp rounded-xl bg-alert/15 p-4 ring-1 ring-alert/40">
-              <div className="label-cond text-[13px] text-alert">You're on the block right now</div>
-              <p className="mt-1 text-sm text-mut">Watch live — your lot is being auctioned.</p>
-              <Link to="/" className="label-cond mt-2 inline-block bg-alert px-3 py-1.5 text-[12px] text-white">
-                Watch live
-              </Link>
-            </div>
-          )}
-          {player.status === "sold" && (
-            <div className="result-stamp rounded-xl bg-sold/10 p-4 ring-1 ring-sold/40">
-              <div className="label-cond text-[13px] text-sold">SOLD</div>
-              <p className="mt-1 text-sm text-mut">
-                Congratulations! You were sold for <span className="text-gold">{pts(player.sold_price)}</span>. Check
-                your team's console for roster details.
-              </p>
-            </div>
-          )}
-          {player.status === "retained" && (
-            <div className="rounded-xl bg-gold/10 p-4 ring-1 ring-gold/40">
-              <div className="label-cond text-[13px] text-gold">RETAINED</div>
-              <p className="mt-1 text-sm text-mut">
-                A team retained you directly for {pts(player.sold_price)}.
-              </p>
-            </div>
-          )}
-          {player.status === "unsold" && (
-            <div className="rounded-xl bg-panel2 p-4 ring-1 ring-line">
-              <div className="label-cond text-[13px] text-mut">UNSOLD</div>
-              <p className="mt-1 text-sm text-mut">
-                You went unsold this round. The admin may requeue you for a later round — keep an eye on this page.
-              </p>
-            </div>
-          )}
-          {player.status === "pool" && (
-            <div className="rounded-xl bg-panel p-4 ring-1 ring-line">
-              <div className="label-cond text-[13px] text-gold">Waiting for the auction</div>
-              <p className="mt-1 text-sm text-mut">
-                Your profile is locked in the pool. You can still fine-tune it below until the auction starts.
-              </p>
-            </div>
-          )}
-
-          {player.status === "pool" ? (
-            <EditProfile player={player} />
-          ) : (
-            <div className="rounded-xl bg-panel p-4 ring-1 ring-line">
-              <div className="label-cond text-[12px] text-mut">Info</div>
-              <p className="mt-1 text-sm">{player.info || "—"}</p>
-              {player.video_url && (
-                <video src={player.video_url} controls className="mt-3 w-full rounded-lg" />
-              )}
-              <p className="mt-3 font-mono text-[11px] text-mut">
-                Profile is locked once auctioned — results are immutable.
-              </p>
-            </div>
-          )}
-
-          <AccountCard />
-        </div>
-      </div>
+      </section>
     </main>
   );
 }
 
-function StatusBadge({ player }: { player: NonNullable<ReturnType<typeof useMyPlayer>["data"]> }) {
-  const map: Record<string, { label: string; cls: string }> = {
-    pool: { label: "In Pool", cls: "border-line text-mut" },
-    in_auction: { label: "On The Block", cls: "border-alert/50 text-alert" },
-    sold: { label: "SOLD", cls: "border-sold/50 text-sold" },
-    retained: { label: "RETAINED", cls: "border-gold/50 text-gold" },
-    unsold: { label: "UNSOLD", cls: "border-line text-mut" },
-  };
-  const s = map[player.status] ?? { label: player.status, cls: "border-line text-mut" };
-  return <span className={`label-cond border px-3 py-1 text-[12px] ${s.cls}`}>{s.label}</span>;
-}
-
-function EditProfile({ player }: { player: NonNullable<ReturnType<typeof useMyPlayer>["data"]> }) {
-  const qc = useQueryClient();
-  const { user } = useAuth();
-  const [f, setF] = useState({
-    player_name: player.player_name,
-    ingame_name: player.ingame_name,
-    secondary_role: player.secondary_role ?? "",
-    info: player.info ?? "",
-  });
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [video, setVideo] = useState<File | null>(null);
+function UsernameForm({ current }: { current: string }) {
+  const [value, setValue] = useState(current);
   const [busy, setBusy] = useState(false);
-  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-    setF({ ...f, [k]: e.target.value });
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!value.trim() || value.trim() === current) return;
     setBusy(true);
     try {
-      const patch: {
-        player_name: string;
-        ingame_name: string;
-        secondary_role: Player["secondary_role"];
-        info: string | null;
-        photo_url?: string;
-        video_url?: string;
-      } = {
-        player_name: f.player_name.trim(),
-        ingame_name: f.ingame_name.trim(),
-        secondary_role: (f.secondary_role || null) as Player["secondary_role"],
-        info: f.info.trim() || null,
-      };
-      if (photo) patch.photo_url = await uploadPlayerFile("player-photos", user.id, photo);
-      if (video && !player.video_url) patch.video_url = await uploadPlayerFile("player-videos", user.id, video);
-      const { error } = await supabase.from("players").update(patch).eq("id", player.id);
-      if (error) throw error;
-      toast.success("Profile updated");
-      setPhoto(null);
-      setVideo(null);
-      await qc.invalidateQueries({ queryKey: ["my_player"] });
-      await qc.invalidateQueries({ queryKey: ["players"] });
-    } catch (err) {
-      toast.error(errText(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <form onSubmit={submit} className="rounded-xl bg-panel p-4 ring-1 ring-line">
-      <div className="label-cond text-[12px] text-mut">Edit profile</div>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <input className="field" placeholder="Player name" value={f.player_name} onChange={set("player_name")} required />
-        <input className="field" placeholder="In-game name" value={f.ingame_name} onChange={set("ingame_name")} required />
-        <select className="field" value={f.secondary_role} onChange={set("secondary_role")}>
-          <option value="">No secondary role</option>
-          {GAME_ROLES.map((r) => (
-            <option key={r} value={r}>{ROLE_LABELS[r]}</option>
-          ))}
-        </select>
-        <input className="field sm:col-span-2" placeholder="Short info / achievements (optional)" value={f.info} onChange={set("info")} />
-        <label className="text-xs text-mut">
-          Replace photo
-          <input type="file" accept="image/*" className="mt-1 block w-full" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
-        </label>
-        <label className="text-xs text-mut">
-          {player.video_url ? "Video uploaded (locked)" : "Upload intro video (locked after upload)"}
-          <input
-            type="file"
-            accept="video/*"
-            disabled={!!player.video_url}
-            className="mt-1 block w-full disabled:opacity-50"
-            onChange={(e) => setVideo(e.target.files?.[0] ?? null)}
-          />
-        </label>
-      </div>
-      <button disabled={busy} className="label-cond mt-4 bg-gold px-4 py-2 text-[13px] text-arena disabled:opacity-50">
-        {busy ? "Saving…" : "Save profile"}
-      </button>
-    </form>
-  );
-}
-
-function AccountCard() {
-  const { user, username } = useAuth();
-  const change = useServerFn(changeUsername);
-  const [name, setName] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => setName(username ?? ""), [username]);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    try {
-      await change({ data: { username: name } });
+      const { changeUsername } = await import("@/lib/accounts.functions");
+      await changeUsername({ data: { username: value.trim() } });
       toast.success("Username updated");
     } catch (err) {
       toast.error(errText(err));
@@ -261,15 +122,160 @@ function AccountCard() {
   };
 
   return (
-    <form onSubmit={submit} className="rounded-xl bg-panel p-4 ring-1 ring-line">
-      <div className="label-cond text-[12px] text-mut">Account</div>
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-        <input className="field flex-1" placeholder="Change username" value={name} onChange={(e) => setName(e.target.value)} required minLength={3} />
-        <button disabled={busy || name === username} className="label-cond border border-line bg-panel2 px-4 py-2 text-[12px] text-mut hover:text-foreground disabled:opacity-50">
-          {busy ? "Saving…" : "Update"}
-        </button>
-      </div>
-      <p className="mt-2 font-mono text-[11px] text-mut">Signed in as {user ? username : "—"}</p>
+    <form onSubmit={submit} className="mt-4 flex flex-col gap-2 sm:flex-row">
+      <input className="field flex-1" value={value} onChange={(e) => setValue(e.target.value)} minLength={3} required />
+      <button disabled={busy || value.trim() === current} className="label-cond bg-gold px-4 py-2 text-[12px] text-arena disabled:opacity-40">
+        {busy ? "Saving…" : "Change Username"}
+      </button>
     </form>
   );
+}
+
+function InformationSection({
+  player,
+  editCount,
+  setEditCount,
+  onSaved,
+}: {
+  player: Player;
+  editCount: number;
+  setEditCount: (n: number) => void;
+  onSaved: () => Promise<void>;
+}) {
+  const [f, setF] = useState({
+    player_name: player.player_name,
+    ingame_name: player.ingame_name,
+    game_id: player.game_id,
+    primary_role: player.primary_role,
+    secondary_role: player.secondary_role ?? "",
+    info: player.info ?? "",
+  });
+  const [busy, setBusy] = useState(false);
+  const [count, setCount] = useState(editCount);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (count >= 3) return;
+    const confirmed = window.confirm(
+      "Information Change Notice\n\nYou are changing your player information. This will use 1 of your 3 available information changes.",
+    );
+    if (!confirmed) return;
+    setBusy(true);
+    try {
+      const { data, error } = await (supabase.rpc as any)("player_update_information", {
+        p_player_name: f.player_name.trim(),
+        p_ingame_name: f.ingame_name.trim(),
+        p_game_id: f.game_id.trim(),
+        p_primary_role: f.primary_role,
+        p_secondary_role: f.secondary_role || null,
+        p_info: f.info.trim() || null,
+      });
+      if (error) throw error;
+      const next = Number(data?.information_change_count ?? count + 1);
+      setCount(next);
+      setEditCount(next);
+      toast.success("Information saved");
+      await onSaved();
+    } catch (err) {
+      toast.error(errText(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section id="information" className="mt-5 scroll-mt-24 rounded-xl bg-panel p-4 ring-1 ring-line sm:p-5">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h2 className="font-display text-4xl">Information</h2>
+          <p className="mt-1 text-sm text-mut">Information changes used: {count} / 3</p>
+        </div>
+        {count >= 3 && <span className="label-cond border border-alert/40 px-3 py-1 text-[11px] text-alert">Editing locked</span>}
+      </div>
+
+      <form onSubmit={submit} className="mt-4 grid gap-3 sm:grid-cols-2">
+        <input className="field" placeholder="Player name" value={f.player_name} onChange={(e) => setF({ ...f, player_name: e.target.value })} required disabled={count >= 3} />
+        <input className="field" placeholder="In-game name" value={f.ingame_name} onChange={(e) => setF({ ...f, ingame_name: e.target.value })} required disabled={count >= 3} />
+        <input className="field" placeholder="UID" value={f.game_id} onChange={(e) => setF({ ...f, game_id: e.target.value })} required disabled={count >= 3} />
+        <select className="field" value={f.primary_role} onChange={(e) => setF({ ...f, primary_role: e.target.value as Player["primary_role"] })} disabled={count >= 3}>
+          {GAME_ROLES.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}
+        </select>
+        <select className="field" value={f.secondary_role} onChange={(e) => setF({ ...f, secondary_role: e.target.value })} disabled={count >= 3}>
+          <option value="">No secondary role</option>
+          {GAME_ROLES.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}
+        </select>
+        <textarea className="field min-h-28 sm:col-span-2" placeholder="Player information" value={f.info} onChange={(e) => setF({ ...f, info: e.target.value })} disabled={count >= 3} />
+        <button disabled={busy || count >= 3} className="label-cond w-fit bg-gold px-4 py-2 text-[12px] text-arena disabled:opacity-40">
+          {busy ? "Saving…" : "Save"}
+        </button>
+      </form>
+    </section>
+  );
+}
+
+function UploadsSection({ player, userId, onSaved }: { player: Player; userId: string; onSaved: () => Promise<void> }) {
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [video, setVideo] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const complete = !!player.photo_url && !!player.video_url;
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!photo && !player.photo_url) {
+      toast.error("Photo is required");
+      return;
+    }
+    if (!video && !player.video_url) {
+      toast.error("Video is required");
+      return;
+    }
+    setBusy(true);
+    try {
+      const photoUrl = photo ? await uploadPlayerFile("player-photos", userId, photo) : player.photo_url;
+      const videoUrl = video ? await uploadPlayerFile("player-videos", userId, video) : player.video_url;
+      const { error } = await (supabase.rpc as any)("player_update_uploads", {
+        p_photo_url: photoUrl,
+        p_video_url: videoUrl,
+      });
+      if (error) throw error;
+      toast.success("Uploads saved");
+      setPhoto(null);
+      setVideo(null);
+      await onSaved();
+    } catch (err) {
+      toast.error(errText(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section id="uploads" className="mt-5 scroll-mt-24 rounded-xl bg-panel p-4 ring-1 ring-line sm:p-5">
+      <h2 className="font-display text-4xl">Uploads</h2>
+      <p className="mt-1 text-sm text-mut">Player setup is complete only when both Photo and Video are uploaded.</p>
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <div className="rounded-lg bg-panel2 p-3">
+          <div className="label-cond text-[11px] text-mut">Photo</div>
+          {player.photo_url && <img src={player.photo_url} alt={player.ingame_name} className="mt-2 aspect-video w-full rounded-lg object-cover" />}
+          <div className="mt-2 text-xs text-mut">{player.photo_url ? "Uploaded" : "Required"}</div>
+        </div>
+        <div className="rounded-lg bg-panel2 p-3">
+          <div className="label-cond text-[11px] text-mut">Video</div>
+          {player.video_url && <video src={player.video_url} controls className="mt-2 aspect-video w-full rounded-lg object-cover" />}
+          <div className="mt-2 text-xs text-mut">{player.video_url ? "Uploaded" : "Required"}</div>
+        </div>
+      </div>
+      <form onSubmit={submit} className="mt-4 grid gap-3 sm:grid-cols-2">
+        <label className="text-xs text-mut">Upload Photo<input type="file" accept="image/*" className="mt-2 block w-full" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} /></label>
+        <label className="text-xs text-mut">Upload Video<input type="file" accept="video/*" disabled={!!player.video_url} className="mt-2 block w-full disabled:opacity-40" onChange={(e) => setVideo(e.target.files?.[0] ?? null)} /></label>
+        <button disabled={busy || complete} className="label-cond w-fit bg-gold px-4 py-2 text-[12px] text-arena disabled:opacity-40 sm:col-span-2">
+          {complete ? "Setup Complete" : busy ? "Saving…" : "Save"}
+        </button>
+      </form>
+    </section>
+  );
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-lg bg-panel2 p-3"><div className="label-cond text-[10px] text-mut">{label}</div><div className="mt-1 text-sm capitalize">{value}</div></div>;
 }
