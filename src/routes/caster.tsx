@@ -111,7 +111,7 @@ function AuctionControls() {
       const result = await setStatus({ data: { status: next } });
 
       if (key === "start") {
-        if (result?.selection && typeof result.selection === "object" && "completed" in result.selection && result.selection.completed) {
+        if (result?.selection?.completed) {
           toast.info("No eligible players remain — auction completed");
         } else {
           toast.success("Auction started — player selected automatically");
