@@ -5,7 +5,7 @@ import { RoleGate, errText } from "@/components/Guard";
 import { useAmbassadors } from "@/lib/auction";
 import { useOnlineAmbassadors } from "@/lib/presence";
 
-export const Route = createFileRoute("/caster/check")({
+export const Route = createFileRoute("/caster_/check")({
   head: () => ({
     meta: [
       { title: "Equipment Check — BidX Auction" },
