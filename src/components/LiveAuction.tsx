@@ -200,3 +200,4 @@ function Row({ left, right }: { left: string; right: string }) {
 
 function Empty({ text }: { text: string }) {
   return <p className="text-sm text-mut">{text}</p>;
+}
