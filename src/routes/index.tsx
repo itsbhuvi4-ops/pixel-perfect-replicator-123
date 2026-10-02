@@ -56,12 +56,6 @@ function LandingPage() {
           <Link to="/player/register" className="transition-colors hover:text-gold">
             Sign up
           </Link>
-          <Link
-            to="/player/register"
-            className="hidden rounded-full border border-line px-4 py-2 text-foreground transition-colors hover:border-gold hover:text-gold sm:inline-flex"
-          >
-            Join player pool
-          </Link>
         </nav>
       </header>
 

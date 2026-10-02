@@ -573,27 +573,28 @@ function PlayerActions({ id, status }: { id: string; status: string }) {
     }
   };
 
-  if (status === "pool")
+  if (status === "pool" || status === "unsold")
     return (
-      <button
-        disabled={busy}
-        onClick={() => {
-          if (confirm("Remove this player from the pool permanently?")) void run(() => remove({ data: { playerId: id } }), "Player removed");
-        }}
-        className="label-cond border border-alert/40 px-2 py-0.5 text-[11px] text-alert disabled:opacity-30"
-      >
-        Remove
-      </button>
-    );
-  if (status === "unsold")
-    return (
-      <button
-        disabled={busy}
-        onClick={() => void run(() => requeue({ data: { playerId: id } }), "Requeued to pool")}
-        className="label-cond border border-gold/50 px-2 py-0.5 text-[11px] text-gold disabled:opacity-30"
-      >
-        Requeue
-      </button>
+      <div className="flex flex-wrap gap-2">
+        {status === "unsold" && (
+          <button
+            disabled={busy}
+            onClick={() => void run(() => requeue({ data: { playerId: id } }), "Requeued to pool")}
+            className="label-cond border border-gold/50 px-2 py-0.5 text-[11px] text-gold disabled:opacity-30"
+          >
+            Requeue
+          </button>
+        )}
+        <button
+          disabled={busy}
+          onClick={() => {
+            if (confirm("Delete this player permanently?")) void run(() => remove({ data: { playerId: id } }), "Player deleted");
+          }}
+          className="label-cond border border-alert/40 px-2 py-0.5 text-[11px] text-alert disabled:opacity-30"
+        >
+          Delete
+        </button>
+      </div>
     );
   return <span className="text-[11px] text-mut">locked</span>;
 }
