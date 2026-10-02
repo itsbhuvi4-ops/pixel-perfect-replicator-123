@@ -6,7 +6,7 @@ export const Route = createFileRoute("/")({
       { title: "BidX Auction — Live Player Auction" },
       {
         name: "description",
-        content: "BidX Auction — the ultimate live player auction experience.",
+        content: "BidXAuction — the live player auction arena for teams, players and fans.",
       },
       { property: "og:title", content: "BidX Auction" },
       { property: "og:description", content: "The Ultimate Live Player Auction Experience" },
@@ -15,23 +15,20 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
 });
 
-import ArrowFillButton from "@/components/ui/arrow-fill-button";
-
-function ArrowButton({ to, children }: { to: "/login" | "/auction"; children: string }) {
+function ArrowButton({ to, children }: { to: "/auction"; children: string }) {
   return (
-    <ArrowFillButton
-      btnText={children}
-      href={to}
-      bgColor="#c99a2e"
-      textColor="#0b0b0b"
-      fillBgColor="#0b0b0b"
-      fillTextColor="#c99a2e"
-      hoverFillBgColor="#ffffff"
-      hoverFillTextColor="#0b0b0b"
-      arrowColor="#c99a2e"
-      hoverArrowColor="#0b0b0b"
-      aria-label={children}
-    />
+    <Link
+      to={to}
+      className="group relative inline-flex min-h-14 items-center overflow-hidden rounded-full border border-gold bg-gold px-6 pr-16 font-cond text-sm font-semibold uppercase tracking-[0.14em] text-arena transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-arena"
+    >
+      <span className="relative z-10">{children}</span>
+      <span
+        className="absolute right-1.5 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-arena text-gold transition-transform duration-300 group-hover:translate-x-1"
+        aria-hidden="true"
+      >
+        →
+      </span>
+    </Link>
   );
 }
 
@@ -54,13 +51,10 @@ function LandingPage() {
         </Link>
         <nav className="flex items-center gap-5 font-cond text-xs uppercase tracking-[0.14em] text-muted-foreground">
           <Link to="/login" className="transition-colors hover:text-gold">
-            Sign in
+            Login
           </Link>
-          <Link
-            to="/player/register"
-            className="hidden rounded-full border border-line px-4 py-2 text-foreground transition-colors hover:border-gold hover:text-gold sm:inline-flex"
-          >
-            Join player pool
+          <Link to="/player/register" className="transition-colors hover:text-gold">
+            Sign up
           </Link>
         </nav>
       </header>
@@ -71,20 +65,17 @@ function LandingPage() {
             <p className="label-cond mb-6 flex items-center gap-3 text-xs text-gold">
               <span className="size-2 rounded-full bg-gold live-dot" /> Live player auction platform
             </p>
-            <h1 className="font-display text-[clamp(3.7rem,10vw,9rem)] leading-[0.82] tracking-[-0.03em] text-foreground">
-              Build your
-              <br />
-              <span className="text-gold">winning</span> squad.
+            <h1 className="font-display text-[clamp(4.5rem,10vw,9rem)] leading-[0.82] tracking-[-0.03em] text-foreground">
+              BidX<span className="text-gold">Auction</span>
             </h1>
             <p className="mt-8 max-w-lg text-base leading-7 text-muted-foreground sm:text-lg">
-              BidX brings players, teams, casters and ambassadors together for a faster, fairer live
-              auction experience.
+              A live bidding arena where teams discover talent, players earn their place, and every bid moves the game forward.
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-4">
-              <ArrowButton to="/login">Enter auction</ArrowButton>
+              <ArrowButton to="/auction">Enter auction</ArrowButton>
               <Link
                 to="/player/register"
-                className="font-cond text-sm uppercase tracking-[0.14em] text-foreground underline decoration-line underline-offset-8 transition-colors hover:text-gold"
+                className="inline-flex min-h-14 items-center rounded-full border border-line px-6 font-cond text-sm font-semibold uppercase tracking-[0.14em] text-foreground transition-colors hover:border-gold hover:text-gold"
               >
                 Register as a player
               </Link>
