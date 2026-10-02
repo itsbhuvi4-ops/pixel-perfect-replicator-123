@@ -339,6 +339,41 @@ export const updateSettings = createServerFn({ method: "POST" })
 
 /* ---------- Caster ---------- */
 
+export const adminDeletePlayer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ playerId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await requireRole(context, ["admin"]);
+    const sa = await admin();
+
+    const [{ data: player }, { data: state }] = await Promise.all([
+      sa.from("players").select("id,user_id,status").eq("id", data.playerId).maybeSingle(),
+      sa.from("auction_state").select("current_player_id").eq("id", 1).maybeSingle(),
+    ]);
+
+    if (!player) throw new Error("Player not found");
+    if (state?.current_player_id === player.id || player.status === "in_auction") {
+      throw new Error("This player is currently on the auction block");
+    }
+    if (player.status === "sold") {
+      throw new Error("Sold players cannot be deleted. They remain assigned to their ambassador team.");
+    }
+    if (!["pool", "unsold"].includes(player.status)) {
+      throw new Error("Only pool or unsold players can be deleted");
+    }
+
+    const { error: resultError } = await sa.from("auction_results").delete().eq("player_id", player.id);
+    if (resultError) throw new Error(friendly(resultError.message));
+
+    const { error: retainError } = await sa.from("retain_records").delete().eq("player_id", player.id);
+    if (retainError) throw new Error(friendly(retainError.message));
+
+    const { error } = await sa.auth.admin.deleteUser(player.user_id);
+    if (error) throw new Error(friendly(error.message));
+
+    return { ok: true };
+  });
+
 export const adminRemovePlayer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ playerId: z.string().uuid() }).parse(d))
