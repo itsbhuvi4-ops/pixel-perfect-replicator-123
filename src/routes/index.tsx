@@ -6,7 +6,7 @@ export const Route = createFileRoute("/")({
       { title: "BidX Auction — Live Player Auction" },
       {
         name: "description",
-        content: "BidX Auction — the ultimate live player auction experience.",
+        content: "BidXAuction — the live player auction arena for teams, players and fans.",
       },
       { property: "og:title", content: "BidX Auction" },
       { property: "og:description", content: "The Ultimate Live Player Auction Experience" },
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
 });
 
-function ArrowButton({ to, children }: { to: "/login" | "/auction"; children: string }) {
+function ArrowButton({ to, children }: { to: "/auction"; children: string }) {
   return (
     <Link
       to={to}
@@ -51,7 +51,10 @@ function LandingPage() {
         </Link>
         <nav className="flex items-center gap-5 font-cond text-xs uppercase tracking-[0.14em] text-muted-foreground">
           <Link to="/login" className="transition-colors hover:text-gold">
-            Sign in
+            Login
+          </Link>
+          <Link to="/player/register" className="transition-colors hover:text-gold">
+            Sign up
           </Link>
           <Link
             to="/player/register"
@@ -69,19 +72,16 @@ function LandingPage() {
               <span className="size-2 rounded-full bg-gold live-dot" /> Live player auction platform
             </p>
             <h1 className="font-display text-[clamp(4.5rem,10vw,9rem)] leading-[0.82] tracking-[-0.03em] text-foreground">
-              Build your
-              <br />
-              <span className="text-gold">winning</span> squad.
+              BidX<span className="text-gold">Auction</span>
             </h1>
             <p className="mt-8 max-w-lg text-base leading-7 text-muted-foreground sm:text-lg">
-              BidX brings players, teams, casters and ambassadors together for a faster, fairer live
-              auction experience.
+              A live bidding arena where teams discover talent, players earn their place, and every bid moves the game forward.
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-4">
-              <ArrowButton to="/login">Enter auction</ArrowButton>
+              <ArrowButton to="/auction">Enter auction</ArrowButton>
               <Link
                 to="/player/register"
-                className="font-cond text-sm uppercase tracking-[0.14em] text-foreground underline decoration-line underline-offset-8 transition-colors hover:text-gold"
+                className="inline-flex min-h-14 items-center rounded-full border border-line px-6 font-cond text-sm font-semibold uppercase tracking-[0.14em] text-foreground transition-colors hover:border-gold hover:text-gold"
               >
                 Register as a player
               </Link>
