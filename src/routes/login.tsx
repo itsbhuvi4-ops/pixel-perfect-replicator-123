@@ -16,12 +16,16 @@ export const Route = createFileRoute("/login")({
       { property: "og:description", content: "One login for every auction role." },
     ],
   }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    next: typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//") ? s.next : undefined,
+  }),
   component: LoginPage,
 });
 
 function LoginPage() {
   const verify = useServerFn(verifyLogin);
   const navigate = useNavigate();
+  const { next } = Route.useSearch();
   const { data: adminState } = useQuery({
     queryKey: ["admin_exists"],
     queryFn: useServerFn(adminExists),
@@ -41,6 +45,7 @@ function LoginPage() {
     const res = await verify({ data: { role } });
     setBusy(false);
     if (!res.ok) { await supabase.auth.signOut(); setErr(res.error); return; }
+    if (next) { window.location.href = next; return; }
     navigate({ to: homeForRoles([role]) });
   };
 
