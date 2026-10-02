@@ -523,9 +523,9 @@ function PlayersTab() {
               <th className="py-2 pr-3">UID</th>
               <th className="py-2 pr-3">Role</th>
               <th className="py-2 pr-3">Status</th>
-              <th className="py-2 pr-3">Team</th>
-              <th className="py-2 pr-3">Price</th>
-              <th className="py-2">Actions</th>
+              <th className="py-2 pr-3">Sold To Ambassador Team</th>
+              <th className="py-2 pr-3">Sold Price</th>
+              <th className="py-2">Delete Player</th>
             </tr>
           </thead>
           <tbody>
@@ -539,8 +539,14 @@ function PlayersTab() {
                     p.status === "sold" ? "text-sold" : p.status === "in_auction" ? "text-alert" : p.status === "retained" ? "text-gold" : "text-mut"
                   }>{p.status}</span>
                 </td>
-                <td className="py-2 pr-3">{teamName(p.ambassador_id)}</td>
-                <td className="py-2 pr-3">{p.sold_price ? plainPoints(p.sold_price) : "—"}</td>
+                <td className="py-2 pr-3">
+                  {p.ambassador_id ? (
+                    <span className="text-gold">{teamName(p.ambassador_id)}</span>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="py-2 pr-3">{p.status === "sold" && p.sold_price != null ? plainPoints(p.sold_price) : "—"}</td>
                 <td className="py-2"><PlayerActions id={p.id} status={p.status} /></td>
               </tr>
             ))}
