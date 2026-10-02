@@ -418,7 +418,7 @@ export const setAuctionStatus = createServerFn({ method: "POST" })
       p_status: data.status,
     });
     if (error) throw new Error(friendly(error.message));
-    return result as { ok: boolean; status: string; started?: boolean; selection?: unknown };
+    return result as { ok: boolean; status: string; started?: boolean; selection?: { completed?: boolean } | null };
   });
 
 export const setCasterCam = createServerFn({ method: "POST" })
