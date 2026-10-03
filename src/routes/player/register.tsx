@@ -50,8 +50,10 @@ function RegisterPage() {
   };
 
   return (
-    <main className="mx-auto max-w-xl px-4 py-10">
-      <h1 className="font-display text-4xl">Player Registration</h1>
+    <main className="auth-canvas mx-auto max-w-3xl px-4 py-10">
+      <section className="neo-panel bg-panel p-5 sm:p-8">
+      <p className="selection-label w-fit bg-green px-3 py-1 text-xs">ENTER THE PLAYER POOL</p>
+      <h1 className="mt-3 font-display text-5xl">Player Registration</h1>
       <form onSubmit={submit} className="mt-6 grid gap-3 sm:grid-cols-2">
         <input className="field" placeholder="Username" value={f.username} onChange={set("username")} required />
         <input className="field" type="password" placeholder="Password (8+)" value={f.password} onChange={set("password")} required minLength={8} />
@@ -63,8 +65,9 @@ function RegisterPage() {
         </select>
         <label className="text-xs text-mut">Photo<input type="file" accept="image/*" className="mt-1 block w-full" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} /></label>
         <label className="text-xs text-mut">Video (locked after upload)<input type="file" accept="video/*" className="mt-1 block w-full" onChange={(e) => setVideo(e.target.files?.[0] ?? null)} /></label>
-        <button disabled={busy} className="label-cond bg-gold py-2.5 text-[13px] text-arena disabled:opacity-50 sm:col-span-2">{busy ? "Registering…" : "Register"}</button>
+        <button disabled={busy} className="neo-action label-cond bg-gold py-3 text-[13px] text-arena disabled:opacity-50 sm:col-span-2">{busy ? "Registering…" : "Register"}</button>
       </form>
+      </section>
     </main>
   );
 }
