@@ -59,9 +59,9 @@ function AdminDashboard() {
   const { username } = useAuth();
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6 sm:px-5">
+    <main className="role-canvas mx-auto max-w-6xl px-4 py-6 sm:px-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-display text-4xl">Admin</h1>
+        <div><p className="selection-label w-fit bg-gold px-3 py-1 text-xs text-arena">ADMIN WORKSPACE</p><h1 className="mt-3 font-display text-5xl">Control Room</h1></div>
         <div className="flex items-center gap-2">
           <span className="font-mono text-[11px] text-mut">{username}</span>
           <Link to="/broadcast" className="label-cond border border-gold/50 px-3 py-1 text-[12px] text-gold">

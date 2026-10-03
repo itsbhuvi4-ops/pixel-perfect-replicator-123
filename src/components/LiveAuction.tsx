@@ -32,7 +32,7 @@ export function LiveAuction({ audience = false }: { audience?: boolean }) {
   const highestBid = bidderRows[0];
 
   return (
-    <main className="mx-auto max-w-7xl px-3 py-4 sm:px-5 sm:py-6">
+    <main className="auction-canvas role-canvas mx-auto max-w-7xl px-3 py-4 sm:px-5 sm:py-6">
       <section id="auction" className="scroll-mt-20 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-panel px-4 py-3 ring-1 ring-line sm:px-5">
           <div className="flex min-w-0 items-center gap-3">

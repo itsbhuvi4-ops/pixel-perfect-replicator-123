@@ -21,7 +21,7 @@ export const Route = createFileRoute("/caster_/check")({
 
 function CasterCheckPage() {
   return (
-    <main className="mx-auto max-w-6xl px-3 py-5 sm:px-5">
+    <main className="role-canvas mx-auto max-w-6xl px-3 py-5 sm:px-5">
       <p className="label-cond text-[11px] text-gold">CASTER</p>
       <h1 className="mt-1 font-display text-4xl">Check</h1>
       <p className="mt-1 text-sm text-mut">

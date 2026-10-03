@@ -38,9 +38,10 @@ export function AmbassadorConsole() {
   if (!me) return <Center>No ambassador profile is linked to this account.</Center>;
 
   return (
-    <main className="mx-auto max-w-6xl px-3 py-5 sm:px-5">
+    <main className="role-canvas mx-auto max-w-6xl px-3 py-5 sm:px-5">
       <section id="profile" className="scroll-mt-20 rounded-xl bg-panel p-4 ring-1 ring-line sm:p-5">
-        <h1 className="font-display text-4xl">Profile</h1>
+        <p className="selection-label w-fit bg-coral px-3 py-1 text-xs">AMBASSADOR WORKSPACE</p>
+        <h1 className="mt-3 font-display text-5xl">Profile</h1>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <Field label="Username" value={me.ambassador_name} />
           <Field label="Password" value="••••••••" />

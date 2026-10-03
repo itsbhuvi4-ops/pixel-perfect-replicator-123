@@ -1,4 +1,5 @@
 import { Link, useLocation } from "@tanstack/react-router";
+import { Menu, X, LogOut } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useAuctionState } from "@/lib/auction";
@@ -33,7 +34,11 @@ export function SiteHeader() {
       { to: "/admin#settings", label: "Settings" },
     ];
   } else if (roles.includes("caster") && !location.pathname.startsWith("/auction")) {
-    links = [{ to: "/caster", label: "Auction" }];
+    links = [
+      { to: "/caster#profile", label: "Profile" },
+      { to: "/caster/check", label: "Check" },
+      { to: "/caster", label: "Auction" },
+    ];
   } else if (roles.includes("ambassador") && !location.pathname.startsWith("/auction")) {
     links = [
       { to: "/ambassador#profile", label: "Profile" },
@@ -43,19 +48,18 @@ export function SiteHeader() {
   } else if (roles.includes("player") && !location.pathname.startsWith("/auction")) {
     links = [
       { to: "/my-player#profile", label: "Profile" },
-      { to: "/my-player#information", label: "Information" },
-      { to: "/my-player#uploads", label: "Uploads" },
       { to: "/my-player#auction", label: "Auction" },
+      { to: "/my-player#information", label: "Information" },
     ];
   }
 
   const live = state?.status === "live";
 
   return (
-    <header className="sticky top-0 z-50 border-b border-line bg-background/90 px-3 backdrop-blur-xl sm:px-5">
-      <div className="mx-auto flex min-h-14 max-w-7xl items-center gap-3">
-        <Link to="/" className="shrink-0 font-display text-lg tracking-wide sm:text-xl">
-          BID<span className="text-gold">X</span>AUCTION
+    <header className="sticky top-0 z-50 border-b-2 border-line bg-background px-3 sm:px-5">
+      <div className="mx-auto flex min-h-16 max-w-7xl items-center gap-3">
+        <Link to="/" className="selection-logo shrink-0 bg-gold px-3 py-1 font-display text-xl sm:text-2xl">
+          BID<span className="text-blue">X</span>
         </Link>
 
         <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 md:flex">
@@ -63,8 +67,8 @@ export function SiteHeader() {
             <Link
               key={item.label}
               to={item.to}
-              className="rounded-full px-3 py-2 font-cond text-[11px] uppercase tracking-[0.08em] text-mut transition-colors hover:bg-panel2 hover:text-foreground"
-              activeProps={{ className: "rounded-full bg-panel2 px-3 py-2 font-cond text-[11px] uppercase tracking-[0.08em] text-foreground" }}
+              className="border-2 border-transparent px-3 py-2 font-cond text-[12px] uppercase text-mut transition-colors hover:border-line hover:bg-panel2 hover:text-foreground"
+              activeProps={{ className: "border-2 border-line bg-blue px-3 py-2 font-cond text-[12px] uppercase text-foreground shadow-hard-sm" }}
             >
               {item.label}
             </Link>
@@ -73,7 +77,7 @@ export function SiteHeader() {
 
         <div className="ml-auto flex items-center gap-2">
           {live && (
-            <span className="hidden items-center gap-1.5 rounded-full border border-alert/30 bg-alert/10 px-2.5 py-1 font-mono text-[10px] text-alert sm:flex">
+            <span className="hidden items-center gap-1.5 border-2 border-line bg-alert px-2.5 py-1 font-mono text-[10px] text-foreground sm:flex">
               <i className="live-dot size-1.5 rounded-full bg-alert" /> ON AIR
             </span>
           )}
@@ -81,14 +85,15 @@ export function SiteHeader() {
           {session ? (
             <button
               onClick={() => void signOut()}
-              className="hidden rounded-full border border-line bg-panel2 px-3 py-1.5 font-cond text-[11px] text-mut transition hover:text-foreground sm:inline-flex"
+              className="hidden items-center gap-2 border-2 border-line bg-panel2 px-3 py-1.5 font-cond text-[11px] text-mut transition hover:bg-coral hover:text-foreground sm:inline-flex"
             >
-              Sign out · {username}
+              <LogOut className="size-3.5" /> {username}
             </button>
           ) : (
             <Link
               to="/login"
-              className="hidden rounded-full border border-gold bg-gold px-4 py-2 font-cond text-[11px] uppercase tracking-[0.12em] text-arena sm:inline-flex"
+              search={{}}
+              className="neo-action hidden border-2 border-line bg-gold px-4 py-2 font-cond text-[11px] uppercase text-arena sm:inline-flex"
             >
               Sign in
             </Link>
@@ -99,9 +104,9 @@ export function SiteHeader() {
             aria-label="Open menu"
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
-            className="grid size-10 place-items-center rounded-full border border-line bg-panel2 text-lg md:hidden"
+            className="grid size-10 place-items-center border-2 border-line bg-panel2 md:hidden"
           >
-            {open ? "×" : "☰"}
+            {open ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>
         </div>
       </div>
@@ -114,7 +119,7 @@ export function SiteHeader() {
                 key={item.label}
                 to={item.to}
                 onClick={() => setOpen(false)}
-                className="rounded-xl px-4 py-3 font-cond text-[13px] uppercase tracking-[0.08em] text-mut hover:bg-panel2 hover:text-foreground"
+                className="border-b-2 border-line px-4 py-3 font-cond text-[13px] uppercase text-mut hover:bg-blue hover:text-foreground"
               >
                 {item.label}
               </Link>

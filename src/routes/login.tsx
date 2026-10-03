@@ -17,7 +17,7 @@ export const Route = createFileRoute("/login")({
     ],
   }),
   validateSearch: (s: Record<string, unknown>) => ({
-    next: typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//") ? s.next : undefined,
+    next: typeof s['next'] === "string" && s['next'].startsWith("/") && !s['next'].startsWith("//") ? s['next'] : undefined,
   }),
   component: LoginPage,
 });
@@ -46,12 +46,22 @@ function LoginPage() {
     setBusy(false);
     if (!res.ok) { await supabase.auth.signOut(); setErr(res.error); return; }
     if (next) { window.location.href = next; return; }
-    navigate({ to: homeForRoles([role]) });
+    window.location.href = homeForRoles([role]);
   };
 
   return (
-    <main className="mx-auto max-w-sm px-4 py-12">
-      <h1 className="font-display text-4xl">Login</h1>
+    <main className="auth-canvas mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-8 px-4 py-10 lg:grid-cols-[1.1fr_0.9fr]">
+      <section className="auth-poster hidden min-h-[32rem] overflow-hidden p-8 lg:flex lg:flex-col lg:justify-between">
+        <div className="selection-label w-fit bg-blue px-4 py-2">ONE ARENA · FOUR ROLES</div>
+        <div>
+          <p className="label-cond text-sm">BIDX ACCESS</p>
+          <h1 className="mt-3 font-display text-8xl leading-[0.82]">YOUR ROLE.<br />YOUR MOVE.</h1>
+        </div>
+        <div className="route-line" aria-hidden="true"><span /><span /><span /></div>
+      </section>
+      <section className="neo-panel bg-panel p-5 sm:p-8">
+      <p className="label-cond text-xs text-blue">SECURE ACCESS</p>
+      <h1 className="mt-2 font-display text-5xl">Login</h1>
       {adminState && !adminState.exists && (
         <p className="mt-4 border border-gold/40 bg-gold/10 px-3 py-2 text-[13px] text-gold">
           No admin exists yet.{" "}
@@ -69,8 +79,9 @@ function LoginPage() {
           <option value="caster">Caster</option><option value="player">Player</option>
         </select>
         {err && <p className="text-sm text-alert">{err}</p>}
-        <button disabled={busy} className="label-cond bg-gold py-2.5 text-[13px] text-arena disabled:opacity-50">{busy ? "Signing in…" : "Sign in"}</button>
+        <button disabled={busy} className="neo-action label-cond bg-gold py-3 text-[13px] text-arena disabled:opacity-50">{busy ? "Signing in…" : "Sign in"}</button>
       </form>
+      </section>
     </main>
   );
 }

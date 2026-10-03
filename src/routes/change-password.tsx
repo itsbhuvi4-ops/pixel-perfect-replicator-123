@@ -25,7 +25,7 @@ function ChangePasswordPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!loading && !session) navigate({ to: "/login" });
+    if (!loading && !session) navigate({ to: "/login", search: {} });
   }, [loading, session, navigate]);
 
   const submit = async (e: React.FormEvent) => {

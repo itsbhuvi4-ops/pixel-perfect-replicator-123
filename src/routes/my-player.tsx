@@ -48,16 +48,16 @@ function PlayerPage() {
   };
 
   return (
-    <main className="mx-auto max-w-5xl px-3 py-5 sm:px-5">
+    <main className="role-canvas mx-auto max-w-5xl px-3 py-5 sm:px-5">
       <nav className="sticky top-14 z-30 mb-5 flex gap-1 overflow-x-auto rounded-xl bg-panel p-2 ring-1 ring-line">
         <a href="#profile" className="shrink-0 rounded-lg px-3 py-2 font-cond text-[12px] uppercase text-mut hover:bg-panel2 hover:text-foreground">Profile</a>
-        <a href="#information" className="shrink-0 rounded-lg px-3 py-2 font-cond text-[12px] uppercase text-mut hover:bg-panel2 hover:text-foreground">Information</a>
-        <a href="#uploads" className="shrink-0 rounded-lg px-3 py-2 font-cond text-[12px] uppercase text-mut hover:bg-panel2 hover:text-foreground">Uploads</a>
         <a href="#auction" className="shrink-0 rounded-lg px-3 py-2 font-cond text-[12px] uppercase text-mut hover:bg-panel2 hover:text-foreground">Auction</a>
+        <a href="#information" className="shrink-0 rounded-lg px-3 py-2 font-cond text-[12px] uppercase text-mut hover:bg-panel2 hover:text-foreground">Information</a>
       </nav>
 
       <section id="profile" className="scroll-mt-24 rounded-xl bg-panel p-4 ring-1 ring-line sm:p-5">
-        <h1 className="font-display text-4xl">Profile</h1>
+        <p className="selection-label w-fit bg-green px-3 py-1 text-xs">PLAYER WORKSPACE</p>
+        <h1 className="mt-3 font-display text-5xl">Profile</h1>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <div className="rounded-lg bg-panel2 p-3">
             <div className="label-cond text-[10px] text-mut">Username</div>

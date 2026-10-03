@@ -29,7 +29,7 @@ function AlreadySetup() {
       <div>
         <h1 className="font-display text-4xl">Setup complete</h1>
         <p className="mt-3 text-mut">An admin account already exists for this auction.</p>
-        <Link to="/login" className="label-cond mt-6 inline-block bg-gold px-4 py-2 text-[13px] text-arena">
+        <Link to="/login" search={{}} className="label-cond mt-6 inline-block bg-gold px-4 py-2 text-[13px] text-arena">
           Go to login
         </Link>
       </div>
@@ -76,7 +76,7 @@ function SetupForm() {
             Sign in as <span className="text-gold">{username}</span> with the Admin role, then open
             the Admin panel to seed ambassador and caster accounts.
           </p>
-          <Link to="/login" className="label-cond mt-6 inline-block bg-gold px-4 py-2 text-[13px] text-arena">
+          <Link to="/login" search={{}} className="label-cond mt-6 inline-block bg-gold px-4 py-2 text-[13px] text-arena">
             Go to login
           </Link>
         </div>
@@ -98,7 +98,7 @@ function SetupForm() {
         <button disabled={busy} className="label-cond bg-gold py-2.5 text-[13px] text-arena disabled:opacity-50">
           {busy ? "Creating…" : "Create admin account"}
         </button>
-        <Link to="/login" className="label-cond mt-2 text-center text-[12px] text-mut hover:text-gold">
+        <Link to="/login" search={{}} className="label-cond mt-2 text-center text-[12px] text-mut hover:text-gold">
           I already have an account
         </Link>
       </form>
