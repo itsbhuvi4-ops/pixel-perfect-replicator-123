@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { RoleGate, Center, errText } from "@/components/Guard";
 import { PlayerStage } from "@/components/PlayerStage";
 import { LiveTicker } from "@/components/LiveTicker";
+import { AICommentaryPanel } from "@/components/AICommentaryPanel";
 import { useAuctionEvents, useAuctionState, usePlayers, useRealtimeAuction, useAmbassadors, useBids } from "@/lib/auction";
 import { setAuctionStatus, setCasterCam } from "@/lib/accounts.functions";
 import { startCasterBroadcast, type CamStatus } from "@/lib/caster-cam";
@@ -47,6 +48,7 @@ export function CasterConsole() {
           <section className="overflow-hidden rounded-xl bg-panel ring-1 ring-line">
             <PlayerStage player={current} state={state} />
           </section>
+          <AICommentaryPanel state={state} player={current} leader={leader} bidCount={bids.length} events={events} />
           <section className="rounded-xl bg-panel p-4 ring-1 ring-line">
             <div className="label-cond text-[12px] text-mut">Player Information</div>
             {current ? (
