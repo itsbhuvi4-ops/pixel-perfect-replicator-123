@@ -151,28 +151,6 @@ export function LiveAuction({ audience = false }: { audience?: boolean }) {
           <LiveTicker events={events} />
         </div>
 
-        <nav aria-label="Auction information" className="mt-4 flex gap-2 overflow-x-auto pb-1">
-          {([
-            ["top-sales", "Top Sale"],
-            ["unsold", "Unsold"],
-            ["teams", "Teams"],
-            ["points", "Points"],
-            ["total-players", "Total Players"],
-            ["about", "About"],
-            ["support", "Support"],
-          ] as const).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => openPanel(id)}
-              className="shrink-0 rounded-full border border-white/10 bg-white/[.03] px-4 py-2 font-cond text-[10px] font-semibold uppercase tracking-[.15em] text-white/65 transition hover:border-violet-300/50 hover:bg-violet-500/10 hover:text-white"
-            >
-              {label}
-            </button>
-          ))}
-        </nav>
-      </section>
-
       {panel && (
         <PublicPanelModal
           panel={panel}
