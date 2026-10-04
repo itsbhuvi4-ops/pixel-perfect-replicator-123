@@ -14,7 +14,7 @@ function Trophy() {
       <group ref={g} position={[0, 0.2, 0]}>
         <mesh position={[0, 1.2, 0]}>
           <cylinderGeometry args={[1.05, 0.45, 1.6, 48, 1, true]} />
-          <meshStandardMaterial color="#c7c9ff" metalness={1} roughness={0.15} side={THREE.DoubleSide} />
+          <meshStandardMaterial color="#c7c9ff" metalness={0.8} roughness={0.28} side={THREE.DoubleSide} />
         </mesh>
         <mesh position={[0, 0.2, 0]}><cylinderGeometry args={[0.12, 0.12, 0.6, 24]} /><meshStandardMaterial color="#c7c9ff" metalness={1} roughness={0.2} /></mesh>
         <mesh position={[0, -0.2, 0]}><cylinderGeometry args={[0.6, 0.75, 0.3, 48]} /><meshStandardMaterial color={INDIGO} metalness={0.6} roughness={0.3} /></mesh>
@@ -55,7 +55,7 @@ function Rings() {
 
 export default function ArenaScene() {
   return (
-    <Canvas dpr={[1, 1.75]} camera={{ position: [0, 1.6, 7], fov: 42 }}>
+    <Canvas dpr={[1, 1.75]} camera={{ position: [0, 2, 9.5], fov: 42 }}>
       <fog attach="fog" args={["#0a0a1a", 7, 16]} />
       <ambientLight intensity={0.35} />
       <directionalLight position={[4, 6, 4]} intensity={1.6} />
