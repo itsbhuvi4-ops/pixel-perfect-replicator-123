@@ -25,13 +25,7 @@ BEGIN
     WHERE c.contype = 'f'
       AND c.confrelid = 'auth.users'::regclass
       AND array_length(c.conkey, 1) = 1
-      AND c.conrelid IN (
-        'public.profiles'::regclass,
-        'public.user_roles'::regclass,
-        'public.players'::regclass,
-        'public.ambassadors'::regclass,
-        'public.casters'::regclass
-      )
+      AND c.connamespace = 'public'::regnamespace
   LOOP
     EXECUTE format(
       'ALTER TABLE %s DROP CONSTRAINT %I',
