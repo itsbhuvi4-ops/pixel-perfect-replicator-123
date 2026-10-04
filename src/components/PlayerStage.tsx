@@ -21,6 +21,7 @@ export function PlayerStage({ player, state }: { player: Player | null; state: A
   }, [player?.id]);
 
   const intro = revealIntro;
+  const branding = state as (AuctionState & { tournament_season?: string | null; tournament_logo_url?: string | null; auction_branding?: string | null }) | null | undefined;
 
   return (
     <div className="relative aspect-video overflow-hidden rounded-xl bg-panel2 outline-1 -outline-offset-1 outline-line">
@@ -51,7 +52,10 @@ export function PlayerStage({ player, state }: { player: Player | null; state: A
           <div className="relative grid h-full place-items-center px-6 text-center">
             {intro ? (
               <div className="animate-pulse">
-                <div className="label-cond text-[11px] tracking-[0.45em] text-gold">BIDXAUCTION · {state?.tournament_name ?? "LIVE"}</div>
+                <div className="flex items-center justify-center gap-2">
+                  {branding?.tournament_logo_url && <img src={branding.tournament_logo_url} alt="" className="size-8 rounded object-contain bg-black/50" />}
+                  <div className="label-cond text-[11px] tracking-[0.45em] text-gold">{branding?.auction_branding ?? "BIDXAUCTION"} · {branding?.tournament_season ?? "LIVE"}</div>
+                </div>
                 <div className="mt-4 font-display text-6xl leading-none tracking-tight text-white sm:text-8xl">NEXT PLAYER</div>
                 <div className="mx-auto mt-5 h-px w-28 bg-gold/70" />
               </div>
@@ -65,7 +69,7 @@ export function PlayerStage({ player, state }: { player: Player | null; state: A
                   <span className="label-cond border border-line px-3 py-1 text-[11px] text-white">STARTING {state?.base_price ? money(state.base_price) : "—"}</span>
                 </div>
                 <div className="mt-5 font-mono text-[10px] uppercase tracking-[0.2em] text-mut">
-                  {state?.tournament_name ?? "BIDX AUCTION"} · BIDDING OPENS
+                  {state?.tournament_name ?? "BIDX AUCTION"} · {branding?.tournament_season ?? "SEASON 1"} · BIDDING OPENS
                 </div>
               </div>
             )}
