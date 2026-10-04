@@ -158,26 +158,37 @@ export const adminDeleteAccount = createServerFn({ method: "POST" })
     if (data.userId === context.userId) throw new Error("You can't delete your own account");
     const sa = await admin();
 
-    // Remove auction-history rows that may reference a player/ambassador
-    // without CASCADE. This keeps account deletion reliable even if an
-    // older database migration is still present.
-    const [{ data: player }, { data: ambassador }] = await Promise.all([
-      sa.from("players").select("id").eq("user_id", data.userId).maybeSingle(),
+    const [{ data: player }, { data: ambassador }, { data: caster }, { data: state }] = await Promise.all([
+      sa.from("players").select("id,status").eq("user_id", data.userId).maybeSingle(),
       sa.from("ambassadors").select("id").eq("user_id", data.userId).maybeSingle(),
+      sa.from("casters").select("id").eq("user_id", data.userId).maybeSingle(),
+      sa.from("auction_state").select("current_player_id,current_bid,current_bidder_id,bidding_open").eq("id", 1).maybeSingle(),
     ]);
 
-    if (player?.id) {
-      const { error } = await sa.from("auction_results").delete().eq("player_id", player.id);
+    const deletingCurrentPlayer = !!player?.id && state?.current_player_id === player.id;
+    const deletingCurrentBidder = !!ambassador?.id && state?.current_bidder_id === ambassador.id;
+
+    if (deletingCurrentPlayer || deletingCurrentBidder) {
+      const label = deletingCurrentPlayer ? "current player" : "current bidder";
+      const { error } = await sa.from("auction_state").update({
+        current_player_id: null,
+        current_bid: null,
+        current_bidder_id: null,
+        bidding_open: false,
+        updated_at: new Date().toISOString(),
+      }).eq("id", 1);
       if (error) throw new Error(friendly(error.message));
-      const { error: retainError } = await sa.from("retain_records").delete().eq("player_id", player.id);
-      if (retainError) throw new Error(friendly(retainError.message));
+      await sa.from("auction_events").insert({
+        event_type: "ADMIN_ACCOUNT_DELETED",
+        message: "Admin deleted the " + label + " account; the active lot was cleared.",
+        player_id: player?.id ?? null,
+        ambassador_id: ambassador?.id ?? null,
+      });
     }
 
-    if (ambassador?.id) {
-      const { error } = await sa.from("auction_results").delete().eq("ambassador_id", ambassador.id);
-      if (error) throw new Error(friendly(error.message));
-      const { error: retainError } = await sa.from("retain_records").delete().eq("ambassador_id", ambassador.id);
-      if (retainError) throw new Error(friendly(retainError.message));
+    if (!player && !ambassador && !caster) {
+      const { data: profile } = await sa.from("profiles").select("id").eq("id", data.userId).maybeSingle();
+      if (!profile) throw new Error("Account not found");
     }
 
     const { error } = await sa.auth.admin.deleteUser(data.userId);
