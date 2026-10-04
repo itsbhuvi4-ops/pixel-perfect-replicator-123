@@ -45,8 +45,9 @@ export function CasterConsole() {
       </section>
       <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-4">
-          <section className="overflow-hidden rounded-xl bg-panel ring-1 ring-line">
+          <section className="relative overflow-hidden rounded-xl bg-panel ring-1 ring-line">
             <PlayerStage player={current} state={state} />
+            <AuctionResultFlash events={events} />
           </section>
           <AICommentaryPanel state={state} player={current} leader={leader} bidCount={bids.length} events={events} />
           <section className="rounded-xl bg-panel p-4 ring-1 ring-line">
@@ -256,6 +257,10 @@ function AuctionControls() {
         </button>
       </div>
 
+      <div className="border-t border-line px-3 py-3">
+        <AuctionCountdown state={state} />
+      </div>
+
       <div className="flex flex-col gap-3 border-t border-line px-3 py-3 sm:flex-row sm:items-center">
         <button
           type="button"
@@ -288,6 +293,71 @@ function AuctionControls() {
         </span>
       </div>
     </section>
+  );
+}
+
+function AuctionCountdown({ state }: { state: ReturnType<typeof useAuctionState>["data"] }) {
+  const [seconds, setSeconds] = useState(0);
+
+  useEffect(() => {
+    const tick = () => {
+      if (!state?.current_player_id) {
+        setSeconds(0);
+        return;
+      }
+      const age = Math.max(0, (Date.now() - new Date(state.updated_at).getTime()) / 1000);
+      const limit = state.bidding_open ? 30 : 4;
+      setSeconds(Math.max(0, Math.ceil(limit - age)));
+    };
+    tick();
+    const id = window.setInterval(tick, 250);
+    return () => window.clearInterval(id);
+  }, [state?.current_player_id, state?.updated_at, state?.bidding_open]);
+
+  if (!state?.current_player_id || state.status !== "live") {
+    return <div className="flex items-center justify-between font-mono text-[10px] text-mut"><span>COUNTDOWN</span><span>—</span></div>;
+  }
+
+  const reveal = !state.bidding_open;
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <div className="label-cond text-[10px] text-mut">{reveal ? "PLAYER REVEAL COUNTDOWN" : "BIDDING CLOCK"}</div>
+        <div className={reveal ? "mt-1 font-display text-3xl" : "mt-1 font-display text-3xl text-gold"}>
+          00:{String(seconds).padStart(2, "0")}
+        </div>
+      </div>
+      <div className="font-mono text-[10px] text-mut">
+        {reveal ? "BIDDING OPENS AUTOMATICALLY" : "SERVER REMAINS SOURCE OF TRUTH"}
+      </div>
+    </div>
+  );
+}
+
+function AuctionResultFlash({ events }: { events: Awaited<ReturnType<typeof useAuctionEvents>>["data"] }) {
+  const [visible, setVisible] = useState(false);
+  const [label, setLabel] = useState<"SOLD" | "UNSOLD" | null>(null);
+  const latest = events?.[0];
+
+  useEffect(() => {
+    if (!latest || !["PLAYER_SOLD", "PLAYER_UNSOLD"].includes(latest.event_type)) return;
+    const age = Date.now() - new Date(latest.created_at).getTime();
+    if (age > 5000) return;
+    setLabel(latest.event_type === "PLAYER_SOLD" ? "SOLD" : "UNSOLD");
+    setVisible(true);
+    const id = window.setTimeout(() => setVisible(false), 2600);
+    return () => window.clearTimeout(id);
+  }, [latest?.id, latest?.created_at, latest?.event_type]);
+
+  if (!visible || !label) return null;
+  return (
+    <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center bg-black/35 backdrop-blur-[2px]">
+      <div className={label === "SOLD"
+        ? "animate-pulse border-2 border-gold bg-gold/15 px-10 py-5 font-display text-6xl tracking-widest text-gold shadow-2xl"
+        : "animate-pulse border-2 border-line bg-arena/80 px-10 py-5 font-display text-6xl tracking-widest text-foreground shadow-2xl"}>
+        {label}
+      </div>
+    </div>
   );
 }
 
