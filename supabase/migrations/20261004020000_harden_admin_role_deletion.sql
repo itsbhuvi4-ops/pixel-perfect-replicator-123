@@ -58,6 +58,7 @@ BEGIN
     SELECT
       c.conname,
       c.conrelid::regclass AS child_table,
+      c.confrelid::regclass AS parent_table,
       a.attname AS child_column,
       pa.attname AS parent_column
     FROM pg_constraint c
@@ -86,24 +87,10 @@ BEGIN
       r.child_table,
       r.conname,
       r.child_column,
-      CASE
-        WHEN r.parent_column IS NOT NULL THEN
-          CASE
-            WHEN r.child_table IS NOT NULL AND r.conname IS NOT NULL THEN
-              (SELECT c2.confrelid::regclass::text
-               FROM pg_constraint c2
-               WHERE c2.conname = r.conname
-               LIMIT 1)
-            ELSE 'public.players'
-          END
-        ELSE 'public.players'
-      END,
+      r.parent_table,
       r.parent_column
     );
   END LOOP;
-EXCEPTION
-  WHEN undefined_table THEN
-    NULL;
 END $$;
 
 -- Preserve player accounts if an Ambassador/team is deleted.
