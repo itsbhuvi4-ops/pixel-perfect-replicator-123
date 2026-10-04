@@ -79,7 +79,12 @@ function ScrollCamera() {
 
 export default function ArenaScene() {
   return (
-    <Canvas dpr={[1, 1.6]} camera={{ position: [0, 1.4, 10.5], fov: 43 }} gl={{ antialias: true, alpha: true }}>
+    <Canvas
+      dpr={[1, 1.25]}
+      camera={{ position: [0, 1.4, 10.5], fov: 43 }}
+      gl={{ antialias: false, alpha: true, powerPreference: "high-performance" }}
+      performance={{ min: 0.5, max: 1, debounce: 180 }}
+    >
       <ScrollCamera />
       <color attach="background" args={["#030208"]} />
       <fog attach="fog" args={["#030208", 7, 19]} />
@@ -93,8 +98,8 @@ export default function ArenaScene() {
       <FloatingShard position={[4.1, 2.9, -2]} scale={0.75} speed={0.9} />
       <FloatingShard position={[3.4, -0.4, 1]} scale={0.5} speed={1.1} />
       <FloatingShard position={[-3.3, -0.8, 0]} scale={0.65} speed={0.8} />
-      <Stars radius={70} depth={35} count={1800} factor={2.1} saturation={0} fade speed={0.25} />
-      <Sparkles count={90} scale={[12, 6, 8]} size={1.3} speed={0.18} color="#c4b5fd" />
+      <Stars radius={70} depth={35} count={850} factor={1.8} saturation={0} fade speed={0.2} />
+      <Sparkles count={45} scale={[12, 6, 8]} size={1.1} speed={0.14} color="#c4b5fd" />
     </Canvas>
   );
 }
