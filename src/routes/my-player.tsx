@@ -123,7 +123,7 @@ function UsernameForm({ current }: { current: string }) {
 
   return (
     <form onSubmit={submit} className="mt-4 flex flex-col gap-2 sm:flex-row">
-      <input className="field flex-1" value={value} onChange={(e) => setValue(e.target.value)} minLength={3} required />
+      <input className="field flex-1" value={value} onChange={(e) => setValue(e.target.value)} minLength={3} maxLength={30} pattern="[A-Za-z0-9_#.-]+" title="Use only letters, numbers, _, #, . and -" required />
       <button disabled={busy || value.trim() === current} className="label-cond bg-gold px-4 py-2 text-[12px] text-arena disabled:opacity-40">
         {busy ? "Saving…" : "Change Username"}
       </button>
