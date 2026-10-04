@@ -8,7 +8,6 @@ import { useAuth } from "@/lib/auth";
 import { useAuctionState, usePlayers, useAmbassadors, useRealtimeAuction } from "@/lib/auction";
 import {
   adminDeleteAccount,
-  adminRemovePlayer,
   adminRequeuePlayer,
   createStaff,
   listUsers,
