@@ -43,8 +43,8 @@ function LandingPage() {
           </Link>
         </header>
 
-        <div className="relative z-10 mx-auto flex min-h-[calc(100svh-80px)] max-w-[1500px] items-center px-5 pb-20 sm:px-8 lg:px-14">
-          <div className="max-w-4xl">
+        <div className="relative z-20 mx-auto flex min-h-[calc(100svh-80px)] max-w-[1500px] items-center px-5 pb-20 sm:px-8 lg:px-14">
+          <div className="bidx-hero-copy max-w-4xl">
             <div className="mb-7 flex items-center gap-3 text-[10px] uppercase tracking-[0.3em] text-violet-200/75">
               <span className="h-px w-12 bg-violet-400" /> Live Player Auction Experience
             </div>
@@ -60,7 +60,7 @@ function LandingPage() {
             </div>
           </div>
 
-          <div className="pointer-events-none absolute bottom-12 right-6 hidden w-64 rounded-2xl border border-white/10 bg-black/25 p-4 backdrop-blur-xl lg:block">
+          <div className="pointer-events-none absolute bottom-12 right-6 hidden w-64 rounded-2xl border border-white/10 bg-black/30 p-4 backdrop-blur-md lg:block">
             <div className="flex items-center justify-between text-[9px] uppercase tracking-[0.2em] text-white/45">
               <span>Next auction</span><span className="text-violet-300">LIVE SYSTEM</span>
             </div>
