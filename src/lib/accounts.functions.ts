@@ -10,7 +10,7 @@ const username = z
   .trim()
   .min(3, "Username must be at least 3 characters")
   .max(30)
-  .regex(/^[a-zA-Z0-9_#.-]+$/, "Username can use letters, numbers, _ # . -");
+  .regex(/^[a-zA-Z0-9_#.-]+$/, "Username can use only letters, numbers, _, #, . and -");
 const password = z.string().min(8, "Password must be at least 8 characters").max(72);
 const roleEnum = z.enum(["primary_rusher", "secondary_rusher", "sniper", "nader", "supporter"]);
 
