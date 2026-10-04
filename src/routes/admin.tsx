@@ -664,6 +664,9 @@ function DeleteAccountButton({ userId, label }: { userId: string; label: string 
 
 const DEFAULT_SETTINGS = {
   tournament_name: "PRO LEAGUE",
+  tournament_season: "SEASON 1",
+  tournament_logo_url: "",
+  auction_branding: "BIDXAUCTION",
   base_price: "1000",
   min_increment: "500",
   default_starting_points: "50000",
@@ -675,19 +678,28 @@ const DEFAULT_SETTINGS = {
   apply_points_to_all: true,
 };
 
+type BrandingState = {
+  tournament_season?: string | null;
+  tournament_logo_url?: string | null;
+  auction_branding?: string | null;
+};
+
 function SettingsTab() {
   const qc = useQueryClient();
-  const { data: state } = useAuctionState();
+  const { data: rawState } = useAuctionState();
+  const state = rawState as (typeof rawState & BrandingState);
   const save = useServerFn(updateSettings);
   const [f, setF] = useState(DEFAULT_SETTINGS);
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  // Sync form once the current settings arrive (React adjusts state before paint).
   if (state && !loaded) {
     setLoaded(true);
     setF({
       tournament_name: state.tournament_name,
+      tournament_season: state.tournament_season ?? "SEASON 1",
+      tournament_logo_url: state.tournament_logo_url ?? "",
+      auction_branding: state.auction_branding ?? "BIDXAUCTION",
       base_price: String(state.base_price),
       min_increment: String(state.min_increment),
       default_starting_points: String(state.default_starting_points),
@@ -711,6 +723,9 @@ function SettingsTab() {
       await save({
         data: {
           tournament_name: f.tournament_name,
+          tournament_season: f.tournament_season,
+          tournament_logo_url: f.tournament_logo_url,
+          auction_branding: f.auction_branding,
           base_price: num(f.base_price),
           min_increment: num(f.min_increment),
           default_starting_points: num(f.default_starting_points),
@@ -722,7 +737,7 @@ function SettingsTab() {
           apply_points_to_all: f.apply_points_to_all,
         },
       });
-      toast.success("Settings saved");
+      toast.success("Tournament branding & auction settings saved");
       await qc.invalidateQueries({ queryKey: ["auction_state"] });
     } catch (err) {
       toast.error(errText(err));
@@ -733,31 +748,69 @@ function SettingsTab() {
 
   return (
     <form onSubmit={submit} className="rounded-xl bg-panel p-4 ring-1 ring-line">
-      <div className="label-cond text-[12px] text-mut">Auction Settings</div>
-      <div className="mt-3 grid gap-3 sm:grid-cols-3">
-        <Field label="Tournament name" className="sm:col-span-3">
+      <div className="label-cond text-[12px] text-mut">Tournament Branding & Auction Settings</div>
+      <p className="mt-1 text-[12px] text-mut">These values drive the caster, broadcast and audience presentation.</p>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Field label="Tournament name" className="lg:col-span-2">
           <input className="field w-full" value={f.tournament_name} onChange={set("tournament_name")} required />
         </Field>
-        <Field label="Base price"><input className="field w-full" inputMode="numeric" value={f.base_price} onChange={set("base_price")} /></Field>
-        <Field label="Min increment"><input className="field w-full" inputMode="numeric" value={f.min_increment} onChange={set("min_increment")} /></Field>
-        <Field label="Starting points"><input className="field w-full" inputMode="numeric" value={f.default_starting_points} onChange={set("default_starting_points")} /></Field>
-        <Field label="Retain price"><input className="field w-full" inputMode="numeric" value={f.retain_price} onChange={set("retain_price")} /></Field>
-        <Field label="Max retains per team"><input className="field w-full" inputMode="numeric" value={f.max_retains} onChange={set("max_retains")} /></Field>
-        <Field label="Max players"><input className="field w-full" inputMode="numeric" value={f.max_players} onChange={set("max_players")} /></Field>
-        <Field label="Max ambassadors"><input className="field w-full" inputMode="numeric" value={f.max_ambassadors} onChange={set("max_ambassadors")} /></Field>
-        <Field label="Max casters"><input className="field w-full" inputMode="numeric" value={f.max_casters} onChange={set("max_casters")} /></Field>
+        <Field label="Season">
+          <input className="field w-full" value={f.tournament_season} onChange={set("tournament_season")} required />
+        </Field>
+        <Field label="Auction branding">
+          <input className="field w-full" value={f.auction_branding} onChange={set("auction_branding")} required />
+        </Field>
+        <Field label="Logo URL" className="lg:col-span-2">
+          <input className="field w-full" type="url" placeholder="https://..." value={f.tournament_logo_url} onChange={set("tournament_logo_url")} />
+        </Field>
+        <Field label="Base bid">
+          <input className="field w-full" inputMode="numeric" value={f.base_price} onChange={set("base_price")} />
+        </Field>
+        <Field label="Minimum increment">
+          <input className="field w-full" inputMode="numeric" value={f.min_increment} onChange={set("min_increment")} />
+        </Field>
+        <Field label="Starting points">
+          <input className="field w-full" inputMode="numeric" value={f.default_starting_points} onChange={set("default_starting_points")} />
+        </Field>
+        <Field label="Team limit">
+          <input className="field w-full" inputMode="numeric" value={f.max_ambassadors} onChange={set("max_ambassadors")} />
+        </Field>
+        <Field label="Player limit">
+          <input className="field w-full" inputMode="numeric" value={f.max_players} onChange={set("max_players")} />
+        </Field>
+        <Field label="Caster limit">
+          <input className="field w-full" inputMode="numeric" value={f.max_casters} onChange={set("max_casters")} />
+        </Field>
+        <Field label="Retain price">
+          <input className="field w-full" inputMode="numeric" value={f.retain_price} onChange={set("retain_price")} />
+        </Field>
+        <Field label="Max retains per team">
+          <input className="field w-full" inputMode="numeric" value={f.max_retains} onChange={set("max_retains")} />
+        </Field>
       </div>
+
+      {f.tournament_logo_url && (
+        <div className="mt-4 flex items-center gap-3 rounded-lg bg-panel2 p-3 ring-1 ring-line">
+          <img src={f.tournament_logo_url} alt="Tournament logo preview" className="size-12 rounded object-contain bg-black" />
+          <div>
+            <div className="label-cond text-[11px] text-mut">Brand Preview</div>
+            <div className="font-display text-xl">{f.auction_branding}</div>
+            <div className="font-mono text-[10px] text-mut">{f.tournament_name} · {f.tournament_season}</div>
+          </div>
+        </div>
+      )}
+
       <label className="mt-3 flex items-center gap-2 text-[13px] text-mut">
         <input type="checkbox" checked={f.apply_points_to_all} onChange={set("apply_points_to_all")} />
         Also reset every team's points to the new starting value (only works before the auction starts)
       </label>
       <button disabled={busy} className="label-cond mt-4 bg-gold px-4 py-2 text-[13px] text-arena disabled:opacity-50">
-        {busy ? "Saving…" : "Save settings"}
+        {busy ? "Saving…" : "Save tournament settings"}
       </button>
     </form>
   );
 }
-
 function Field({ label, className, children }: { label: string; className?: string; children: React.ReactNode }) {
   return (
     <label className={`block ${className ?? ""}`}>
