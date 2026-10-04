@@ -1,4 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { ClientOnly } from "@tanstack/react-router";
+import { lazy, Suspense } from "react";
+
+const ArenaScene = lazy(() => import("@/components/ArenaScene"));
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -90,44 +94,14 @@ function LandingPage() {
             </div>
           </div>
 
-          <div className="relative hidden min-h-[34rem] lg:block" aria-label="Auction preview">
-            <div className="route-line route-line-top" aria-hidden="true"><span /><span /><span /></div>
-            <div className="neo-panel absolute inset-8 bg-panel p-5">
-              <span className="selection-handle left" /><span className="selection-handle right" />
-              <div className="flex items-center justify-between border-b-2 border-line pb-4">
-                <span className="label-cond bg-blue px-2 py-1 text-xs text-foreground">Live auction</span>
-                <span className="flex items-center gap-2 border-2 border-line bg-alert px-2 py-1 font-mono text-[10px] text-foreground">
-                  <span className="size-1.5 rounded-full bg-alert live-dot" /> ON AIR
-                </span>
-              </div>
-              <div className="mt-8 flex items-end justify-between">
-                <div>
-                  <p className="label-cond text-[10px] text-muted-foreground">Current player</p>
-                  <p className="mt-2 font-display text-5xl text-foreground">NOVA</p>
-                  <p className="mt-1 font-mono text-xs text-muted-foreground">
-                    UID 7842 · PRIMARY RUSHER
-                  </p>
-                </div>
-                <span className="border-2 border-line bg-green px-3 py-1 font-cond text-xs uppercase text-foreground">
-                  01 / 12
-                </span>
-              </div>
-              <div className="mt-10 border-y border-line py-6">
-                <p className="label-cond text-[10px] text-muted-foreground">Current bid</p>
-                <p className="bid-flash mt-1 font-display text-7xl text-gold">₹12,500</p>
-                <div className="mt-4 h-2 overflow-hidden border border-line bg-panel2">
-                  <div className="h-full w-3/4 bg-blue" />
-                </div>
-              </div>
-              <div className="mt-5 flex items-center justify-between">
-                <span className="font-cond text-xs uppercase tracking-widest text-muted-foreground">
-                  Highest bidder
-                </span>
-                <span className="font-display text-lg text-foreground">TEAM ALPHA</span>
-              </div>
-            </div>
-            <div className="neo-action absolute -bottom-1 right-0 border-2 border-line bg-coral px-5 py-3 font-cond text-xs uppercase text-foreground">
-              Your next pick is waiting →
+          <div className="relative h-[22rem] sm:h-[28rem] lg:h-[38rem]" aria-label="3D auction arena">
+            <div className="absolute inset-0 rounded-full bg-gold/20 blur-3xl" aria-hidden="true" />
+            <ClientOnly fallback={null}>
+              <Suspense fallback={null}><ArenaScene /></Suspense>
+            </ClientOnly>
+            <div className="glass-panel absolute bottom-4 left-4 rounded-2xl px-4 py-3">
+              <p className="label-cond text-[10px] text-muted-foreground">Live arena</p>
+              <p className="font-display text-2xl text-foreground">Every bid. In real time.</p>
             </div>
           </div>
         </div>
