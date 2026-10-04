@@ -156,59 +156,129 @@ export const adminDeleteAccount = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireRole(context, ["admin"]);
     if (data.userId === context.userId) throw new Error("You can't delete your own account");
-    const sa = await admin();
 
-    const [{ data: player }, { data: ambassador }, { data: caster }, { data: state }] = await Promise.all([
-      sa.from("players").select("id,status").eq("user_id", data.userId).maybeSingle(),
-      sa.from("ambassadors").select("id").eq("user_id", data.userId).maybeSingle(),
-      sa.from("casters").select("id").eq("user_id", data.userId).maybeSingle(),
-      sa.from("auction_state").select("status,current_player_id,current_bid,current_bidder_id,bidding_open").eq("id", 1).maybeSingle(),
-    ]);
+    const sa = await admin();
+    const [{ data: player }, { data: ambassador }, { data: caster }, { data: profile }, { data: state }] =
+      await Promise.all([
+        sa.from("players").select("id,status").eq("user_id", data.userId).maybeSingle(),
+        sa.from("ambassadors").select("id").eq("user_id", data.userId).maybeSingle(),
+        sa.from("casters").select("id").eq("user_id", data.userId).maybeSingle(),
+        sa.from("profiles").select("id").eq("id", data.userId).maybeSingle(),
+        sa.from("auction_state")
+          .select("status,current_player_id,current_bid,current_bidder_id,bidding_open")
+          .eq("id", 1)
+          .maybeSingle(),
+      ]);
+
+    if (!profile && !player && !ambassador && !caster) {
+      throw new Error("Account not found");
+    }
 
     const deletingCurrentPlayer = !!player?.id && state?.current_player_id === player.id;
     const deletingCurrentBidder = !!ambassador?.id && state?.current_bidder_id === ambassador.id;
 
+    // Clear any live-lot references before removing the role records.
     if (deletingCurrentPlayer) {
-      const { error } = await sa.from("auction_state").update({
-        current_player_id: null,
-        current_bid: null,
-        current_bidder_id: null,
-        bidding_open: false,
-        updated_at: new Date().toISOString(),
-      }).eq("id", 1);
+      const { error } = await sa
+        .from("auction_state")
+        .update({
+          current_player_id: null,
+          current_bid: null,
+          current_bidder_id: null,
+          bidding_open: false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", 1);
       if (error) throw new Error(friendly(error.message));
 
       await sa.from("auction_events").insert({
         event_type: "ADMIN_ACCOUNT_DELETED",
-        message: "Admin deleted the current player account; the lot was removed.",
-        player_id: player?.id ?? null,
+        message: "Admin deleted the current player account; the active lot was removed.",
       });
     } else if (deletingCurrentBidder) {
-      // Keep the player on the block. Clearing the deleted bidder's bid lets
-      // the caster mark the player UNSOLD, which then selects the next player.
-      const { error } = await sa.from("auction_state").update({
-        current_bid: null,
-        current_bidder_id: null,
-        bidding_open: false,
-        updated_at: new Date().toISOString(),
-      }).eq("id", 1);
+      const { error } = await sa
+        .from("auction_state")
+        .update({
+          current_bid: null,
+          current_bidder_id: null,
+          bidding_open: false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", 1);
       if (error) throw new Error(friendly(error.message));
 
       await sa.from("auction_events").insert({
         event_type: "ADMIN_ACCOUNT_DELETED",
-        message: "Admin deleted the current bidder account; the current lot was reset for UNSOLD.",
-        player_id: state?.current_player_id ?? null,
-        ambassador_id: ambassador?.id ?? null,
+        message: "Admin deleted the current bidder account; the active bid was cleared.",
       });
     }
 
-    if (!player && !ambassador && !caster) {
-      const { data: profile } = await sa.from("profiles").select("id").eq("id", data.userId).maybeSingle();
-      if (!profile) throw new Error("Account not found");
+    // Remove application-level foreign-key dependants first. This makes the
+    // admin deletion work even when an older Supabase migration has not yet
+    // changed historical FKs to ON DELETE CASCADE.
+    if (player?.id) {
+      const cleanup = await Promise.all([
+        sa.from("auction_results").delete().eq("player_id", player.id),
+        sa.from("retain_records").delete().eq("player_id", player.id),
+        sa.from("bids").delete().eq("player_id", player.id),
+        sa.from("auction_events").delete().eq("player_id", player.id),
+      ]);
+      const failed = cleanup.find((r) => r.error);
+      if (failed?.error) throw new Error(friendly(failed.error.message));
     }
 
-    const { error } = await sa.auth.admin.deleteUser(data.userId);
-    if (error) throw new Error(friendly(error.message));
+    if (ambassador?.id) {
+      // Preserve sold player accounts when their team/ambassador is removed.
+      // The roster assignment is intentionally cleared instead of deleting
+      // unrelated player accounts.
+      const { error: rosterError } = await sa
+        .from("players")
+        .update({ ambassador_id: null, updated_at: new Date().toISOString() })
+        .eq("ambassador_id", ambassador.id);
+      if (rosterError) throw new Error(friendly(rosterError.message));
+
+      const cleanup = await Promise.all([
+        sa.from("auction_results").delete().eq("ambassador_id", ambassador.id),
+        sa.from("retain_records").delete().eq("ambassador_id", ambassador.id),
+        sa.from("bids").delete().eq("ambassador_id", ambassador.id),
+        sa.from("auction_events").delete().eq("ambassador_id", ambassador.id),
+      ]);
+      const failed = cleanup.find((r) => r.error);
+      if (failed?.error) throw new Error(friendly(failed.error.message));
+    }
+
+    // Explicitly remove all public role/profile rows before deleting auth.users.
+    // This prevents "Database error deleting user" when a deployed database
+    // still has restrictive auth foreign keys from an older migration.
+    const roleTables = [
+      player?.id ? sa.from("players").delete().eq("id", player.id) : null,
+      ambassador?.id ? sa.from("ambassadors").delete().eq("id", ambassador.id) : null,
+      caster?.id ? sa.from("casters").delete().eq("id", caster.id) : null,
+    ].filter(Boolean) as PromiseLike<{ error: { message: string } | null }>[];
+
+    const roleDeletes = await Promise.all(roleTables);
+    const roleFailure = roleDeletes.find((r) => r.error);
+    if (roleFailure?.error) throw new Error(friendly(roleFailure.error.message));
+
+    const { error: rolesError } = await sa.from("user_roles").delete().eq("user_id", data.userId);
+    if (rolesError) throw new Error(friendly(rolesError.message));
+
+    const { error: profileError } = await sa.from("profiles").delete().eq("id", data.userId);
+    if (profileError) throw new Error(friendly(profileError.message));
+
+    const { error: authError } = await sa.auth.admin.deleteUser(data.userId);
+    if (authError) {
+      console.error("[accounts] Supabase auth user deletion failed", {
+        userId: data.userId,
+        message: authError.message,
+        code: authError.code,
+      });
+      throw new Error(
+        /database error deleting user/i.test(authError.message)
+          ? "Database still has a reference to this account. Apply the latest Supabase migration and try again."
+          : friendly(authError.message),
+      );
+    }
 
     if (deletingCurrentPlayer && state?.status === "live") {
       const { error: nextError } = await sa.rpc("admin_select_next_player_after_delete");
