@@ -162,14 +162,13 @@ export const adminDeleteAccount = createServerFn({ method: "POST" })
       sa.from("players").select("id,status").eq("user_id", data.userId).maybeSingle(),
       sa.from("ambassadors").select("id").eq("user_id", data.userId).maybeSingle(),
       sa.from("casters").select("id").eq("user_id", data.userId).maybeSingle(),
-      sa.from("auction_state").select("current_player_id,current_bid,current_bidder_id,bidding_open").eq("id", 1).maybeSingle(),
+      sa.from("auction_state").select("status,current_player_id,current_bid,current_bidder_id,bidding_open").eq("id", 1).maybeSingle(),
     ]);
 
     const deletingCurrentPlayer = !!player?.id && state?.current_player_id === player.id;
     const deletingCurrentBidder = !!ambassador?.id && state?.current_bidder_id === ambassador.id;
 
-    if (deletingCurrentPlayer || deletingCurrentBidder) {
-      const label = deletingCurrentPlayer ? "current player" : "current bidder";
+    if (deletingCurrentPlayer) {
       const { error } = await sa.from("auction_state").update({
         current_player_id: null,
         current_bid: null,
@@ -178,10 +177,27 @@ export const adminDeleteAccount = createServerFn({ method: "POST" })
         updated_at: new Date().toISOString(),
       }).eq("id", 1);
       if (error) throw new Error(friendly(error.message));
+
       await sa.from("auction_events").insert({
         event_type: "ADMIN_ACCOUNT_DELETED",
-        message: "Admin deleted the " + label + " account; the active lot was cleared.",
+        message: "Admin deleted the current player account; the lot was removed.",
         player_id: player?.id ?? null,
+      });
+    } else if (deletingCurrentBidder) {
+      // Keep the player on the block. Clearing the deleted bidder's bid lets
+      // the caster mark the player UNSOLD, which then selects the next player.
+      const { error } = await sa.from("auction_state").update({
+        current_bid: null,
+        current_bidder_id: null,
+        bidding_open: false,
+        updated_at: new Date().toISOString(),
+      }).eq("id", 1);
+      if (error) throw new Error(friendly(error.message));
+
+      await sa.from("auction_events").insert({
+        event_type: "ADMIN_ACCOUNT_DELETED",
+        message: "Admin deleted the current bidder account; the current lot was reset for UNSOLD.",
+        player_id: state?.current_player_id ?? null,
         ambassador_id: ambassador?.id ?? null,
       });
     }
@@ -193,6 +209,12 @@ export const adminDeleteAccount = createServerFn({ method: "POST" })
 
     const { error } = await sa.auth.admin.deleteUser(data.userId);
     if (error) throw new Error(friendly(error.message));
+
+    if (deletingCurrentPlayer && state?.status === "live") {
+      const { error: nextError } = await sa.rpc("admin_select_next_player_after_delete");
+      if (nextError) throw new Error(friendly(nextError.message));
+    }
+
     return { ok: true };
   });
 
