@@ -60,9 +60,27 @@ function FloatingShard({ position, scale, speed }: { position: [number, number, 
   );
 }
 
+function ScrollCamera() {
+  const camera = useRef<THREE.PerspectiveCamera>(null);
+  useFrame(() => {
+    if (!camera.current || typeof window === "undefined") return;
+    const maxScroll = Math.max(document.documentElement.scrollHeight - window.innerHeight, 1);
+    const progress = Math.min(window.scrollY / maxScroll, 1);
+    const targetX = Math.sin(progress * Math.PI * 1.4) * 1.8;
+    const targetY = 1.4 + progress * 1.7;
+    const targetZ = 10.5 - progress * 3.2;
+    camera.current.position.x = THREE.MathUtils.lerp(camera.current.position.x, targetX, 0.035);
+    camera.current.position.y = THREE.MathUtils.lerp(camera.current.position.y, targetY, 0.035);
+    camera.current.position.z = THREE.MathUtils.lerp(camera.current.position.z, targetZ, 0.035);
+    camera.current.lookAt(progress * 0.8, progress * 0.6, -1.2);
+  });
+  return null;
+}
+
 export default function ArenaScene() {
   return (
     <Canvas dpr={[1, 1.6]} camera={{ position: [0, 1.4, 10.5], fov: 43 }} gl={{ antialias: true, alpha: true }}>
+      <ScrollCamera />
       <color attach="background" args={["#030208"]} />
       <fog attach="fog" args={["#030208", 7, 19]} />
       <ambientLight intensity={0.25} />
