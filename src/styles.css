@@ -116,7 +116,7 @@
 .bidx-kicker { color: #a78bfa; font-family: var(--font-cond); font-size: .68rem; font-weight: 700; letter-spacing: .26em; text-transform: uppercase; }
 .bidx-section-title { font-family: var(--font-display); font-size: clamp(4rem, 9vw, 9rem); line-height: .78; letter-spacing: -.025em; text-transform: uppercase; }
 .bidx-section-title span { color: #c4b5fd; }
-.bidx-panel { background: radial-gradient(circle at 50% 0%, rgba(91,33,182,.08), transparent 42%), #030208; }
+.bidx-panel { background: radial-gradient(circle at 50% 0%, rgba(91,33,182,.14), transparent 42%), rgba(3,2,8,.84); backdrop-filter: blur(1px); }
 
 .bidx-orbital-card {
   width: min(29rem, 42vw); min-height: 30rem; padding: 2rem; border: 1px solid rgba(196,181,253,.25); border-radius: 2rem;
