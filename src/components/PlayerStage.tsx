@@ -1,8 +1,24 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { AuctionState, Player } from "@/lib/auction";
-import { ROLE_LABELS } from "@/lib/format";
+import { ROLE_LABELS, money } from "@/lib/format";
 
 export function PlayerStage({ player, state }: { player: Player | null; state: AuctionState | null | undefined }) {
+  const [reveal, setReveal] = useState(false);
+  const [revealStartedAt, setRevealStartedAt] = useState(0);
+  const lastPlayerId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!player?.id || player.id === lastPlayerId.current) return;
+    lastPlayerId.current = player.id;
+    setReveal(true);
+    setRevealStartedAt(Date.now());
+    const timer = window.setTimeout(() => setReveal(false), 3500);
+    return () => window.clearTimeout(timer);
+  }, [player?.id]);
+
+  const revealElapsed = revealStartedAt ? Date.now() - revealStartedAt : 0;
+  const intro = revealElapsed < 1100;
+
   return (
     <div className="relative aspect-video overflow-hidden rounded-xl bg-panel2 outline-1 -outline-offset-1 outline-line">
       {player?.video_url ? (
@@ -10,8 +26,10 @@ export function PlayerStage({ player, state }: { player: Player | null; state: A
           key={player.id}
           src={player.video_url}
           poster={player.photo_url ?? undefined}
-          controls
+          autoPlay
+          muted
           playsInline
+          controls
           className="absolute inset-0 size-full object-contain bg-black"
         />
       ) : player?.photo_url ? (
@@ -21,6 +39,34 @@ export function PlayerStage({ player, state }: { player: Player | null; state: A
           <span className="label-cond text-[12px] text-mut">
             {player ? "No media uploaded" : "Waiting for the next player"}
           </span>
+        </div>
+      )}
+
+      {player && reveal && (
+        <div className="absolute inset-0 z-20 overflow-hidden bg-black/95">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(139,92,246,0.18),transparent_48%)]" />
+          <div className="relative grid h-full place-items-center px-6 text-center">
+            {intro ? (
+              <div className="animate-pulse">
+                <div className="label-cond text-[11px] tracking-[0.45em] text-gold">BIDXAUCTION · {state?.tournament_name ?? "LIVE"}</div>
+                <div className="mt-4 font-display text-6xl leading-none tracking-tight text-white sm:text-8xl">NEXT PLAYER</div>
+                <div className="mx-auto mt-5 h-px w-28 bg-gold/70" />
+              </div>
+            ) : (
+              <div className="animate-in fade-in zoom-in-95 duration-500">
+                <div className="label-cond text-[11px] tracking-[0.35em] text-gold">PLAYER REVEAL</div>
+                <div className="mt-3 font-display text-5xl leading-none text-white sm:text-7xl">{player.ingame_name}</div>
+                <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                  <span className="label-cond border border-gold/50 px-3 py-1 text-[11px] text-gold">{ROLE_LABELS[player.primary_role]}</span>
+                  {player.secondary_role && <span className="label-cond border border-line px-3 py-1 text-[11px] text-mut">{ROLE_LABELS[player.secondary_role]}</span>}
+                  <span className="label-cond border border-line px-3 py-1 text-[11px] text-white">STARTING {state?.base_price ? money(state.base_price) : "—"}</span>
+                </div>
+                <div className="mt-5 font-mono text-[10px] uppercase tracking-[0.2em] text-mut">
+                  {state?.tournament_name ?? "BIDX AUCTION"} · BIDDING OPENS
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
