@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuctionEvents, useAuctionState, useAmbassadors, useBids, usePlayers, useRealtimeAuction } from "@/lib/auction";
 import { useCasterCamStream } from "@/lib/use-caster-cam";
 import { CasterLivePanel } from "@/components/CasterLivePanel";
@@ -11,6 +11,17 @@ type PublicPanel = "top-sales" | "unsold" | "teams" | "points" | "total-players"
 export function LiveAuction({ audience = false }: { audience?: boolean }) {
   useRealtimeAuction();
   const [panel, setPanel] = useState<PublicPanel>(null);
+
+  useEffect(() => {
+    const syncPanelFromMenu = () => {
+      const hash = window.location.hash.replace("#", "");
+      const allowed: PublicPanel[] = ["top-sales", "unsold", "teams", "points", "total-players", "about", "support"];
+      setPanel(allowed.includes(hash as PublicPanel) ? (hash as PublicPanel) : null);
+    };
+    syncPanelFromMenu();
+    window.addEventListener("hashchange", syncPanelFromMenu);
+    return () => window.removeEventListener("hashchange", syncPanelFromMenu);
+  }, []);
   const { data: state } = useAuctionState();
   const { data: players = [] } = usePlayers();
   const { data: ambassadors = [] } = useAmbassadors();
@@ -35,7 +46,10 @@ export function LiveAuction({ audience = false }: { audience?: boolean }) {
   const highestBid = bidderRows[0];
 
   const openPanel = (next: PublicPanel) => setPanel(next);
-  const closePanel = () => setPanel(null);
+  const closePanel = () => {
+    setPanel(null);
+    if (window.location.hash) window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  };
 
   return (
     <main className="auction-canvas role-canvas min-h-screen bg-[#030208] text-white">
