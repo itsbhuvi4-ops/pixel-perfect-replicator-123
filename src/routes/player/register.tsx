@@ -55,7 +55,7 @@ function RegisterPage() {
       <p className="selection-label w-fit bg-green px-3 py-1 text-xs">ENTER THE PLAYER POOL</p>
       <h1 className="mt-3 font-display text-5xl">Player Registration</h1>
       <form onSubmit={submit} className="mt-6 grid gap-3 sm:grid-cols-2">
-        <input className="field" placeholder="Username" value={f.username} onChange={set("username")} required />
+        <input className="field" placeholder="Username" value={f.username} onChange={set("username")} required minLength={3} maxLength={30} pattern="[A-Za-z0-9_#.-]+" title="Use only letters, numbers, _, #, . and -" />
         <input className="field" type="password" placeholder="Password (8+)" value={f.password} onChange={set("password")} required minLength={8} />
         <input className="field" placeholder="Player name" value={f.player_name} onChange={set("player_name")} required />
         <input className="field" placeholder="UID" value={f.uid} onChange={set("uid")} required />
