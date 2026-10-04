@@ -37,12 +37,17 @@ function BroadcastPage() {
   const current = players.find((p) => p.id === state?.current_player_id) ?? null;
   const leader = ambassadors.find((a) => a.id === state?.current_bidder_id);
   const sold = players.filter((p) => ["sold", "retained"].includes(p.status));
+  const branding = state as (typeof state & { tournament_season?: string | null; tournament_logo_url?: string | null; auction_branding?: string | null });
 
   return (
     <main className="flex min-h-screen flex-col gap-3 overflow-x-hidden p-2 sm:p-3">
       <div className="flex items-center gap-4 border-b border-line pb-2">
-        <span className="font-display text-2xl tracking-wide">
-          {state?.tournament_name ?? "BIDX AUCTION"}
+        <span className="flex items-center gap-2">
+          {branding?.tournament_logo_url && <img src={branding.tournament_logo_url} alt="" className="size-8 rounded object-contain bg-black" />}
+          <span>
+            <span className="block font-display text-2xl tracking-wide">{state?.tournament_name ?? "BIDX AUCTION"}</span>
+            <span className="label-cond block text-[9px] text-mut">{branding?.auction_branding ?? "BIDXAUCTION"} · {branding?.tournament_season ?? "SEASON 1"}</span>
+          </span>
         </span>
         {state?.status === "live" && (
           <span className="label-cond flex items-center gap-1.5 bg-alert px-2 py-0.5 text-[12px] text-white">
