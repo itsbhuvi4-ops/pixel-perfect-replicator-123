@@ -4,20 +4,23 @@ import { ROLE_LABELS, money } from "@/lib/format";
 
 export function PlayerStage({ player, state }: { player: Player | null; state: AuctionState | null | undefined }) {
   const [reveal, setReveal] = useState(false);
-  const [revealStartedAt, setRevealStartedAt] = useState(0);
+  const [revealIntro, setRevealIntro] = useState(true);
   const lastPlayerId = useRef<string | null>(null);
 
   useEffect(() => {
     if (!player?.id || player.id === lastPlayerId.current) return;
     lastPlayerId.current = player.id;
     setReveal(true);
-    setRevealStartedAt(Date.now());
+    setRevealIntro(true);
+    const introTimer = window.setTimeout(() => setRevealIntro(false), 1100);
     const timer = window.setTimeout(() => setReveal(false), 3500);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(introTimer);
+      window.clearTimeout(timer);
+    };
   }, [player?.id]);
 
-  const revealElapsed = revealStartedAt ? Date.now() - revealStartedAt : 0;
-  const intro = revealElapsed < 1100;
+  const intro = revealIntro;
 
   return (
     <div className="relative aspect-video overflow-hidden rounded-xl bg-panel2 outline-1 -outline-offset-1 outline-line">
