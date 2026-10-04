@@ -99,6 +99,26 @@
   background-size: 72px 72px;
   mask-image: linear-gradient(to bottom, transparent, black 25%, black 75%, transparent);
 }
+.bidx-hero-copy {
+  position: relative;
+  width: fit-content;
+  max-width: min(100%, 58rem);
+  padding: clamp(1.25rem, 2.8vw, 2.5rem);
+  border: 1px solid rgba(196,181,253,.18);
+  border-radius: 1.5rem;
+  background: linear-gradient(135deg, rgba(7,5,16,.82), rgba(12,8,24,.52));
+  box-shadow: 0 24px 80px rgba(0,0,0,.38), inset 0 0 45px rgba(139,92,246,.035);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.bidx-hero-copy::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(196,181,253,.08), transparent 42%);
+}
 .bidx-title { font-size: clamp(4.6rem, 13vw, 12rem); text-shadow: 0 0 50px rgba(139,92,246,.22); }
 .bidx-title span { display: block; color: transparent; -webkit-text-stroke: 1px rgba(216,180,254,.72); text-shadow: 0 0 45px rgba(139,92,246,.32); }
 
@@ -116,7 +136,7 @@
 .bidx-kicker { color: #a78bfa; font-family: var(--font-cond); font-size: .68rem; font-weight: 700; letter-spacing: .26em; text-transform: uppercase; }
 .bidx-section-title { font-family: var(--font-display); font-size: clamp(4rem, 9vw, 9rem); line-height: .78; letter-spacing: -.025em; text-transform: uppercase; }
 .bidx-section-title span { color: #c4b5fd; }
-.bidx-panel { background: radial-gradient(circle at 50% 0%, rgba(91,33,182,.14), transparent 42%), rgba(3,2,8,.84); backdrop-filter: blur(1px); }
+.bidx-panel { background: radial-gradient(circle at 50% 0%, rgba(91,33,182,.14), transparent 42%), rgba(3,2,8,.84); }
 
 .bidx-orbital-card {
   width: min(29rem, 42vw); min-height: 30rem; padding: 2rem; border: 1px solid rgba(196,181,253,.25); border-radius: 2rem;
@@ -149,6 +169,7 @@
   .bidx-scroll-line, .bidx-marquee { animation: none; }
 }
 @media (max-width: 640px) {
+  .bidx-hero-copy { width: 100%; padding: 1rem; border-radius: 1.1rem; background: linear-gradient(135deg, rgba(7,5,16,.9), rgba(12,8,24,.68)); }
   .bidx-title { font-size: clamp(3.8rem, 18vw, 6.5rem); }
   .bidx-section-title { font-size: clamp(3.6rem, 16vw, 6rem); }
   .bidx-orbital-card { width: 100%; min-height: 22rem; }
