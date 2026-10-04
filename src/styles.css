@@ -58,13 +58,13 @@
 :root {
   --radius: 0.75rem;
 
-  --arena: oklch(0.168 0.014 268);
-  --panel: oklch(0.213 0.015 268);
-  --panel2: oklch(0.245 0.016 268);
-  --line: oklch(0.31 0.02 266);
+  --arena: oklch(0.145 0.03 280);
+  --panel: oklch(0.2 0.045 280);
+  --panel2: oklch(0.25 0.06 278);
+  --line: oklch(0.34 0.07 277);
   --mut: oklch(0.62 0.023 262);
-  --gold: oklch(0.805 0.157 84);
-  --gold-deep: oklch(0.69 0.14 82);
+  --gold: oklch(0.68 0.2 277);
+  --gold-deep: oklch(0.51 0.23 277);
   --alert: oklch(0.645 0.233 24);
   --sold: oklch(0.775 0.168 157);
 
@@ -75,7 +75,7 @@
   --popover: var(--panel);
   --popover-foreground: oklch(0.941 0.005 265);
   --primary: var(--gold);
-  --primary-foreground: var(--arena);
+  --primary-foreground: oklch(0.98 0.01 280);
   --secondary: var(--panel2);
   --secondary-foreground: oklch(0.941 0.005 265);
   --muted: var(--panel2);
@@ -179,4 +179,10 @@
   border-radius: 0.5rem;
   outline: none;
   &:focus { border-color: var(--gold); }
+}
+
+@utility glass-panel {
+  background: color-mix(in oklab, var(--panel) 70%, transparent);
+  backdrop-filter: blur(14px);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--gold) 25%, transparent), 0 20px 50px -25px color-mix(in oklab, var(--gold) 45%, transparent);
 }

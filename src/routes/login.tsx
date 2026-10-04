@@ -16,7 +16,7 @@ export const Route = createFileRoute("/login")({
       { property: "og:description", content: "One login for every auction role." },
     ],
   }),
-  validateSearch: (s: Record<string, unknown>) => ({
+  validateSearch: (s: Record<string, unknown>): { next?: string | undefined } => ({
     next: typeof s['next'] === "string" && s['next'].startsWith("/") && !s['next'].startsWith("//") ? s['next'] : undefined,
   }),
   component: LoginPage,
