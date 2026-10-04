@@ -7,6 +7,7 @@ import { RoleGate, errText } from "@/components/Guard";
 import { useAuth } from "@/lib/auth";
 import { useAuctionState, usePlayers, useAmbassadors, useRealtimeAuction } from "@/lib/auction";
 import {
+  adminDeleteAccount,
   adminRemovePlayer,
   adminRequeuePlayer,
   createStaff,
@@ -289,6 +290,26 @@ function UserRow({ user }: { user: AdminUser }) {
           <button disabled={busy} onClick={() => void reset()} className="label-cond border border-line px-2 py-0.5 text-[11px] text-mut hover:text-foreground">
             Reset pw
           </button>
+          <button
+            disabled={busy}
+            onClick={() => {
+              if (!confirm(`Permanently delete ${user.username}? This removes the account, login credentials and role details.`)) return;
+              setBusy(true);
+              void adminDeleteAccount({ data: { userId: user.id } })
+                .then(async () => {
+                  toast.success("Account deleted");
+                  await qc.invalidateQueries({ queryKey: ["admin_users"] });
+                  await qc.invalidateQueries({ queryKey: ["players"] });
+                  await qc.invalidateQueries({ queryKey: ["ambassadors"] });
+                  await qc.invalidateQueries({ queryKey: ["auction_state"] });
+                })
+                .catch((err) => toast.error(errText(err)))
+                .finally(() => setBusy(false));
+            }}
+            className="label-cond border border-alert/40 px-2 py-0.5 text-[11px] text-alert disabled:opacity-30"
+          >
+            Delete
+          </button>
         </span>
       </td>
     </tr>
@@ -428,7 +449,7 @@ function TeamsTab() {
       ) : (
         <div className="mt-2 grid gap-2 md:grid-cols-2">
           {ambassadors.map((a) => (
-            <TeamRow key={a.id} id={a.id} team={a.team_name} name={a.ambassador_name} points={a.starting_points} editable={editable} />
+            <TeamRow key={a.id} id={a.id} userId={a.user_id} team={a.team_name} name={a.ambassador_name} points={a.starting_points} editable={editable} />
           ))}
         </div>
       )}
@@ -438,12 +459,14 @@ function TeamsTab() {
 
 function TeamRow({
   id,
+  userId,
   team,
   name,
   points,
   editable,
 }: {
   id: string;
+  userId: string;
   team: string;
   name: string;
   points: number;
@@ -481,6 +504,7 @@ function TeamRow({
         >
           Save
         </button>
+        <DeleteAccountButton userId={userId} label={name} />
       </div>
       <div className="mt-1.5 flex gap-2">
         <input className="field flex-1 !py-1.5 text-[12px]" value={f.team_name} onChange={(e) => setF({ ...f, team_name: e.target.value })} />
@@ -547,7 +571,7 @@ function PlayersTab() {
                   )}
                 </td>
                 <td className="py-2 pr-3">{p.status === "sold" && p.sold_price != null ? plainPoints(p.sold_price) : "—"}</td>
-                <td className="py-2"><PlayerActions id={p.id} status={p.status} /></td>
+                <td className="py-2"><PlayerActions id={p.id} userId={p.user_id} status={p.status} /></td>
               </tr>
             ))}
             {filtered.length === 0 && (
@@ -560,9 +584,9 @@ function PlayersTab() {
   );
 }
 
-function PlayerActions({ id, status }: { id: string; status: string }) {
+function PlayerActions({ id, userId, status }: { id: string; userId: string; status: string }) {
   const qc = useQueryClient();
-  const remove = useServerFn(adminRemovePlayer);
+  const remove = useServerFn(adminDeleteAccount);
   const requeue = useServerFn(adminRequeuePlayer);
   const [busy, setBusy] = useState(false);
 
@@ -572,6 +596,9 @@ function PlayerActions({ id, status }: { id: string; status: string }) {
       await fn();
       toast.success(msg);
       await qc.invalidateQueries({ queryKey: ["players"] });
+      await qc.invalidateQueries({ queryKey: ["ambassadors"] });
+      await qc.invalidateQueries({ queryKey: ["admin_users"] });
+      await qc.invalidateQueries({ queryKey: ["auction_state"] });
     } catch (err) {
       toast.error(errText(err));
     } finally {
@@ -579,30 +606,59 @@ function PlayerActions({ id, status }: { id: string; status: string }) {
     }
   };
 
-  if (status === "pool" || status === "unsold")
-    return (
-      <div className="flex flex-wrap gap-2">
-        {status === "unsold" && (
-          <button
-            disabled={busy}
-            onClick={() => void run(() => requeue({ data: { playerId: id } }), "Requeued to pool")}
-            className="label-cond border border-gold/50 px-2 py-0.5 text-[11px] text-gold disabled:opacity-30"
-          >
-            Requeue
-          </button>
-        )}
+  return (
+    <div className="flex flex-wrap gap-2">
+      {status === "unsold" && (
         <button
           disabled={busy}
-          onClick={() => {
-            if (confirm("Delete this player permanently?")) void run(() => remove({ data: { playerId: id } }), "Player deleted");
-          }}
-          className="label-cond border border-alert/40 px-2 py-0.5 text-[11px] text-alert disabled:opacity-30"
+          onClick={() => void run(() => requeue({ data: { playerId: id } }), "Requeued to pool")}
+          className="label-cond border border-gold/50 px-2 py-0.5 text-[11px] text-gold disabled:opacity-30"
         >
-          Delete
+          Requeue
         </button>
-      </div>
-    );
-  return <span className="text-[11px] text-mut">locked</span>;
+      )}
+      <button
+        disabled={busy}
+        onClick={() => {
+          if (confirm(`Permanently delete this player account? Status: ${status}.`)) {
+            void run(() => remove({ data: { userId } }), "Player account deleted");
+          }
+        }}
+        className="label-cond border border-alert/40 px-2 py-0.5 text-[11px] text-alert disabled:opacity-30"
+      >
+        Delete
+      </button>
+    </div>
+  );
+}
+
+function DeleteAccountButton({ userId, label }: { userId: string; label: string }) {
+  const qc = useQueryClient();
+  const remove = useServerFn(adminDeleteAccount);
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <button
+      disabled={busy}
+      onClick={() => {
+        if (!confirm(`Permanently delete ${label}? This removes the account, login credentials and role details.`)) return;
+        setBusy(true);
+        void remove({ data: { userId } })
+          .then(async () => {
+            toast.success("Account deleted");
+            await qc.invalidateQueries({ queryKey: ["ambassadors"] });
+            await qc.invalidateQueries({ queryKey: ["players"] });
+            await qc.invalidateQueries({ queryKey: ["admin_users"] });
+            await qc.invalidateQueries({ queryKey: ["auction_state"] });
+          })
+          .catch((err) => toast.error(errText(err)))
+          .finally(() => setBusy(false));
+      }}
+      className="label-cond border border-alert/40 px-2 py-0.5 text-[11px] text-alert disabled:opacity-30"
+    >
+      Delete
+    </button>
+  );
 }
 
 /* ---------------- Settings ---------------- */
