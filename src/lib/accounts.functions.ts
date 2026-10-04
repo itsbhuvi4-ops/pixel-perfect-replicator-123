@@ -339,7 +339,12 @@ export const updateSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
     z.object({
+      tournament_name: z.string().trim().min(2).max(80),
+      tournament_season: z.string().trim().min(1).max(40),
+      tournament_logo_url: z.string().trim().url().max(1000).or(z.literal("")),
+      auction_branding: z.string().trim().min(2).max(80),
       base_price: z.number().int().min(1),
+      min_increment: z.number().int().min(1),
       default_starting_points: z.number().int().min(0).max(10_000_000),
       retain_price: z.number().int().min(0),
       max_players: z.number().int().min(1).max(1000),
@@ -352,7 +357,12 @@ export const updateSettings = createServerFn({ method: "POST" })
     const sa = await admin();
     const { data: st } = await sa.from("auction_state").select("status").eq("id", 1).single();
     const { error } = await sa.from("auction_state").update({
+      tournament_name: data.tournament_name,
+      tournament_season: data.tournament_season,
+      tournament_logo_url: data.tournament_logo_url || null,
+      auction_branding: data.auction_branding,
       base_price: data.base_price,
+      min_increment: data.min_increment,
       default_starting_points: data.default_starting_points,
       retain_price: data.retain_price,
       max_players: data.max_players,
