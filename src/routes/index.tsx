@@ -20,7 +20,7 @@ function LandingPage() {
   return (
     <main className="bidx-world relative overflow-x-clip bg-[#030208] text-white">
       <section className="bidx-hero relative min-h-[100svh] overflow-hidden">
-        <div className="bidx-scene absolute inset-0" aria-hidden="true">
+        <div className="bidx-scene pointer-events-none fixed inset-0 z-0" aria-hidden="true">
           <ClientOnly fallback={null}>
             <Suspense fallback={null}><ArenaScene /></Suspense>
           </ClientOnly>
