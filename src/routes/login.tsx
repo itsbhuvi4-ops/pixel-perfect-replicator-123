@@ -1,11 +1,10 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { homeForRoles, type AppRole } from "@/lib/auth";
 import { usernameToEmail } from "@/lib/format";
-import { adminExists, verifyLogin } from "@/lib/accounts.functions";
+import { verifyLogin } from "@/lib/accounts.functions";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -26,10 +25,6 @@ function LoginPage() {
   const verify = useServerFn(verifyLogin);
   const navigate = useNavigate();
   const { next } = Route.useSearch();
-  const { data: adminState } = useQuery({
-    queryKey: ["admin_exists"],
-    queryFn: useServerFn(adminExists),
-  });
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<AppRole>("player");
@@ -62,15 +57,6 @@ function LoginPage() {
       <section className="neo-panel bg-panel p-5 sm:p-8">
       <p className="label-cond text-xs text-blue">SECURE ACCESS</p>
       <h1 className="mt-2 font-display text-5xl">Login</h1>
-      {adminState && !adminState.exists && (
-        <p className="mt-4 border border-gold/40 bg-gold/10 px-3 py-2 text-[13px] text-gold">
-          No admin exists yet.{" "}
-          <Link to="/setup" className="underline">
-            Run the first-time setup
-          </Link>{" "}
-          to create one.
-        </p>
-      )}
       <form onSubmit={submit} className="mt-6 flex flex-col gap-3">
         <input className="field" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} required />
         <input className="field" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />

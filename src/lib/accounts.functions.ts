@@ -81,11 +81,11 @@ export const registerPlayer = createServerFn({ method: "POST" })
     const sa = await admin();
     const [{ data: gameDupe }, { data: uidDupe }] = await Promise.all([
       sa.from("players").select("id").eq("game_id", data.game_id).maybeSingle(),
-      sa.from("players").select("id").eq("uid", data.uid).maybeSingle(),
+      (sa.from("players") as any).select("id").eq("uid", data.uid).maybeSingle(),
     ]);
     if (gameDupe || uidDupe) throw new Error("Already Registered");
     const id = await createAccount(data.username, data.password, "player");
-    const { error } = await sa.from("players").insert({
+    const { error } = await (sa.from("players") as any).insert({
       user_id: id,
       player_name: data.player_name,
       ingame_name: data.game_name,
@@ -100,22 +100,6 @@ export const registerPlayer = createServerFn({ method: "POST" })
       await sa.auth.admin.deleteUser(id);
       throw new Error(friendly(error.message));
     }
-    return { ok: true };
-  });
-
-export const adminExists = createServerFn({ method: "GET" }).handler(async () => {
-  const sa = await admin();
-  const { count } = await sa.from("user_roles").select("id", { count: "exact", head: true }).eq("role", "admin");
-  return { exists: (count ?? 0) > 0 };
-});
-
-export const bootstrapAdmin = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({ username, password }).parse(d))
-  .handler(async ({ data }) => {
-    const sa = await admin();
-    const { count } = await sa.from("user_roles").select("id", { count: "exact", head: true }).eq("role", "admin");
-    if ((count ?? 0) > 0) throw new Error("An admin already exists");
-    await createAccount(data.username, data.password, "admin");
     return { ok: true };
   });
 
@@ -295,7 +279,7 @@ export const adminDeleteAccount = createServerFn({ method: "POST" })
     }
 
     if (deletingCurrentPlayer && state?.status === "live") {
-      const { error: nextError } = await sa.rpc("admin_select_next_player_after_delete");
+      const { error: nextError } = await (sa as any).rpc("admin_select_next_player_after_delete");
       if (nextError) throw new Error(friendly(nextError.message));
     }
 
@@ -307,10 +291,7 @@ export const markPlayerUploadPromptSeen = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     await requireRole(context, ["player"]);
     const sa = await admin();
-    const { error } = await sa
-      .from("profiles")
-      .update({ player_upload_prompt_seen: true, updated_at: new Date().toISOString() })
-      .eq("id", context.userId);
+    const { error } = await (context.supabase as any).rpc("mark_player_upload_prompt_seen");
     if (error) throw new Error(friendly(error.message));
     return { ok: true };
   });
@@ -453,7 +434,7 @@ export const updateSettings = createServerFn({ method: "POST" })
     await requireRole(context, ["admin"]);
     const sa = await admin();
     const { data: st } = await sa.from("auction_state").select("status").eq("id", 1).single();
-    const { error } = await sa.from("auction_state").update({
+    const { error } = await (sa.from("auction_state") as any).update({
       tournament_name: data.tournament_name,
       tournament_season: data.tournament_season,
       tournament_logo_url: data.tournament_logo_url || null,

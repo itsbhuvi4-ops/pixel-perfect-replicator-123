@@ -8,6 +8,7 @@ import { CasterLivePanel } from "@/components/CasterLivePanel";
 import { useAuth } from "@/lib/auth";
 import {
   useAmbassadors,
+  useAuctionEvents,
   useAuctionState,
   useBids,
   useMyAmbassador,
