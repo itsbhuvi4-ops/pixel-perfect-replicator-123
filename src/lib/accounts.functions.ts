@@ -502,14 +502,22 @@ export const adminDeletePlayer = createServerFn({ method: "POST" })
       throw new Error("Only pool or unsold players can be deleted");
     }
 
-    const { error: resultError } = await sa.from("auction_results").delete().eq("player_id", player.id);
-    if (resultError) throw new Error(friendly(resultError.message));
+    // Delete the player role row first so auction history can be preserved.
+    // The database trigger snapshots player identity before the row disappears.
+    const { error: contactError } = await sa.from("player_contacts").delete().eq("player_id", player.id);
+    if (contactError) throw new Error(friendly(contactError.message));
 
-    const { error: retainError } = await sa.from("retain_records").delete().eq("player_id", player.id);
-    if (retainError) throw new Error(friendly(retainError.message));
+    const { error: playerError } = await sa.from("players").delete().eq("id", player.id);
+    if (playerError) throw new Error(friendly(playerError.message));
 
-    const { error } = await sa.auth.admin.deleteUser(player.user_id);
-    if (error) throw new Error(friendly(error.message));
+    const { error: rolesError } = await sa.from("user_roles").delete().eq("user_id", player.user_id);
+    if (rolesError) throw new Error(friendly(rolesError.message));
+
+    const { error: profileError } = await sa.from("profiles").delete().eq("id", player.user_id);
+    if (profileError) throw new Error(friendly(profileError.message));
+
+    const { error: authError } = await sa.auth.admin.deleteUser(player.user_id);
+    if (authError) throw new Error(friendly(authError.message));
 
     return { ok: true };
   });
