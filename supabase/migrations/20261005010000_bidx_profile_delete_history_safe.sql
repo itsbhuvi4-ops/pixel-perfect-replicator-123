@@ -1,0 +1,183 @@
+-- BidX Auction: production account/profile update limits and history-safe deletion.
+-- Uses the existing schema only; no new role enum is introduced.
+
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS player_upload_prompt_seen boolean NOT NULL DEFAULT false;
+
+ALTER TABLE public.players
+  ADD COLUMN IF NOT EXISTS uid text;
+
+CREATE UNIQUE INDEX IF NOT EXISTS players_uid_unique
+  ON public.players (uid)
+  WHERE uid IS NOT NULL;
+
+-- Auction history must survive deletion of the login/profile row.
+ALTER TABLE public.auction_results
+  ADD COLUMN IF NOT EXISTS player_name_snapshot text,
+  ADD COLUMN IF NOT EXISTS ingame_name_snapshot text,
+  ADD COLUMN IF NOT EXISTS game_id_snapshot text,
+  ADD COLUMN IF NOT EXISTS ambassador_name_snapshot text,
+  ADD COLUMN IF NOT EXISTS team_name_snapshot text;
+
+UPDATE public.auction_results ar
+SET
+  player_name_snapshot = COALESCE(ar.player_name_snapshot, p.player_name),
+  ingame_name_snapshot = COALESCE(ar.ingame_name_snapshot, p.ingame_name),
+  game_id_snapshot = COALESCE(ar.game_id_snapshot, p.game_id),
+  ambassador_name_snapshot = COALESCE(ar.ambassador_name_snapshot, a.ambassador_name),
+  team_name_snapshot = COALESCE(ar.team_name_snapshot, a.team_name)
+FROM public.players p
+LEFT JOIN public.ambassadors a ON a.id = ar.ambassador_id
+WHERE ar.player_id = p.id;
+
+ALTER TABLE public.auction_results
+  ALTER COLUMN player_id DROP NOT NULL;
+
+ALTER TABLE public.auction_results
+  DROP CONSTRAINT IF EXISTS auction_results_player_id_fkey,
+  DROP CONSTRAINT IF EXISTS auction_results_ambassador_id_fkey;
+
+ALTER TABLE public.auction_results
+  ADD CONSTRAINT auction_results_player_id_fkey
+    FOREIGN KEY (player_id) REFERENCES public.players(id) ON DELETE SET NULL,
+  ADD CONSTRAINT auction_results_ambassador_id_fkey
+    FOREIGN KEY (ambassador_id) REFERENCES public.ambassadors(id) ON DELETE SET NULL;
+
+-- Preserve bid history while allowing the account rows to disappear.
+ALTER TABLE public.bids
+  ADD COLUMN IF NOT EXISTS player_name_snapshot text,
+  ADD COLUMN IF NOT EXISTS ingame_name_snapshot text,
+  ADD COLUMN IF NOT EXISTS ambassador_name_snapshot text,
+  ADD COLUMN IF NOT EXISTS team_name_snapshot text;
+
+UPDATE public.bids b
+SET
+  player_name_snapshot = COALESCE(b.player_name_snapshot, p.player_name),
+  ingame_name_snapshot = COALESCE(b.ingame_name_snapshot, p.ingame_name),
+  ambassador_name_snapshot = COALESCE(b.ambassador_name_snapshot, a.ambassador_name),
+  team_name_snapshot = COALESCE(b.team_name_snapshot, a.team_name)
+FROM public.players p
+LEFT JOIN public.ambassadors a ON a.id = b.ambassador_id
+WHERE b.player_id = p.id;
+
+ALTER TABLE public.bids
+  ALTER COLUMN player_id DROP NOT NULL,
+  ALTER COLUMN ambassador_id DROP NOT NULL;
+
+ALTER TABLE public.bids
+  DROP CONSTRAINT IF EXISTS bids_player_id_fkey,
+  DROP CONSTRAINT IF EXISTS bids_ambassador_id_fkey;
+
+ALTER TABLE public.bids
+  ADD CONSTRAINT bids_player_id_fkey
+    FOREIGN KEY (player_id) REFERENCES public.players(id) ON DELETE SET NULL,
+  ADD CONSTRAINT bids_ambassador_id_fkey
+    FOREIGN KEY (ambassador_id) REFERENCES public.ambassadors(id) ON DELETE SET NULL;
+
+-- Retain history is already immutable; keep its snapshots and nullable references.
+ALTER TABLE public.retain_records
+  ADD COLUMN IF NOT EXISTS player_name_snapshot text,
+  ADD COLUMN IF NOT EXISTS ingame_name_snapshot text,
+  ADD COLUMN IF NOT EXISTS ambassador_name_snapshot text,
+  ADD COLUMN IF NOT EXISTS team_name_snapshot text;
+
+UPDATE public.retain_records rr
+SET
+  player_name_snapshot = COALESCE(rr.player_name_snapshot, p.player_name),
+  ingame_name_snapshot = COALESCE(rr.ingame_name_snapshot, p.ingame_name),
+  ambassador_name_snapshot = COALESCE(rr.ambassador_name_snapshot, a.ambassador_name),
+  team_name_snapshot = COALESCE(rr.team_name_snapshot, a.team_name)
+FROM public.players p
+LEFT JOIN public.ambassadors a ON a.id = rr.ambassador_id
+WHERE rr.player_id = p.id;
+
+ALTER TABLE public.retain_records
+  ALTER COLUMN player_id DROP NOT NULL,
+  ALTER COLUMN ambassador_id DROP NOT NULL;
+
+ALTER TABLE public.retain_records
+  DROP CONSTRAINT IF EXISTS retain_records_player_id_fkey,
+  DROP CONSTRAINT IF EXISTS retain_records_ambassador_id_fkey;
+
+ALTER TABLE public.retain_records
+  ADD CONSTRAINT retain_records_player_id_fkey
+    FOREIGN KEY (player_id) REFERENCES public.players(id) ON DELETE SET NULL,
+  ADD CONSTRAINT retain_records_ambassador_id_fkey
+    FOREIGN KEY (ambassador_id) REFERENCES public.ambassadors(id) ON DELETE SET NULL;
+
+-- All profile/media changes consume the same server-side 3-update budget.
+CREATE OR REPLACE FUNCTION public.player_update_uploads(
+  p_photo_url text,
+  p_video_url text
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  pl public.players;
+BEGIN
+  SELECT * INTO pl
+  FROM public.players
+  WHERE user_id = auth.uid()
+  FOR UPDATE;
+
+  IF pl.id IS NULL THEN
+    RAISE EXCEPTION 'Player profile not found';
+  END IF;
+
+  IF pl.information_change_count >= 3 THEN
+    RAISE EXCEPTION 'You have reached the maximum limit of 3 profile updates. You can no longer modify your player information, photos, or videos.';
+  END IF;
+
+  IF p_photo_url IS NULL OR length(trim(p_photo_url)) = 0 THEN
+    RAISE EXCEPTION 'Photo is required';
+  END IF;
+
+  IF p_video_url IS NULL OR length(trim(p_video_url)) = 0 THEN
+    RAISE EXCEPTION 'Video is required';
+  END IF;
+
+  UPDATE public.players
+  SET photo_url = trim(p_photo_url),
+      video_url = trim(p_video_url),
+      information_change_count = information_change_count + 1,
+      updated_at = now()
+  WHERE id = pl.id;
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'information_change_count', pl.information_change_count + 1,
+    'remaining_changes', greatest(0, 2 - pl.information_change_count)
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.player_update_uploads(text,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.player_update_uploads(text,text) TO authenticated;
+
+-- Only the player may consume their own prompt flag.
+CREATE OR REPLACE FUNCTION public.mark_player_upload_prompt_seen()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NOT public.has_role(auth.uid(), 'player') THEN
+    RAISE EXCEPTION 'Not authorized';
+  END IF;
+
+  UPDATE public.profiles
+  SET player_upload_prompt_seen = true,
+      updated_at = now()
+  WHERE id = auth.uid();
+
+  RETURN jsonb_build_object('ok', true);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.mark_player_upload_prompt_seen() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.mark_player_upload_prompt_seen() TO authenticated;
+
+NOTIFY pgrst, 'reload schema';
