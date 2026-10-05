@@ -12,23 +12,66 @@ CREATE UNIQUE INDEX IF NOT EXISTS players_uid_unique
   WHERE uid IS NOT NULL;
 
 -- Auction history must survive deletion of the login/profile row.
+-- Immutable history rows are never updated/deleted during account removal.
+-- Identity is archived in a separate table before the role row is removed.
+CREATE TABLE IF NOT EXISTS public.auction_deleted_identity (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  entity_type text NOT NULL CHECK (entity_type IN ('player','ambassador')),
+  entity_id uuid NOT NULL,
+  player_name text,
+  ingame_name text,
+  game_id text,
+  team_name text,
+  ambassador_name text,
+  deleted_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(entity_type, entity_id)
+);
+
+ALTER TABLE public.auction_deleted_identity ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Admins can read deleted auction identities" ON public.auction_deleted_identity;
+CREATE POLICY "Admins can read deleted auction identities"
+ON public.auction_deleted_identity FOR SELECT TO authenticated
+USING (public.has_role(auth.uid(), 'admin'));
+
+CREATE OR REPLACE FUNCTION public.snapshot_player_before_delete()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $
+BEGIN
+  INSERT INTO public.auction_deleted_identity(entity_type,entity_id,player_name,ingame_name,game_id,team_name)
+  VALUES ('player',OLD.id,OLD.player_name,OLD.ingame_name,OLD.game_id,OLD.team_name)
+  ON CONFLICT (entity_type,entity_id) DO UPDATE SET
+    player_name=EXCLUDED.player_name, ingame_name=EXCLUDED.ingame_name,
+    game_id=EXCLUDED.game_id, team_name=EXCLUDED.team_name, deleted_at=now();
+  RETURN OLD;
+END;
+$;
+
+CREATE OR REPLACE FUNCTION public.snapshot_ambassador_before_delete()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $
+BEGIN
+  INSERT INTO public.auction_deleted_identity(entity_type,entity_id,ambassador_name,team_name)
+  VALUES ('ambassador',OLD.id,OLD.ambassador_name,OLD.team_name)
+  ON CONFLICT (entity_type,entity_id) DO UPDATE SET
+    ambassador_name=EXCLUDED.ambassador_name, team_name=EXCLUDED.team_name, deleted_at=now();
+  RETURN OLD;
+END;
+$;
+
+DROP TRIGGER IF EXISTS snapshot_player_before_delete ON public.players;
+CREATE TRIGGER snapshot_player_before_delete BEFORE DELETE ON public.players
+FOR EACH ROW EXECUTE FUNCTION public.snapshot_player_before_delete();
+
+DROP TRIGGER IF EXISTS snapshot_ambassador_before_delete ON public.ambassadors;
+CREATE TRIGGER snapshot_ambassador_before_delete BEFORE DELETE ON public.ambassadors
+FOR EACH ROW EXECUTE FUNCTION public.snapshot_ambassador_before_delete();
+
 ALTER TABLE public.auction_results
   ADD COLUMN IF NOT EXISTS player_name_snapshot text,
   ADD COLUMN IF NOT EXISTS ingame_name_snapshot text,
   ADD COLUMN IF NOT EXISTS game_id_snapshot text,
   ADD COLUMN IF NOT EXISTS ambassador_name_snapshot text,
   ADD COLUMN IF NOT EXISTS team_name_snapshot text;
-
-UPDATE public.auction_results ar
-SET
-  player_name_snapshot = COALESCE(ar.player_name_snapshot, p.player_name),
-  ingame_name_snapshot = COALESCE(ar.ingame_name_snapshot, p.ingame_name),
-  game_id_snapshot = COALESCE(ar.game_id_snapshot, p.game_id),
-  ambassador_name_snapshot = COALESCE(ar.ambassador_name_snapshot, a.ambassador_name),
-  team_name_snapshot = COALESCE(ar.team_name_snapshot, a.team_name)
-FROM public.players p
-LEFT JOIN public.ambassadors a ON a.id = ar.ambassador_id
-WHERE ar.player_id = p.id;
 
 ALTER TABLE public.auction_results
   ALTER COLUMN player_id DROP NOT NULL;
@@ -50,16 +93,6 @@ ALTER TABLE public.bids
   ADD COLUMN IF NOT EXISTS ambassador_name_snapshot text,
   ADD COLUMN IF NOT EXISTS team_name_snapshot text;
 
-UPDATE public.bids b
-SET
-  player_name_snapshot = COALESCE(b.player_name_snapshot, p.player_name),
-  ingame_name_snapshot = COALESCE(b.ingame_name_snapshot, p.ingame_name),
-  ambassador_name_snapshot = COALESCE(b.ambassador_name_snapshot, a.ambassador_name),
-  team_name_snapshot = COALESCE(b.team_name_snapshot, a.team_name)
-FROM public.players p
-LEFT JOIN public.ambassadors a ON a.id = b.ambassador_id
-WHERE b.player_id = p.id;
-
 ALTER TABLE public.bids
   ALTER COLUMN player_id DROP NOT NULL,
   ALTER COLUMN ambassador_id DROP NOT NULL;
@@ -80,16 +113,6 @@ ALTER TABLE public.retain_records
   ADD COLUMN IF NOT EXISTS ingame_name_snapshot text,
   ADD COLUMN IF NOT EXISTS ambassador_name_snapshot text,
   ADD COLUMN IF NOT EXISTS team_name_snapshot text;
-
-UPDATE public.retain_records rr
-SET
-  player_name_snapshot = COALESCE(rr.player_name_snapshot, p.player_name),
-  ingame_name_snapshot = COALESCE(rr.ingame_name_snapshot, p.ingame_name),
-  ambassador_name_snapshot = COALESCE(rr.ambassador_name_snapshot, a.ambassador_name),
-  team_name_snapshot = COALESCE(rr.team_name_snapshot, a.team_name)
-FROM public.players p
-LEFT JOIN public.ambassadors a ON a.id = rr.ambassador_id
-WHERE rr.player_id = p.id;
 
 ALTER TABLE public.retain_records
   ALTER COLUMN player_id DROP NOT NULL,
