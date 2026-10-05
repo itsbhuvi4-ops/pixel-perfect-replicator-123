@@ -35,7 +35,7 @@ USING (public.has_role(auth.uid(), 'admin'));
 
 CREATE OR REPLACE FUNCTION public.snapshot_player_before_delete()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
-AS $$$
+AS $$
 BEGIN
   INSERT INTO public.auction_deleted_identity(entity_type,entity_id,player_name,ingame_name,game_id,team_name)
   VALUES ('player',OLD.id,OLD.player_name,OLD.ingame_name,OLD.game_id,OLD.team_name)
@@ -48,7 +48,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.snapshot_ambassador_before_delete()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
-AS $$$
+AS $$
 BEGIN
   INSERT INTO public.auction_deleted_identity(entity_type,entity_id,ambassador_name,team_name)
   VALUES ('ambassador',OLD.id,OLD.ambassador_name,OLD.team_name)
@@ -217,7 +217,7 @@ CREATE OR REPLACE FUNCTION public.player_update_profile(
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$$
+AS $$
 DECLARE pl public.players;
 BEGIN
   SELECT * INTO pl FROM public.players WHERE user_id = auth.uid() FOR UPDATE;
