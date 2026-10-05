@@ -136,7 +136,7 @@ CREATE OR REPLACE FUNCTION public.player_update_uploads(
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$$
+AS $
 DECLARE
   pl public.players;
 BEGIN
@@ -174,7 +174,7 @@ BEGIN
     'remaining_changes', greatest(0, 2 - pl.information_change_count)
   );
 END;
-$$$;
+$;
 
 REVOKE ALL ON FUNCTION public.player_update_uploads(text,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.player_update_uploads(text,text) TO authenticated;
@@ -185,7 +185,7 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$$
+AS $
 BEGIN
   IF NOT public.has_role(auth.uid(), 'player') THEN
     RAISE EXCEPTION 'Not authorized';
@@ -198,7 +198,7 @@ BEGIN
 
   RETURN jsonb_build_object('ok', true);
 END;
-$$$;
+$;
 
 REVOKE ALL ON FUNCTION public.mark_player_upload_prompt_seen() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.mark_player_upload_prompt_seen() TO authenticated;
