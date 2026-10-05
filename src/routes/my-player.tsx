@@ -35,7 +35,7 @@ function PlayerPage() {
     if (count >= 3 || (player.photo_url && player.video_url)) return;
     let cancelled = false;
     (async () => {
-      const { data } = await supabase.from("profiles").select("player_upload_prompt_seen").eq("id", user.id).maybeSingle();
+      const { data } = await (supabase.from("profiles") as any).select("player_upload_prompt_seen").eq("id", user.id).maybeSingle();
       if (!cancelled && !data?.player_upload_prompt_seen) setShowUploadPrompt(true);
     })();
     return () => { cancelled = true; };

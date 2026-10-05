@@ -103,7 +103,7 @@ export function LiveAuction({ audience = false }: { audience?: boolean }) {
               </div>
               <div className="rounded-xl bg-panel p-4 ring-1 ring-line">
                 <div className="label-cond text-[9px] text-mut">BASE BID</div>
-                <div className="mt-1 font-display text-3xl">{money(state?.base_price ?? current?.base_price ?? 0)}</div>
+                <div className="mt-1 font-display text-3xl">{money(state?.base_price ?? 0)}</div>
               </div>
             </div>
 
@@ -128,7 +128,7 @@ export function LiveAuction({ audience = false }: { audience?: boolean }) {
                 <Info label="IGN" value={current.ingame_name} />
                 <Info label="UID" value={current.game_id} />
                 <Info label="ROLE" value={current.primary_role.replace("_", " ")} />
-                <Info label="STARTING" value={money(current.base_price)} />
+                <Info label="STARTING" value={money(state?.base_price ?? 0)} />
               </div>
             ) : (
               <p className="mt-3 text-sm text-mut">Waiting for the caster to start the auction.</p>
