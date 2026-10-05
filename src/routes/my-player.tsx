@@ -175,35 +175,40 @@ function InformationSection({
     player_name: player.player_name,
     ingame_name: player.ingame_name,
     game_id: player.game_id,
+    uid: (player as any).uid ?? "",
+    experience: (player as any).experience ?? "",
+    team_name: (player as any).team_name ?? "",
     primary_role: player.primary_role,
     secondary_role: player.secondary_role ?? "",
     info: player.info ?? "",
   });
   const [busy, setBusy] = useState(false);
-  const [count, setCount] = useState(editCount);
+  const count = Number((player as any).information_change_count ?? editCount);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (count >= 3) return;
-    const confirmed = window.confirm(
-      "Information Change Notice\n\nYou are changing your player information. This will use 1 of your 3 available information changes.",
-    );
-    if (!confirmed) return;
+    if (count >= 3) {
+      toast.error("You have reached the maximum limit of 3 profile updates. You can no longer modify your player information, photos, or videos.");
+      return;
+    }
+    if (!window.confirm("Information Change Notice\n\nYou are changing your player profile. This will use 1 of your 3 available profile updates.")) return;
     setBusy(true);
     try {
-      const { data, error } = await (supabase.rpc as any)("player_update_information", {
+      const { data, error } = await (supabase.rpc as any)("player_update_profile", {
         p_player_name: f.player_name.trim(),
         p_ingame_name: f.ingame_name.trim(),
         p_game_id: f.game_id.trim(),
+        p_uid: f.uid.trim(),
+        p_experience: f.experience.trim(),
+        p_team_name: f.team_name.trim(),
         p_primary_role: f.primary_role,
         p_secondary_role: f.secondary_role || null,
         p_info: f.info.trim() || null,
       });
       if (error) throw error;
       const next = Number(data?.information_change_count ?? count + 1);
-      setCount(next);
       setEditCount(next);
-      toast.success("Information saved");
+      toast.success(next >= 3 ? "Profile saved. Editing is now locked." : "Profile information saved");
       await onSaved();
     } catch (err) {
       toast.error(errText(err));
@@ -217,15 +222,19 @@ function InformationSection({
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h2 className="font-display text-4xl">Information</h2>
-          <p className="mt-1 text-sm text-mut">Information changes used: {count} / 3</p>
+          <p className="mt-1 text-sm text-mut">Profile Updates: {count} / 3{count >= 3 ? " — Editing Locked" : ""}</p>
         </div>
         {count >= 3 && <span className="label-cond border border-alert/40 px-3 py-1 text-[11px] text-alert">Editing locked</span>}
       </div>
+      {count >= 3 && <p className="mt-3 rounded-lg bg-alert/10 p-3 text-xs text-alert">You have reached the maximum limit of 3 profile updates. You can no longer modify your player information, photos, or videos.</p>}
 
       <form onSubmit={submit} className="mt-4 grid gap-3 sm:grid-cols-2">
-        <input className="field" placeholder="Player name" value={f.player_name} onChange={(e) => setF({ ...f, player_name: e.target.value })} required disabled={count >= 3} />
-        <input className="field" placeholder="In-game name" value={f.ingame_name} onChange={(e) => setF({ ...f, ingame_name: e.target.value })} required disabled={count >= 3} />
-        <input className="field" placeholder="UID" value={f.game_id} onChange={(e) => setF({ ...f, game_id: e.target.value })} required disabled={count >= 3} />
+        <input className="field" placeholder="Original name" value={f.player_name} onChange={(e) => setF({ ...f, player_name: e.target.value })} required disabled={count >= 3} />
+        <input className="field" placeholder="Game name / IGN" value={f.ingame_name} onChange={(e) => setF({ ...f, ingame_name: e.target.value })} required disabled={count >= 3} />
+        <input className="field" placeholder="Game ID" value={f.game_id} onChange={(e) => setF({ ...f, game_id: e.target.value })} required disabled={count >= 3} />
+        <input className="field" placeholder="UID" value={f.uid} onChange={(e) => setF({ ...f, uid: e.target.value })} required disabled={count >= 3} />
+        <input className="field" placeholder="Gaming experience" value={f.experience} onChange={(e) => setF({ ...f, experience: e.target.value })} required disabled={count >= 3} />
+        <input className="field" placeholder="Previous / current esports team" value={f.team_name} onChange={(e) => setF({ ...f, team_name: e.target.value })} required disabled={count >= 3} />
         <select className="field" value={f.primary_role} onChange={(e) => setF({ ...f, primary_role: e.target.value as Player["primary_role"] })} disabled={count >= 3}>
           {GAME_ROLES.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}
         </select>
@@ -235,7 +244,7 @@ function InformationSection({
         </select>
         <textarea className="field min-h-28 sm:col-span-2" placeholder="Player information" value={f.info} onChange={(e) => setF({ ...f, info: e.target.value })} disabled={count >= 3} />
         <button disabled={busy || count >= 3} className="label-cond w-fit bg-gold px-4 py-2 text-[12px] text-arena disabled:opacity-40">
-          {busy ? "Saving…" : "Save"}
+          {busy ? "Saving…" : count >= 3 ? "Editing Locked" : "Save Profile"}
         </button>
       </form>
     </section>
@@ -259,7 +268,6 @@ function UploadsSection({
   const [progress, setProgress] = useState("");
   const count = Number((player as any).information_change_count ?? 0);
   const locked = count >= 3;
-  const complete = !!player.photo_url && !!player.video_url;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -275,6 +283,7 @@ function UploadsSection({
       toast.error("Video is required");
       return;
     }
+
     setBusy(true);
     try {
       setProgress("Uploading photo…");
@@ -282,12 +291,15 @@ function UploadsSection({
       setProgress("Uploading video…");
       const videoUrl = video ? await uploadPlayerFile("player-videos", userId, video) : player.video_url;
       setProgress("Saving profile…");
-      const { error } = await (supabase.rpc as any)("player_update_uploads", {
+
+      const { data, error } = await (supabase.rpc as any)("player_update_uploads", {
         p_photo_url: photoUrl,
         p_video_url: videoUrl,
       });
       if (error) throw error;
-      toast.success("Uploads saved");
+
+      const next = Number(data?.information_change_count ?? count + 1);
+      toast.success(next >= 3 ? "Uploads saved. Editing is now locked." : "Uploads saved");
       onPromptComplete();
       setPhoto(null);
       setVideo(null);
@@ -309,31 +321,35 @@ function UploadsSection({
         </div>
         {locked && <span className="label-cond border border-alert/40 px-3 py-1 text-[11px] text-alert">Editing locked</span>}
       </div>
-      <p className="mt-2 text-sm text-mut">Upload and preview the media currently saved to your player profile.</p>
-      <div className="mt-4 rounded-lg bg-panel2 p-3 ring-1 ring-line">
+
+      <div className="mt-4">
         <div className="label-cond text-[11px] text-mut">Uploaded Photos & Videos</div>
         <div className="mt-3 grid gap-4 md:grid-cols-2">
-        <div className="rounded-lg bg-panel2 p-3">
-          <div className="label-cond text-[11px] text-mut">Photo</div>
-          {player.photo_url && <img src={player.photo_url} alt={player.ingame_name} className="mt-2 aspect-video w-full rounded-lg object-cover" />}
-          <div className="mt-2 text-xs text-mut">{player.photo_url ? "Uploaded" : "Required"}</div>
-        </div>
-        <div className="rounded-lg bg-panel2 p-3">
-          <div className="label-cond text-[11px] text-mut">Video</div>
-          {player.video_url && <video src={player.video_url} controls className="mt-2 aspect-video w-full rounded-lg object-cover" />}
-          <div className="mt-2 text-xs text-mut">{player.video_url ? "Uploaded" : "Required"}</div>
+          <div className="rounded-lg bg-panel2 p-3 ring-1 ring-line">
+            <div className="label-cond text-[11px] text-mut">Photo</div>
+            {player.photo_url ? <img src={player.photo_url} alt={player.ingame_name} className="mt-2 aspect-video w-full rounded-lg object-cover" /> : <div className="mt-2 grid aspect-video place-items-center rounded-lg bg-panel2 text-xs text-mut">No photo uploaded</div>}
+            <div className="mt-2 text-xs text-mut">{player.photo_url ? "Uploaded" : "Required"}</div>
+          </div>
+          <div className="rounded-lg bg-panel2 p-3 ring-1 ring-line">
+            <div className="label-cond text-[11px] text-mut">Video</div>
+            {player.video_url ? <video src={player.video_url} controls className="mt-2 aspect-video w-full rounded-lg object-cover" /> : <div className="mt-2 grid aspect-video place-items-center rounded-lg bg-panel2 text-xs text-mut">No video uploaded</div>}
+            <div className="mt-2 text-xs text-mut">{player.video_url ? "Uploaded" : "Required"}</div>
+          </div>
         </div>
       </div>
+
       <form onSubmit={submit} className="mt-4 grid gap-3 sm:grid-cols-2">
-        <label className="text-xs text-mut">Upload Photo<input type="file" accept="image/*" className="mt-2 block w-full" disabled={locked}
-          onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} /></label>
-        <label className="text-xs text-mut">Upload Video<input type="file" accept="video/*" disabled={locked} className="mt-2 block w-full disabled:opacity-40" disabled={locked}
-          onChange={(e) => setVideo(e.target.files?.[0] ?? null)} /></label>
+        <label className="text-xs text-mut">Upload / replace photo
+          <input type="file" accept="image/*" className="mt-2 block w-full" disabled={locked || busy} onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
+        </label>
+        <label className="text-xs text-mut">Upload / replace video
+          <input type="file" accept="video/*" className="mt-2 block w-full" disabled={locked || busy} onChange={(e) => setVideo(e.target.files?.[0] ?? null)} />
+        </label>
         {progress && <div className="font-mono text-[11px] text-mut sm:col-span-2">{progress}</div>}
         <button disabled={busy || locked || (!photo && !video)} className="label-cond w-fit bg-gold px-4 py-2 text-[12px] text-arena disabled:opacity-40 sm:col-span-2">
-          {locked ? "Editing Locked" : busy ? "Saving…" : complete ? "Update Media" : "Save Media"}
+          {locked ? "Editing Locked" : busy ? "Saving…" : "Save Media Update"}
         </button>
-        {!locked && <p className="text-[11px] text-mut sm:col-span-2">Each successful profile or media update uses 1 of your 3 updates.</p>
+        {!locked && <p className="text-[11px] text-mut sm:col-span-2">Each successful profile or media update uses 1 of your 3 updates.</p>}
       </form>
     </section>
   );
