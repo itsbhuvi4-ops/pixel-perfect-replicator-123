@@ -68,22 +68,32 @@ export const registerPlayer = createServerFn({ method: "POST" })
         username,
         password,
         player_name: z.string().trim().min(2).max(60),
-        uid: z.string().trim().min(3).max(40),
         game_name: z.string().trim().min(2).max(40),
+        game_id: z.string().trim().min(3).max(60),
+        uid: z.string().trim().min(3).max(60),
+        experience: z.string().trim().min(1).max(1000),
+        team_name: z.string().trim().min(1).max(120),
         primary_role: roleEnum,
       })
       .parse(d),
   )
   .handler(async ({ data }) => {
     const sa = await admin();
-    const { data: dupe } = await sa.from("players").select("id").eq("game_id", data.uid).maybeSingle();
-    if (dupe) throw new Error("Already Registered");
+    const [{ data: gameDupe }, { data: uidDupe }] = await Promise.all([
+      sa.from("players").select("id").eq("game_id", data.game_id).maybeSingle(),
+      sa.from("players").select("id").eq("uid", data.uid).maybeSingle(),
+    ]);
+    if (gameDupe || uidDupe) throw new Error("Already Registered");
     const id = await createAccount(data.username, data.password, "player");
     const { error } = await sa.from("players").insert({
       user_id: id,
       player_name: data.player_name,
       ingame_name: data.game_name,
-      game_id: data.uid,
+      game_id: data.game_id,
+      uid: data.uid,
+      experience: data.experience,
+      team_name: data.team_name,
+      submitted_at: new Date().toISOString(),
       primary_role: data.primary_role,
     });
     if (error) {
@@ -213,51 +223,55 @@ export const adminDeleteAccount = createServerFn({ method: "POST" })
       });
     }
 
-    // Remove application-level foreign-key dependants first. This makes the
-    // admin deletion work even when an older Supabase migration has not yet
-    // changed historical FKs to ON DELETE CASCADE.
+    // Preserve immutable auction history. The history-safe migration changes
+    // player/ambassador references in bids/results/retains to ON DELETE SET NULL
+    // and stores identity snapshots, so do not delete those rows here.
+    async function removeUserFolder(bucket: string, uid: string) {
+      const { data: objects, error: listError } = await sa.storage.from(bucket).list(uid, { limit: 1000 });
+      if (listError) throw new Error(friendly(listError.message));
+      const names = (objects ?? []).map((o) => o.name).filter(Boolean).map((name) => `${uid}/${name}`);
+      if (names.length) {
+        const { error } = await sa.storage.from(bucket).remove(names);
+        if (error) throw new Error(friendly(error.message));
+      }
+    }
+
     if (player?.id) {
-      const cleanup = await Promise.all([
-        sa.from("auction_results").delete().eq("player_id", player.id),
-        sa.from("retain_records").delete().eq("player_id", player.id),
-        sa.from("bids").delete().eq("player_id", player.id),
-        sa.from("auction_events").delete().eq("player_id", player.id),
-      ]);
-      const failed = cleanup.find((r) => r.error);
-      if (failed?.error) throw new Error(friendly(failed.error.message));
+      await removeUserFolder("player-photos", data.userId);
+      await removeUserFolder("player-videos", data.userId);
     }
 
-    if (ambassador?.id) {
-      // Preserve sold player accounts when their team/ambassador is removed.
-      // The roster assignment is intentionally cleared instead of deleting
-      // unrelated player accounts.
-      const { error: rosterError } = await sa
-        .from("players")
-        .update({ ambassador_id: null, updated_at: new Date().toISOString() })
-        .eq("ambassador_id", ambassador.id);
-      if (rosterError) throw new Error(friendly(rosterError.message));
+    // Clear the live auction references if this account is currently involved.
+    // Historical bid/result/event rows are intentionally preserved.
+    if (deletingCurrentPlayer || deletingCurrentBidder) {
+      const { error } = await sa.from("auction_state").update({
+        current_player_id: deletingCurrentPlayer ? null : state?.current_player_id ?? null,
+        current_bid: null,
+        current_bidder_id: null,
+        bidding_open: false,
+        updated_at: new Date().toISOString(),
+      }).eq("id", 1);
+      if (error) throw new Error(friendly(error.message));
 
-      const cleanup = await Promise.all([
-        sa.from("auction_results").delete().eq("ambassador_id", ambassador.id),
-        sa.from("retain_records").delete().eq("ambassador_id", ambassador.id),
-        sa.from("bids").delete().eq("ambassador_id", ambassador.id),
-        sa.from("auction_events").delete().eq("ambassador_id", ambassador.id),
-      ]);
-      const failed = cleanup.find((r) => r.error);
-      if (failed?.error) throw new Error(friendly(failed.error.message));
+      const { error: eventError } = await sa.from("auction_events").insert({
+        event_type: "ADMIN_ACCOUNT_DELETED",
+        message: deletingCurrentPlayer
+          ? "Admin deleted the current player account; the active lot was cleared."
+          : "Admin deleted the current bidder account; the active bid was cleared.",
+      });
+      if (eventError) throw new Error(friendly(eventError.message));
     }
 
-    // Explicitly remove all public role/profile rows before deleting auth.users.
-    // This prevents "Database error deleting user" when a deployed database
-    // still has restrictive auth foreign keys from an older migration.
-    const roleTables = [
+    // Explicitly remove role/profile rows before deleting auth.users.
+    // auth.users then becomes permanently unusable for the deleted credentials.
+    const roleDeletes = [
       player?.id ? sa.from("players").delete().eq("id", player.id) : null,
       ambassador?.id ? sa.from("ambassadors").delete().eq("id", ambassador.id) : null,
       caster?.id ? sa.from("casters").delete().eq("id", caster.id) : null,
     ].filter(Boolean) as PromiseLike<{ error: { message: string } | null }>[];
 
-    const roleDeletes = await Promise.all(roleTables);
-    const roleFailure = roleDeletes.find((r) => r.error);
+    const roleResults = await Promise.all(roleDeletes);
+    const roleFailure = roleResults.find((x) => x.error);
     if (roleFailure?.error) throw new Error(friendly(roleFailure.error.message));
 
     const { error: rolesError } = await sa.from("user_roles").delete().eq("user_id", data.userId);
@@ -285,6 +299,19 @@ export const adminDeleteAccount = createServerFn({ method: "POST" })
       if (nextError) throw new Error(friendly(nextError.message));
     }
 
+    return { ok: true };
+  });
+
+export const markPlayerUploadPromptSeen = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await requireRole(context, ["player"]);
+    const sa = await admin();
+    const { error } = await sa
+      .from("profiles")
+      .update({ player_upload_prompt_seen: true, updated_at: new Date().toISOString() })
+      .eq("id", context.userId);
+    if (error) throw new Error(friendly(error.message));
     return { ok: true };
   });
 
