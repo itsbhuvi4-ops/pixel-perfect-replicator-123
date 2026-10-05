@@ -18,7 +18,6 @@ import { Route as CasterRouteImport } from './routes/caster'
 import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MyPlayerRouteImport } from './routes/my-player'
-import { Route as SetupRouteImport } from './routes/setup'
 import { Route as AdminLiveMonitorRouteImport } from './routes/admin_.live-monitor'
 import { Route as AmbassadorLiveAuctionRouteImport } from './routes/ambassador_.live-auction'
 import { Route as CasterAuctionControlRouteImport } from './routes/caster_.auction-control'
@@ -70,11 +69,6 @@ const MyPlayerRoute = MyPlayerRouteImport.update({
   path: '/my-player',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SetupRoute = SetupRouteImport.update({
-  id: '/setup',
-  path: '/setup',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AdminLiveMonitorRoute = AdminLiveMonitorRouteImport.update({
   id: '/admin_/live-monitor',
   path: '/admin/live-monitor',
@@ -111,7 +105,6 @@ export interface FileRoutesByFullPath {
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
   '/my-player': typeof MyPlayerRoute
-  '/setup': typeof SetupRoute
   '/admin/live-monitor': typeof AdminLiveMonitorRoute
   '/ambassador/live-auction': typeof AmbassadorLiveAuctionRoute
   '/caster/auction-control': typeof CasterAuctionControlRoute
@@ -128,7 +121,6 @@ export interface FileRoutesByTo {
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
   '/my-player': typeof MyPlayerRoute
-  '/setup': typeof SetupRoute
   '/admin/live-monitor': typeof AdminLiveMonitorRoute
   '/ambassador/live-auction': typeof AmbassadorLiveAuctionRoute
   '/caster/auction-control': typeof CasterAuctionControlRoute
@@ -146,7 +138,6 @@ export interface FileRoutesById {
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
   '/my-player': typeof MyPlayerRoute
-  '/setup': typeof SetupRoute
   '/admin_/live-monitor': typeof AdminLiveMonitorRoute
   '/ambassador_/live-auction': typeof AmbassadorLiveAuctionRoute
   '/caster_/auction-control': typeof CasterAuctionControlRoute
@@ -165,7 +156,6 @@ export interface FileRouteTypes {
     | '/change-password'
     | '/login'
     | '/my-player'
-    | '/setup'
     | '/admin/live-monitor'
     | '/ambassador/live-auction'
     | '/caster/auction-control'
@@ -182,7 +172,6 @@ export interface FileRouteTypes {
     | '/change-password'
     | '/login'
     | '/my-player'
-    | '/setup'
     | '/admin/live-monitor'
     | '/ambassador/live-auction'
     | '/caster/auction-control'
@@ -199,7 +188,6 @@ export interface FileRouteTypes {
     | '/change-password'
     | '/login'
     | '/my-player'
-    | '/setup'
     | '/admin_/live-monitor'
     | '/ambassador_/live-auction'
     | '/caster_/auction-control'
@@ -217,7 +205,6 @@ export interface RootRouteChildren {
   ChangePasswordRoute: typeof ChangePasswordRoute
   LoginRoute: typeof LoginRoute
   MyPlayerRoute: typeof MyPlayerRoute
-  SetupRoute: typeof SetupRoute
   AdminLiveMonitorRoute: typeof AdminLiveMonitorRoute
   AmbassadorLiveAuctionRoute: typeof AmbassadorLiveAuctionRoute
   CasterAuctionControlRoute: typeof CasterAuctionControlRoute
@@ -290,13 +277,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MyPlayerRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/setup': {
-      id: '/setup'
-      path: '/setup'
-      fullPath: '/setup'
-      preLoaderRoute: typeof SetupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/admin_/live-monitor': {
       id: '/admin_/live-monitor'
       path: '/admin/live-monitor'
@@ -345,7 +325,6 @@ const rootRouteChildren: RootRouteChildren = {
   ChangePasswordRoute: ChangePasswordRoute,
   LoginRoute: LoginRoute,
   MyPlayerRoute: MyPlayerRoute,
-  SetupRoute: SetupRoute,
   AdminLiveMonitorRoute: AdminLiveMonitorRoute,
   AmbassadorLiveAuctionRoute: AmbassadorLiveAuctionRoute,
   CasterAuctionControlRoute: CasterAuctionControlRoute,
