@@ -24,9 +24,10 @@ function RegisterPage() {
   const register = useServerFn(registerPlayer);
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
-  const [f, setF] = useState({ username: "", password: "", player_name: "", uid: "", game_name: "", primary_role: "primary_rusher" });
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [video, setVideo] = useState<File | null>(null);
+  const [f, setF] = useState({
+    username: "", password: "", player_name: "", game_id: "", game_name: "",
+    experience: "", team_name: "", uid: "", primary_role: "primary_rusher",
+  });
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
 
   const submit = async (e: React.FormEvent) => {
@@ -36,10 +37,6 @@ function RegisterPage() {
       await register({ data: { ...f, primary_role: f.primary_role as (typeof GAME_ROLES)[number] } });
       const { data: auth, error } = await supabase.auth.signInWithPassword({ email: usernameToEmail(f.username), password: f.password });
       if (error || !auth.user) throw error;
-      const patch: { photo_url?: string; video_url?: string } = {};
-      if (photo) patch.photo_url = await uploadPlayerFile("player-photos", auth.user.id, photo);
-      if (video) patch.video_url = await uploadPlayerFile("player-videos", auth.user.id, video);
-      if (Object.keys(patch).length) await supabase.from("players").update(patch).eq("user_id", auth.user.id);
       toast.success("Registered — you're in the auction pool");
       navigate({ to: "/my-player" });
     } catch (err) {
@@ -58,13 +55,14 @@ function RegisterPage() {
         <input className="field" placeholder="Username" value={f.username} onChange={set("username")} required minLength={3} maxLength={30} pattern="[A-Za-z0-9_#.-]+" title="Use only letters, numbers, _, #, . and -" />
         <input className="field" type="password" placeholder="Password (8+)" value={f.password} onChange={set("password")} required minLength={8} />
         <input className="field" placeholder="Player name" value={f.player_name} onChange={set("player_name")} required />
+        <input className="field" placeholder="Game ID" value={f.game_id} onChange={set("game_id")} required />
+        <input className="field" placeholder="Game name / IGN" value={f.game_name} onChange={set("game_name")} required />
+        <input className="field" placeholder="Gaming experience" value={f.experience} onChange={set("experience")} required />
+        <input className="field" placeholder="Previous / current esports team" value={f.team_name} onChange={set("team_name")} required />
         <input className="field" placeholder="UID" value={f.uid} onChange={set("uid")} required />
-        <input className="field" placeholder="Game name" value={f.game_name} onChange={set("game_name")} required />
         <select className="field" value={f.primary_role} onChange={set("primary_role")}>
           {GAME_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
         </select>
-        <label className="text-xs text-mut">Photo<input type="file" accept="image/*" className="mt-1 block w-full" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} /></label>
-        <label className="text-xs text-mut">Video (locked after upload)<input type="file" accept="video/*" className="mt-1 block w-full" onChange={(e) => setVideo(e.target.files?.[0] ?? null)} /></label>
         <button disabled={busy} className="neo-action label-cond bg-gold py-3 text-[13px] text-arena disabled:opacity-50 sm:col-span-2">{busy ? "Registering…" : "Register"}</button>
       </form>
       </section>
