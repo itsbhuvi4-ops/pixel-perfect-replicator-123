@@ -103,22 +103,6 @@ export const registerPlayer = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export const adminExists = createServerFn({ method: "GET" }).handler(async () => {
-  const sa = await admin();
-  const { count } = await sa.from("user_roles").select("id", { count: "exact", head: true }).eq("role", "admin");
-  return { exists: (count ?? 0) > 0 };
-});
-
-export const bootstrapAdmin = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({ username, password }).parse(d))
-  .handler(async ({ data }) => {
-    const sa = await admin();
-    const { count } = await sa.from("user_roles").select("id", { count: "exact", head: true }).eq("role", "admin");
-    if ((count ?? 0) > 0) throw new Error("An admin already exists");
-    await createAccount(data.username, data.password, "admin");
-    return { ok: true };
-  });
-
 /* ---------- Signed in ---------- */
 
 /** Confirms the chosen role against the database after sign-in. */

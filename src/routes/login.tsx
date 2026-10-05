@@ -1,11 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { homeForRoles, type AppRole } from "@/lib/auth";
 import { usernameToEmail } from "@/lib/format";
-import { adminExists, verifyLogin } from "@/lib/accounts.functions";
+import { verifyLogin } from "@/lib/accounts.functions";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -23,13 +21,8 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  const verify = useServerFn(verifyLogin);
   const navigate = useNavigate();
   const { next } = Route.useSearch();
-  const { data: adminState } = useQuery({
-    queryKey: ["admin_exists"],
-    queryFn: useServerFn(adminExists),
-  });
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<AppRole>("player");
@@ -42,7 +35,7 @@ function LoginPage() {
     setErr(null);
     const { error } = await supabase.auth.signInWithPassword({ email: usernameToEmail(username), password });
     if (error) { setBusy(false); setErr("Wrong username or password"); return; }
-    const res = await verify({ data: { role } });
+    const res = await verifyLogin({ data: { role } });
     setBusy(false);
     if (!res.ok) { await supabase.auth.signOut(); setErr(res.error); return; }
     if (next) { window.location.href = next; return; }
@@ -62,15 +55,6 @@ function LoginPage() {
       <section className="neo-panel bg-panel p-5 sm:p-8">
       <p className="label-cond text-xs text-blue">SECURE ACCESS</p>
       <h1 className="mt-2 font-display text-5xl">Login</h1>
-      {adminState && !adminState.exists && (
-        <p className="mt-4 border border-gold/40 bg-gold/10 px-3 py-2 text-[13px] text-gold">
-          No admin exists yet.{" "}
-          <Link to="/setup" className="underline">
-            Run the first-time setup
-          </Link>{" "}
-          to create one.
-        </p>
-      )}
       <form onSubmit={submit} className="mt-6 flex flex-col gap-3">
         <input className="field" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} required />
         <input className="field" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />

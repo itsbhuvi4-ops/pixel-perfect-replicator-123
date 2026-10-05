@@ -106,7 +106,7 @@ export function AuthFooter({ children }: { children: ReactNode }) {
   return <div className="mt-8 border-t border-line pt-5 text-center text-xs text-mut">{children}</div>;
 }
 
-export function AuthLink({ to, children }: { to: "/setup" | "/login" | "/player/register"; children: ReactNode }) {
+export function AuthLink({ to, children }: { to: "/login" | "/player/register"; children: ReactNode }) {
   return <Link to={to} className="font-semibold text-gold underline-offset-4 hover:underline">{children}</Link>;
 }
 
