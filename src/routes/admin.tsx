@@ -292,11 +292,11 @@ function UserRow({ user }: { user: AdminUser }) {
           <button
             disabled={busy}
             onClick={() => {
-              if (!confirm(`Permanently delete ${user.username}? This removes the account, login credentials and role details.`)) return;
+              if (!confirm("Are you sure you want to permanently delete this user? This will remove their account, login credentials, profile data and associated files.")) return;
               setBusy(true);
               void adminDeleteAccount({ data: { userId: user.id } })
                 .then(async () => {
-                  toast.success("Account deleted");
+                  toast.success("User deleted successfully.");
                   await qc.invalidateQueries({ queryKey: ["admin_users"] });
                   await qc.invalidateQueries({ queryKey: ["players"] });
                   await qc.invalidateQueries({ queryKey: ["ambassadors"] });
@@ -593,7 +593,7 @@ function PlayerActions({ id, userId, status }: { id: string; userId: string; sta
     setBusy(true);
     try {
       await fn();
-      toast.success(msg);
+      toast.success(msg === "Player account deleted" ? "User deleted successfully." : msg);
       await qc.invalidateQueries({ queryKey: ["players"] });
       await qc.invalidateQueries({ queryKey: ["ambassadors"] });
       await qc.invalidateQueries({ queryKey: ["admin_users"] });
@@ -619,7 +619,7 @@ function PlayerActions({ id, userId, status }: { id: string; userId: string; sta
       <button
         disabled={busy}
         onClick={() => {
-          if (confirm(`Permanently delete this player account? Status: ${status}.`)) {
+          if (confirm("Are you sure you want to permanently delete this user? This will remove their account, login credentials, profile data and associated files.")) {
             void run(() => remove({ data: { userId } }), "Player account deleted");
           }
         }}
@@ -640,7 +640,7 @@ function DeleteAccountButton({ userId, label }: { userId: string; label: string 
     <button
       disabled={busy}
       onClick={() => {
-        if (!confirm(`Permanently delete ${label}? This removes the account, login credentials and role details.`)) return;
+        if (!confirm("Are you sure you want to permanently delete this user? This will remove their account, login credentials, profile data and associated files.")) return;
         setBusy(true);
         void remove({ data: { userId } })
           .then(async () => {
