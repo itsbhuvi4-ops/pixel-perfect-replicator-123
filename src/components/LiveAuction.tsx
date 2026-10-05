@@ -163,6 +163,7 @@ export function LiveAuction({ audience = false }: { audience?: boolean }) {
       )}
 
       {audience && events.length > 0 ? <div className="sr-only" aria-hidden="true">{events.length} live auction events</div> : null}
+      </section>
     </main>
   );
 }
