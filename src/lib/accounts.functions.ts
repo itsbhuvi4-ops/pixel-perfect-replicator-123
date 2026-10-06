@@ -58,10 +58,78 @@ async function rolesOf(ctx: { supabase: any; userId: string }): Promise<string[]
 
 async function requireRole(ctx: { supabase: any; userId: string }, allowed: Role[]) {
   const roles = await rolesOf(ctx);
-  const { data: prof } = await ctx.supabase.from("profiles").select("is_active").eq("id", ctx.userId).maybeSingle();
-  if (!prof?.is_active) throw new Error("Your account is deactivated");
   if (!roles.some((r) => allowed.includes(r as Role))) throw new Error("Not allowed");
 }
+
+/* ---------- First-admin setup ---------- */
+
+export const getFirstAdminSetupStatus = createServerFn({ method: "GET" })
+  .handler(async () => {
+    const sa = await admin();
+    const { count, error } = await sa.from("user_roles").select("user_id", { count: "exact", head: true }).eq("role", "admin");
+    if (error) throw new Error(friendly(error.message));
+    return { available: (count ?? 0) === 0 };
+  });
+
+export const setupFirstAdmin = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({
+    username,
+    password,
+    setupCode: z.string().trim().min(12).max(200),
+  }).parse(d))
+  .handler(async ({ data }) => {
+    const expected = process.env.BIDX_FIRST_ADMIN_SETUP_CODE;
+    if (!expected || data.setupCode !== expected) throw new Error("Invalid setup code");
+
+    const sa = await admin();
+    const { count, error: countError } = await sa.from("user_roles").select("user_id", { count: "exact", head: true }).eq("role", "admin");
+    if (countError) throw new Error(friendly(countError.message));
+    if ((count ?? 0) > 0) throw new Error("First-admin setup is already closed");
+
+    const claimToken = crypto.randomUUID();
+    const { data: claimed, error: claimError } = await (sa as any).rpc("claim_first_admin_setup", { p_token: claimToken });
+    if (claimError || !claimed) throw new Error("First-admin setup is already in progress or closed");
+
+    try {
+      const id = await createAccount(data.username, data.password, "admin");
+      await (sa as any).rpc("release_first_admin_setup", { p_token: claimToken });
+      return { ok: true, userId: id };
+    } catch (error) {
+      await (sa as any).rpc("release_first_admin_setup", { p_token: claimToken });
+      throw error;
+    }
+  });
+
+/* ---------- Caster camera lease ---------- */
+
+export const claimCasterCamera = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await requireRole(context, ["caster", "admin"]);
+    const { data, error } = await (context.supabase as any).rpc("caster_claim_camera");
+    if (error) throw new Error(friendly(error.message));
+    return data as { ok: boolean; session_id: string };
+  });
+
+export const heartbeatCasterCamera = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ sessionId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await requireRole(context, ["caster", "admin"]);
+    const { data: result, error } = await (context.supabase as any).rpc("caster_heartbeat_camera", { p_session_id: data.sessionId });
+    if (error) throw new Error(friendly(error.message));
+    return result as { ok: boolean; lease_until: string };
+  });
+
+export const releaseCasterCamera = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ sessionId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await requireRole(context, ["caster", "admin"]);
+    const { data: result, error } = await (context.supabase as any).rpc("caster_release_camera", { p_session_id: data.sessionId });
+    if (error) throw new Error(friendly(error.message));
+    return result as { ok: boolean };
+  });
 
 /* ---------- Public ---------- */
 
@@ -115,8 +183,6 @@ export const verifyLogin = createServerFn({ method: "POST" })
   .inputValidator((d) => z.object({ role: z.enum(["admin", "caster", "ambassador", "player"]) }).parse(d))
   .handler(async ({ data, context }) => {
     const roles = await rolesOf(context);
-    const { data: prof } = await context.supabase.from("profiles").select("is_active").eq("id", context.userId).maybeSingle();
-    if (!prof?.is_active) return { ok: false, error: "This account is deactivated. Contact the admin." };
     if (!roles.includes(data.role)) return { ok: false, error: "This account doesn't have that role." };
     return { ok: true, error: null };
   });
@@ -142,7 +208,7 @@ export const listUsers = createServerFn({ method: "GET" })
     await requireRole(context, ["admin"]);
     const sa = await admin();
     const [{ data: profiles }, { data: roles }] = await Promise.all([
-      sa.from("profiles").select("id, username, display_name, is_active, created_at").order("created_at"),
+      sa.from("profiles").select("id, username, display_name, created_at").order("created_at"),
       sa.from("user_roles").select("user_id, role"),
     ]);
     return (profiles ?? []).map((p) => ({ ...p, roles: (roles ?? []).filter((r) => r.user_id === p.id).map((r) => r.role) }));
@@ -267,28 +333,36 @@ export const markPlayerUploadPromptSeen = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export const setUserActive = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ userId: z.string().uuid(), active: z.boolean() }).parse(d))
-  .handler(async ({ data, context }) => {
-    await requireRole(context, ["admin"]);
-    if (data.userId === context.userId) throw new Error("You can't deactivate yourself");
-    const sa = await admin();
-    await sa.from("profiles").update({ is_active: data.active, updated_at: new Date().toISOString() }).eq("id", data.userId);
-    await sa.auth.admin.updateUserById(data.userId, { ban_duration: data.active ? "none" : "876000h" });
-    return { ok: true };
-  });
-
 export const resetUserPassword = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ userId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     await requireRole(context, ["admin"]);
+    if (data.userId === context.userId) throw new Error("You can't reset your own password from the admin panel");
+
     const sa = await admin();
-    const pw = randomPassword();
-    const { error } = await sa.auth.admin.updateUserById(data.userId, { password: pw });
-    if (error) throw new Error(friendly(error.message));
-    return { password: pw };
+    const { data: profile, error: profileError } = await sa
+      .from("profiles")
+      .select("username")
+      .eq("id", data.userId)
+      .maybeSingle();
+    if (profileError || !profile?.username) throw new Error("Account not found");
+
+    const { data: linkData, error } = await sa.auth.admin.generateLink({
+      type: "recovery",
+      email: usernameToEmail(profile.username),
+      options: {
+        redirectTo: ${process.env.PUBLIC_SITE_URL ?? process.env.VITE_APP_URL ?? "https://auction-delta.lovable.app"}/change-password,
+      },
+    });
+    if (error || !linkData?.properties?.action_link) throw new Error(friendly(error?.message));
+
+    await sa
+      .from("profiles")
+      .update({ must_change_password: true, updated_at: new Date().toISOString() })
+      .eq("id", data.userId);
+
+    return { resetLink: linkData.properties.action_link };
   });
 
 function randomPassword() {
@@ -303,7 +377,7 @@ export const seedDefaultAccounts = createServerFn({ method: "POST" })
     const sa = await admin();
     const { data: st } = await sa.from("auction_state").select("default_starting_points").eq("id", 1).single();
     const start = st?.default_starting_points ?? 50000;
-    const created: { username: string; password: string }[] = [];
+    const created: { username: string }[] = [];
     for (let i = 1; i <= 24; i++) {
       const u = `Ambassador#${String(i).padStart(3, "0")}`;
       const { data: exists } = await sa.from("profiles").select("id").ilike("username", u).maybeSingle();
@@ -314,7 +388,7 @@ export const seedDefaultAccounts = createServerFn({ method: "POST" })
         user_id: id, ambassador_name: u, team_name: `Team ${String(i).padStart(3, "0")}`,
         starting_points: start, remaining_points: start,
       });
-      created.push({ username: u, password: pw });
+      created.push({ username: u });
     }
     for (let i = 1; i <= 2; i++) {
       const u = `Caster#${String(i).padStart(3, "0")}`;
@@ -447,6 +521,42 @@ export const updateSettings = createServerFn({ method: "POST" })
         remaining_points: data.default_starting_points,
       }).gte("starting_points", 0);
     }
+    return { ok: true };
+  });
+
+export const cleanupPlayerUploadObjects = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({
+    objects: z.array(z.object({ bucket: z.enum(["player-photos", "player-videos"]), path: z.string().min(3).max(500) })).max(2),
+  }).parse(d))
+  .handler(async ({ data, context }) => {
+    await requireRole(context, ["player"]);
+    const sa = await admin();
+    const allowed = data.objects.filter((o) => o.path.startsWith(`${context.userId}/`));
+    await Promise.all(allowed.map(async (o) => {
+      const { error } = await sa.storage.from(o.bucket).remove([o.path]);
+      if (error) console.error("[accounts] upload cleanup failed", { bucket: o.bucket, path: o.path, message: error.message });
+    }));
+    return { ok: true };
+  });
+
+export const adminDeleteAmbassador = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ ambassadorId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await requireRole(context, ["admin"]);
+    const sa = await admin();
+    const { data: ambassador } = await sa.from("ambassadors").select("id,user_id").eq("id", data.ambassadorId).maybeSingle();
+    if (!ambassador) throw new Error("Ambassador not found");
+    if (ambassador.user_id === context.userId) throw new Error("You can't delete your own account");
+
+    const { data: state } = await sa.from("auction_state").select("status,current_bidder_id").eq("id", 1).maybeSingle();
+    if (state?.current_bidder_id === ambassador.id && state.status === "live") {
+      throw new Error("This ambassador is the active bidder; finish or clear the current lot first");
+    }
+
+    const { error } = await sa.auth.admin.deleteUser(ambassador.user_id);
+    if (error) throw new Error(friendly(error.message));
     return { ok: true };
   });
 
