@@ -150,7 +150,6 @@ function UsernameForm({ current }: { current: string }) {
       await changeUsername({ data: { username: value.trim() } });
       toast.success("Username updated");
     } catch (err) {
-      if (created.length) await cleanupPlayerUploadObjects({ data: { objects: created } }).catch(() => undefined);
       toast.error(errText(err));
     } finally {
       setBusy(false);
@@ -328,6 +327,7 @@ function UploadsSection({
       setVideo(null);
       await onSaved();
     } catch (err) {
+      if (created.length) await cleanupPlayerUploadObjects({ data: { objects: created } }).catch(() => undefined);
       toast.error(errText(err));
     } finally {
       setBusy(false);
