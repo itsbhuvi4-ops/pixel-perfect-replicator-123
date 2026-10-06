@@ -1,8 +1,27 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ClientOnly } from "@tanstack/react-router";
-import { lazy, Suspense } from "react";
+import { Component, lazy, Suspense, type ErrorInfo, type ReactNode } from "react";
 
 const ArenaScene = lazy(() => import("@/components/ArenaScene"));
+
+class ArenaSceneBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: Error, _info: ErrorInfo) {
+    console.error("[BidX] 3D arena scene failed to load; using static backdrop.", error);
+  }
+
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
+}
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -24,7 +43,11 @@ function LandingPage() {
       <section className="bidx-hero relative min-h-[100svh] overflow-hidden">
         <div className="bidx-scene pointer-events-none fixed inset-0 z-0" aria-hidden="true">
           <ClientOnly fallback={null}>
-            <Suspense fallback={null}><ArenaScene /></Suspense>
+            <Suspense fallback={<div className="bidx-scene-fallback absolute inset-0" aria-hidden="true" />}>
+              <ArenaSceneBoundary fallback={<div className="bidx-scene-fallback absolute inset-0" aria-hidden="true" />}>
+                <ArenaScene />
+              </ArenaSceneBoundary>
+            </Suspense>
           </ClientOnly>
         </div>
         <div className="bidx-vignette absolute inset-0" aria-hidden="true" />
