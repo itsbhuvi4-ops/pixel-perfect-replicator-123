@@ -124,6 +124,7 @@ export function useMyRoster(ambassadorId: string | null | undefined) {
 export function useRealtimeAuction() {
   const qc = useQueryClient();
   const { session } = useAuth();
+  const hasSession = Boolean(session?.user.id);
 
   useEffect(() => {
     const invalidate = () => {
@@ -136,7 +137,7 @@ export function useRealtimeAuction() {
 
     // Public audience polling deliberately avoids subscribing to private table
     // rows over Postgres Changes. Authenticated roles keep the realtime channel.
-    if (!session?.user.id) {
+    if (!hasSession) {
       const timer = window.setInterval(invalidate, 2000);
       invalidate();
       return () => window.clearInterval(timer);
@@ -156,7 +157,7 @@ export function useRealtimeAuction() {
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("online", invalidate);
     };
-  }, [qc, session?.user.id]);
+  }, [qc, hasSession]);
 }
 
 export function minimumNextBid(state: AuctionState | null | undefined): number {
