@@ -40,6 +40,17 @@ export async function uploadPlayerFile(
   return { path, url: data.publicUrl };
 }
 
+export function playerStoragePath(bucket: "player-photos" | "player-videos", url: string | null | undefined): string | null {
+  if (!url) return null;
+  const marker = `/storage/v1/object/public/${bucket}/`;
+  const signedMarker = `/storage/v1/object/sign/${bucket}/`;
+  const start = url.indexOf(marker);
+  const signedStart = url.indexOf(signedMarker);
+  if (start >= 0) return decodeURIComponent(url.slice(start + marker.length).split("?")[0]);
+  if (signedStart >= 0) return decodeURIComponent(url.slice(signedStart + signedMarker.length).split("?")[0]);
+  return null;
+}
+
 export async function removePlayerFile(bucket: "player-photos" | "player-videos", path: string) {
   const { error } = await supabase.storage.from(bucket).remove([path]);
   if (error) throw error;
