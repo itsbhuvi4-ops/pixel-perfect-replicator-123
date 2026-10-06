@@ -13,8 +13,8 @@ export function useAuctionState() {
   return useQuery({
     queryKey: ["auction_state"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("auction_state")
+      const { data, error } = await (supabase as any)
+        .from("bidx_public_auction_state")
         .select("id,status,current_player_id,current_bid,current_bidder_id,base_price,min_increment,lot_counter,max_players,max_ambassadors,max_casters,tournament_name,updated_at,default_starting_points,retain_price,max_retains,caster_cam_live,bidding_open,tournament_season,tournament_logo_url,auction_branding,caster_session_id")
         .eq("id", 1)
         .maybeSingle();
@@ -28,9 +28,8 @@ export function usePlayers() {
   return useQuery({
     queryKey: ["players"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("players")
-        .select("id,player_name,ingame_name,game_id,photo_url,video_url,primary_role,secondary_role,info,status,sold_price,ambassador_id,sold_at,lot_number,team_name,experience,created_at,updated_at")
+      const { data, error } = await (supabase as any)
+        .from("bidx_public_players")
         .order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? []) as Player[];
@@ -42,9 +41,8 @@ export function useAmbassadors() {
   return useQuery({
     queryKey: ["ambassadors"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("ambassadors")
-        .select("id,ambassador_name,team_name,photo_url,info,discord,starting_points,remaining_points,created_at,updated_at")
+      const { data, error } = await (supabase as any)
+        .from("bidx_public_ambassadors")
         .order("remaining_points", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Ambassador[];
@@ -56,9 +54,8 @@ export function useAuctionEvents(limit = 25) {
   return useQuery({
     queryKey: ["auction_events", limit],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("auction_events")
-        .select("id,event_type,message,player_id,ambassador_id,amount,created_at,player_name_snapshot,ingame_name_snapshot,game_id_snapshot,ambassador_name_snapshot,team_name_snapshot")
+      const { data, error } = await (supabase as any)
+        .from("bidx_public_auction_events")
         .order("created_at", { ascending: false })
         .limit(limit);
       if (error) throw error;
@@ -72,9 +69,8 @@ export function useBids(playerId: string | null | undefined) {
     queryKey: ["bids", playerId],
     enabled: !!playerId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("bids")
-        .select("id,player_id,ambassador_id,amount,created_at")
+      const { data, error } = await (supabase as any)
+        .from("bidx_public_bids")
         .eq("player_id", playerId!)
         .order("created_at", { ascending: false })
         .limit(30);
@@ -121,8 +117,8 @@ export function useMyRoster(ambassadorId: string | null | undefined) {
     queryKey: ["my_roster", ambassadorId],
     enabled: !!ambassadorId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("players")
+      const { data, error } = await (supabase as any)
+        .from("bidx_public_players")
         .select("*")
         .eq("ambassador_id", ambassadorId!)
         .order("sold_at", { ascending: false });
@@ -154,14 +150,8 @@ export function useRealtimeAuction() {
       return () => window.clearInterval(timer);
     }
 
-    const channel = supabase
-      .channel("auction-sync")
-      .on("postgres_changes", { event: "*", schema: "public", table: "auction_state" }, invalidate)
-      .on("postgres_changes", { event: "*", schema: "public", table: "players" }, invalidate)
-      .on("postgres_changes", { event: "*", schema: "public", table: "ambassadors" }, invalidate)
-      .on("postgres_changes", { event: "*", schema: "public", table: "bids" }, invalidate)
-      .on("postgres_changes", { event: "*", schema: "public", table: "auction_events" }, invalidate)
-      .subscribe();
+    const timer = window.setInterval(invalidate, 2000);
+    invalidate();
 
     const onVisible = () => {
       if (document.visibilityState === "visible") invalidate();
@@ -170,11 +160,10 @@ export function useRealtimeAuction() {
     window.addEventListener("online", invalidate);
 
     return () => {
-      supabase.removeChannel(channel);
+      window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("online", invalidate);
-    };
-  }, [qc, session?.user.id]);
+    }
 }
 
 export function minimumNextBid(state: AuctionState | null | undefined): number {
