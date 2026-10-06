@@ -43,7 +43,11 @@ async function createAccount(u: string, p: string, role: Role) {
     await sa.auth.admin.deleteUser(id);
     throw new Error("Already Registered");
   }
-  await sa.from("user_roles").insert({ user_id: id, role });
+  const { error: roleError } = await sa.from("user_roles").insert({ user_id: id, role });
+  if (roleError) {
+    await sa.auth.admin.deleteUser(id);
+    throw new Error(friendly(roleError.message));
+  }
   return id;
 }
 
@@ -487,20 +491,6 @@ export const adminDeletePlayer = createServerFn({ method: "POST" })
 
     const { error: authError } = await sa.auth.admin.deleteUser(player.user_id);
     if (authError) throw new Error(friendly(authError.message));
-    return { ok: true };
-  });
-
-export const adminRemovePlayer = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ playerId: z.string().uuid() }).parse(d))
-  .handler(async ({ data, context }) => {
-    await requireRole(context, ["admin"]);
-    const sa = await admin();
-    const { data: pl } = await sa.from("players").select("status").eq("id", data.playerId).maybeSingle();
-    if (!pl) throw new Error("Player not found");
-    if (!["pool", "unsold"].includes(pl.status)) throw new Error("Only pool or unsold players can be removed");
-    const { error } = await sa.from("players").delete().eq("id", data.playerId);
-    if (error) throw new Error(friendly(error.message));
     return { ok: true };
   });
 
