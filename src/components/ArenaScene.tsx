@@ -1,6 +1,5 @@
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Float, Sparkles, Stars } from "@react-three/drei";
 import * as THREE from "three";
 
 const VIOLET = "#8b5cf6";
@@ -50,13 +49,67 @@ function Orbit() {
 }
 
 function FloatingShard({ position, scale, speed }: { position: [number, number, number]; scale: number; speed: number }) {
+  const mesh = useRef<THREE.Mesh>(null);
+  const initialPosition = useMemo(() => new THREE.Vector3(...position), [position]);
+  useFrame(({ clock }) => {
+    if (!mesh.current) return;
+    const time = clock.getElapsedTime() * speed;
+    mesh.current.rotation.x += 0.0015 * speed;
+    mesh.current.rotation.y += 0.002 * speed;
+    mesh.current.position.y = initialPosition.y + Math.sin(time) * 0.22;
+  });
   return (
-    <Float speed={speed} rotationIntensity={0.8} floatIntensity={0.9}>
-      <mesh position={position} scale={scale} rotation={[0.4, 0.2, 0.7]}>
-        <icosahedronGeometry args={[0.55, 1]} />
-        <meshStandardMaterial color="#17102b" emissive={VIOLET} emissiveIntensity={0.55} metalness={0.85} roughness={0.28} />
-      </mesh>
-    </Float>
+    <mesh ref={mesh} position={position} scale={scale} rotation={[0.4, 0.2, 0.7]}>
+      <icosahedronGeometry args={[0.55, 1]} />
+      <meshStandardMaterial color="#17102b" emissive={VIOLET} emissiveIntensity={0.55} metalness={0.85} roughness={0.28} />
+    </mesh>
+  );
+}
+
+function StarField() {
+  const positions = useMemo(() => {
+    const points = new Float32Array(850 * 3);
+    for (let i = 0; i < 850; i += 1) {
+      const radius = 18 + Math.random() * 52;
+      const theta = Math.random() * Math.PI * 2;
+      const vertical = (Math.random() - 0.5) * 46;
+      points[i * 3] = Math.cos(theta) * radius;
+      points[i * 3 + 1] = vertical;
+      points[i * 3 + 2] = Math.sin(theta) * radius - 8;
+    }
+    return points;
+  }, []);
+  return (
+    <points>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial color="#c4b5fd" size={0.075} transparent opacity={0.7} sizeAttenuation />
+    </points>
+  );
+}
+
+function AmbientParticles() {
+  const points = useRef<THREE.Points>(null);
+  const positions = useMemo(() => {
+    const values = new Float32Array(45 * 3);
+    for (let i = 0; i < 45; i += 1) {
+      values[i * 3] = (Math.random() - 0.5) * 12;
+      values[i * 3 + 1] = (Math.random() - 0.5) * 6;
+      values[i * 3 + 2] = (Math.random() - 0.5) * 8;
+    }
+    return values;
+  }, []);
+  useFrame((_, delta) => {
+    if (points.current) points.current.rotation.y += delta * 0.012;
+  });
+  return (
+    <points ref={points}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial color="#c4b5fd" size={0.045} transparent opacity={0.45} sizeAttenuation />
+    </points>
   );
 }
 
@@ -98,8 +151,8 @@ export default function ArenaScene() {
       <FloatingShard position={[4.1, 2.9, -2]} scale={0.75} speed={0.9} />
       <FloatingShard position={[3.4, -0.4, 1]} scale={0.5} speed={1.1} />
       <FloatingShard position={[-3.3, -0.8, 0]} scale={0.65} speed={0.8} />
-      <Stars radius={70} depth={35} count={850} factor={1.8} saturation={0} fade speed={0.2} />
-      <Sparkles count={45} scale={[12, 6, 8]} size={1.1} speed={0.14} color="#c4b5fd" />
+      <StarField />
+      <AmbientParticles />
     </Canvas>
   );
 }
