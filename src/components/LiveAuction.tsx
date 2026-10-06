@@ -26,7 +26,7 @@ export function LiveAuction({ audience = false }: { audience?: boolean }) {
   const { data: players = [] } = usePlayers();
   const { data: ambassadors = [] } = useAmbassadors();
   const { data: events = [] } = useAuctionEvents();
-  const { stream: camStream, status: camStatus } = useCasterCamStream(true);
+  const { stream: camStream, status: camStatus } = useCasterCamStream(Boolean(state?.caster_cam_live), state?.caster_session_id ?? null);
   const current = players.find((p) => p.id === state?.current_player_id) ?? null;
   const { data: bids = [] } = useBids(current?.id);
 
