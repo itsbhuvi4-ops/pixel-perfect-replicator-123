@@ -8,17 +8,17 @@ class ArenaSceneBoundary extends Component<
   { children: ReactNode; fallback: ReactNode },
   { failed: boolean }
 > {
-  state = { failed: false };
+  override state = { failed: false };
 
   static getDerivedStateFromError() {
     return { failed: true };
   }
 
-  componentDidCatch(error: Error, _info: ErrorInfo) {
+  override componentDidCatch(error: Error, _info: ErrorInfo) {
     console.error("[BidX] 3D arena scene failed to load; using static backdrop.", error);
   }
 
-  render() {
+  override render() {
     return this.state.failed ? this.props.fallback : this.props.children;
   }
 }
