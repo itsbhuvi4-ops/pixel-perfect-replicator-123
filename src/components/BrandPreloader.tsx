@@ -94,6 +94,8 @@ export function BrandPreloader({ children }: { children: ReactNode }) {
     document.body.style.overflow = "hidden";
     let animationFrame = 0;
     const startedAt = performance.now();
+    const handoff = window.setTimeout(() => setFinished(true),
+      (motion.matches ? PRELOADER_TIMING.reducedEnd : PRELOADER_TIMING.end) * 1000);
     let width = 0;
     let height = 0;
     const resize = () => {
@@ -121,6 +123,7 @@ export function BrandPreloader({ children }: { children: ReactNode }) {
     };
     animationFrame = requestAnimationFrame(tick);
     return () => {
+      window.clearTimeout(handoff);
       cancelAnimationFrame(animationFrame);
       window.removeEventListener("resize", resize);
       document.body.style.overflow = originalOverflow;
