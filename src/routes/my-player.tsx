@@ -8,7 +8,7 @@ import { useMyPlayer, useAuctionState, useRealtimeAuction, type Player } from "@
 import { GAME_ROLES, ROLE_LABELS, money } from "@/lib/format";
 import { uploadPlayerFile } from "@/lib/storage";
 import { supabase } from "@/integrations/supabase/client";
-import { markPlayerUploadPromptSeen } from "@/lib/accounts.functions";
+import { cleanupPlayerUploadObjects, markPlayerUploadPromptSeen } from "@/lib/accounts.functions";
 
 export const Route = createFileRoute("/my-player")({
   head: () => ({ meta: [{ title: "Player — Bid X Auction" }, { name: "robots", content: "noindex" },
@@ -292,17 +292,25 @@ function UploadsSection({
 
     setBusy(true);
     try {
+      const created: { bucket: "player-photos" | "player-videos"; path: string }[] = [];
       setProgress("Uploading photo…");
-      const photoUrl = photo ? await uploadPlayerFile("player-photos", userId, photo) : player.photo_url;
+      const photoResult = photo ? await uploadPlayerFile("player-photos", userId, photo) : null;
+      if (photoResult) created.push({ bucket: "player-photos", path: photoResult.path });
+      const photoUrl = photoResult?.url ?? player.photo_url;
       setProgress("Uploading video…");
-      const videoUrl = video ? await uploadPlayerFile("player-videos", userId, video) : player.video_url;
+      const videoResult = video ? await uploadPlayerFile("player-videos", userId, video) : null;
+      if (videoResult) created.push({ bucket: "player-videos", path: videoResult.path });
+      const videoUrl = videoResult?.url ?? player.video_url;
       setProgress("Saving profile…");
 
       const { data, error } = await (supabase.rpc as any)("player_update_uploads", {
         p_photo_url: photoUrl,
         p_video_url: videoUrl,
       });
-      if (error) throw error;
+      if (error) {
+        await cleanupPlayerUploadObjects({ data: { objects: created } }).catch(() => undefined);
+        throw error;
+      }
 
       const next = Number(data?.information_change_count ?? count + 1);
       toast.success(next >= 3 ? "Uploads saved. Editing is now locked." : "Uploads saved");
