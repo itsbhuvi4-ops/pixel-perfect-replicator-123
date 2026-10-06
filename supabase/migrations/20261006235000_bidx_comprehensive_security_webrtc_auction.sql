@@ -243,9 +243,11 @@ create or replace view public.bidx_public_ambassadors as
 select id,ambassador_name,team_name,photo_url,info,discord,starting_points,remaining_points,created_at,updated_at from public.ambassadors;
 create or replace view public.bidx_public_auction_state as
 select id,status,current_player_id,current_bid,current_bidder_id,base_price,min_increment,lot_counter,
-       max_players,max_ambassadors,max_casters,tournament_name,updated_at,default_starting_points,retain_price,
-       max_retains,caster_cam_live,bidding_open,tournament_season,tournament_logo_url,auction_branding,
-       caster_session_id,bidding_deadline_at from public.auction_state;
+       max_players,max_ambassadors,max_casters,tournament_name,updated_at,default_starting_points,retain_price,max_retains,
+       case when caster_cam_live and caster_lease_until>now() then true else false end as caster_cam_live,
+       bidding_open,tournament_season,tournament_logo_url,auction_branding,
+       case when caster_cam_live and caster_lease_until>now() then caster_session_id else null end as caster_session_id,
+       bidding_deadline_at from public.auction_state;
 create or replace view public.bidx_public_bids as select id,player_id,ambassador_id,amount,created_at from public.bids;
 create or replace view public.bidx_public_auction_events as
 select id,event_type,message,player_id,ambassador_id,amount,created_at,player_name_snapshot,
