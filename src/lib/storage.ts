@@ -46,8 +46,14 @@ export function playerStoragePath(bucket: "player-photos" | "player-videos", url
   const signedMarker = `/storage/v1/object/sign/${bucket}/`;
   const start = url.indexOf(marker);
   const signedStart = url.indexOf(signedMarker);
-  if (start >= 0) return decodeURIComponent(url.slice(start + marker.length).split("?")[0]);
-  if (signedStart >= 0) return decodeURIComponent(url.slice(signedStart + signedMarker.length).split("?")[0]);
+  if (start >= 0) {
+    const part = url.slice(start + marker.length).split("?")[0];
+    return part ? decodeURIComponent(part) : null;
+  }
+  if (signedStart >= 0) {
+    const part = url.slice(signedStart + signedMarker.length).split("?")[0];
+    return part ? decodeURIComponent(part) : null;
+  }
   return null;
 }
 
