@@ -413,6 +413,23 @@ export const updateAmbassador = createServerFn({ method: "POST" })
     return { ok: true, pointsChanged: st?.status === "not_started" };
   });
 
+export const resetAuction = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await requireRole(context, ["admin"]);
+    const sa = await admin();
+    const { data, error } = await sa.rpc("admin_reset_auction");
+    if (error) throw new Error(friendly(error.message));
+    return data as {
+      ok: boolean;
+      players_reset: number;
+      bids_deleted: number;
+      results_deleted: number;
+      retains_deleted: number;
+      events_deleted: number;
+    };
+  });
+
 export const updateSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
