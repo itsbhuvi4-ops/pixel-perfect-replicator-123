@@ -99,6 +99,7 @@ function AuctionControls() {
   const qc = useQueryClient();
   const setStatus = useServerFn(setAuctionStatus);
   const [busy, setBusy] = useState<string | null>(null);
+  const finalizedDeadlineRef = useRef<string | null>(null);
   const { data: state } = useAuctionState();
   const status = state?.status;
   const hasCurrent = !!state?.current_player_id;
@@ -164,6 +165,28 @@ function AuctionControls() {
       setBusy(null);
     }
   };
+
+  useEffect(() => {
+    const deadline = state?.bidding_deadline_at;
+    if (!isLive || !state?.bidding_open || !deadline || !hasCurrent) return;
+    if (finalizedDeadlineRef.current === deadline) return;
+
+    const delay = Math.max(0, new Date(deadline).getTime() - Date.now());
+    const timer = window.setTimeout(async () => {
+      if (finalizedDeadlineRef.current === deadline) return;
+      finalizedDeadlineRef.current = deadline;
+      try {
+        const { error } = await supabase.rpc("finalize_player_v3");
+        if (error) throw error;
+        await refresh();
+        toast.info("Bidding time expired — player finalized by the server");
+      } catch (err) {
+        toast.error(errText(err));
+      }
+    }, delay + 50);
+
+    return () => window.clearTimeout(timer);
+  }, [state?.bidding_deadline_at, state?.bidding_open, isLive, hasCurrent]);
 
   const markUnsold = async () => {
     setBusy("unsold");
@@ -310,14 +333,17 @@ function AuctionCountdown({ state }: { state: ReturnType<typeof useAuctionState>
         setSeconds(0);
         return;
       }
+      if (state.bidding_open && state.bidding_deadline_at) {
+        setSeconds(Math.max(0, Math.ceil((new Date(state.bidding_deadline_at).getTime() - Date.now()) / 1000)));
+        return;
+      }
       const age = Math.max(0, (Date.now() - new Date(state.updated_at).getTime()) / 1000);
-      const limit = state.bidding_open ? 30 : 4;
-      setSeconds(Math.max(0, Math.ceil(limit - age)));
+      setSeconds(Math.max(0, Math.ceil(4 - age)));
     };
     tick();
     const id = window.setInterval(tick, 250);
     return () => window.clearInterval(id);
-  }, [state?.current_player_id, state?.updated_at, state?.bidding_open]);
+  }, [state?.current_player_id, state?.updated_at, state?.bidding_open, state?.bidding_deadline_at]);
 
   if (!state?.current_player_id || state.status !== "live") {
     return <div className="flex items-center justify-between font-mono text-[10px] text-mut"><span>COUNTDOWN</span><span>—</span></div>;
