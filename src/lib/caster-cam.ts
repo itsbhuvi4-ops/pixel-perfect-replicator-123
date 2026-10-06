@@ -1,18 +1,22 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
-export const CAM_CHANNEL = "bidx-caster-cam";
+export const CAM_CHANNEL_PREFIX = "bidx-caster-cam:";
 
-const turnUrl = import.meta.env["VITE_TURN_URL"] as string | undefined;
+const turnUrls = [
+  ...(String(import.meta.env["VITE_TURN_URLS"] ?? "").split(",").map((v) => v.trim()).filter(Boolean)),
+  String(import.meta.env["VITE_TURN_URL"] ?? "").trim(),
+  String(import.meta.env["VITE_TURN_TCP_URL"] ?? "").trim(),
+  String(import.meta.env["VITE_TURN_TLS_URL"] ?? "").trim(),
+].filter(Boolean);
 const turnUsername = import.meta.env["VITE_TURN_USERNAME"] as string | undefined;
 const turnCredential = import.meta.env["VITE_TURN_CREDENTIAL"] as string | undefined;
 
 const ICE_CONFIG: RTCConfiguration = {
   iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-    ...(turnUrl && turnUsername && turnCredential
-      ? [{ urls: turnUrl, username: turnUsername, credential: turnCredential }]
+    { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
+    ...(turnUrls.length && turnUsername && turnCredential
+      ? [{ urls: turnUrls, username: turnUsername, credential: turnCredential }]
       : []),
   ],
   iceCandidatePoolSize: 10,
@@ -39,9 +43,14 @@ function targeted(payload: Signal, receiver: string) {
   return !("to" in payload) || !payload.to || payload.to === receiver;
 }
 
+function topic(sessionId: string) {
+  return `${CAM_CHANNEL_PREFIX}${sessionId}`;
+}
+
 export function startCasterBroadcast(
   stream: MediaStream,
   onStatus: (status: CamStatus, viewers?: number) => void,
+  sessionId: string,
 ): () => void {
   const casterId = id();
   const peers = new Map<string, RTCPeerConnection>();
@@ -57,36 +66,11 @@ export function startCasterBroadcast(
     if (!stopped) report();
   };
 
-  const connect = async (viewerId: string) => {
-    if (stopped || !channel || peers.has(viewerId)) return;
-    const pc = new RTCPeerConnection(ICE_CONFIG);
-    peers.set(viewerId, pc);
-    pendingIce.set(viewerId, []);
-    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-
-    pc.onicecandidate = (event) => {
-      if (event.candidate && channel) {
-        void send(channel, {
-          kind: "ice",
-          from: casterId,
-          to: viewerId,
-          candidate: event.candidate.toJSON(),
-        });
-      }
-    };
-
-    pc.onconnectionstatechange = () => {
-      if (pc.connectionState === "connected") report();
-      if (["failed", "closed"].includes(pc.connectionState)) drop(viewerId);
-      if (pc.connectionState === "disconnected") {
-        window.setTimeout(() => {
-          if (!stopped && peers.get(viewerId) === pc && pc.connectionState === "disconnected") drop(viewerId);
-        }, 4000);
-      }
-    };
-
+  const negotiate = async (viewerId: string, iceRestart = false) => {
+    const pc = peers.get(viewerId);
+    if (!pc || stopped || !channel) return;
     try {
-      const offer = await pc.createOffer();
+      const offer = await pc.createOffer(iceRestart ? { iceRestart: true } : undefined);
       await pc.setLocalDescription(offer);
       if (channel && pc.localDescription?.sdp) {
         await send(channel, { kind: "offer", from: casterId, to: viewerId, sdp: pc.localDescription.sdp });
@@ -96,26 +80,47 @@ export function startCasterBroadcast(
     }
   };
 
+  const connect = async (viewerId: string) => {
+    if (stopped || !channel || peers.has(viewerId)) return;
+    const pc = new RTCPeerConnection(ICE_CONFIG);
+    peers.set(viewerId, pc);
+    pendingIce.set(viewerId, []);
+    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate && channel) {
+        void send(channel, { kind: "ice", from: casterId, to: viewerId, candidate: event.candidate.toJSON() });
+      }
+    };
+
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === "connected") report();
+      if (pc.connectionState === "failed" || pc.connectionState === "closed") drop(viewerId);
+      if (pc.connectionState === "disconnected") {
+        window.setTimeout(() => {
+          if (stopped || peers.get(viewerId) !== pc) return;
+          if (pc.connectionState === "disconnected") {
+            void negotiate(viewerId, true);
+            window.setTimeout(() => {
+              if (!stopped && peers.get(viewerId) === pc && pc.connectionState !== "connected") drop(viewerId);
+            }, 4500);
+          }
+        }, 1000);
+      }
+    };
+
+    await negotiate(viewerId);
+  };
+
   onStatus("connecting");
   channel = supabase
-    .channel(CAM_CHANNEL, { config: { broadcast: { self: false }, presence: { key: casterId } } })
+    .channel(topic(sessionId), { config: { broadcast: { self: false }, presence: { key: casterId } } })
     .on("broadcast", { event: "signal" }, async ({ payload }: { payload: Signal }) => {
       if (stopped) return;
-
-      // hello is deliberately not targeted: every active caster can receive viewer discovery.
       if (payload.kind === "hello") {
         const existing = peers.get(payload.from);
         if (existing) {
-          // Viewers send discovery heartbeats. Keep a healthy peer stable, but
-          // replace a stale/failed connection so a viewer can recover without
-          // refreshing the page.
-          if (
-            existing.connectionState === "connected" ||
-            existing.connectionState === "connecting" ||
-            existing.connectionState === "new"
-          ) {
-            return;
-          }
+          if (["connected", "connecting", "new"].includes(existing.connectionState)) return;
           drop(payload.from);
         }
         await connect(payload.from);
@@ -128,9 +133,7 @@ export function startCasterBroadcast(
         if (!pc || pc.signalingState === "closed") return;
         try {
           await pc.setRemoteDescription({ type: "answer", sdp: payload.sdp });
-          for (const candidate of pendingIce.get(payload.from) ?? []) {
-            await pc.addIceCandidate(candidate).catch(() => {});
-          }
+          for (const candidate of pendingIce.get(payload.from) ?? []) await pc.addIceCandidate(candidate).catch(() => {});
           pendingIce.delete(payload.from);
         } catch {
           drop(payload.from);
@@ -148,7 +151,7 @@ export function startCasterBroadcast(
       if (stopped) return;
       if (status === "SUBSCRIBED") {
         report();
-        void channel?.track({ role: "caster" });
+        void channel?.track({ role: "caster", sessionId });
       } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
         onStatus("error");
       }
@@ -166,9 +169,16 @@ export function startCasterBroadcast(
 }
 
 export function watchCasterCam(
+  sessionId: string | null,
   onStream: (stream: MediaStream | null) => void,
   onStatus: (status: CamStatus) => void,
 ): () => void {
+  if (!sessionId) {
+    onStream(null);
+    onStatus("idle");
+    return () => {};
+  }
+
   const viewerId = id();
   let channel: RealtimeChannel | null = null;
   let pc: RTCPeerConnection | null = null;
@@ -198,22 +208,15 @@ export function watchCasterCam(
     casterId = offer.from;
     const next = new RTCPeerConnection(ICE_CONFIG);
     pc = next;
-
     const remoteStream = new MediaStream();
+
     next.ontrack = (event) => {
-      if (!remoteStream.getTracks().some((track) => track.id === event.track.id)) {
-        remoteStream.addTrack(event.track);
-      }
+      if (!remoteStream.getTracks().some((track) => track.id === event.track.id)) remoteStream.addTrack(event.track);
       onStream(remoteStream);
     };
     next.onicecandidate = (event) => {
       if (event.candidate && channel) {
-        void send(channel, {
-          kind: "ice",
-          from: viewerId,
-          to: offer.from,
-          candidate: event.candidate.toJSON(),
-        });
+        void send(channel, { kind: "ice", from: viewerId, to: offer.from, candidate: event.candidate.toJSON() });
       }
     };
     next.oniceconnectionstatechange = () => {
@@ -228,7 +231,7 @@ export function watchCasterCam(
       if (next.connectionState === "connected") {
         if (retryTimer) clearTimeout(retryTimer);
         onStatus("live");
-      } else if (["failed", "closed"].includes(next.connectionState)) {
+      } else if (next.connectionState === "failed" || next.connectionState === "closed") {
         onStream(null);
         onStatus("connecting");
         cleanup();
@@ -237,7 +240,10 @@ export function watchCasterCam(
         onStream(null);
         onStatus("connecting");
         window.setTimeout(() => {
-          if (!stopped && pc === next && next.connectionState === "disconnected") ask();
+          if (!stopped && pc === next && next.connectionState === "disconnected") {
+            next.restartIce();
+            ask();
+          }
         }, 1500);
       }
     };
@@ -260,7 +266,7 @@ export function watchCasterCam(
 
   onStatus("connecting");
   channel = supabase
-    .channel(CAM_CHANNEL, { config: { broadcast: { self: false }, presence: { key: viewerId } } })
+    .channel(topic(sessionId), { config: { broadcast: { self: false }, presence: { key: viewerId } } })
     .on("broadcast", { event: "signal" }, async ({ payload }: { payload: Signal }) => {
       if (stopped || !targeted(payload, viewerId)) return;
       if (payload.kind === "offer") {
@@ -278,7 +284,7 @@ export function watchCasterCam(
     .subscribe((status) => {
       if (stopped) return;
       if (status === "SUBSCRIBED") {
-        void channel?.track({ role: "viewer" });
+        void channel?.track({ role: "viewer", sessionId });
         ask();
       } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
         onStatus("error");
