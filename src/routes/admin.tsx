@@ -8,13 +8,13 @@ import { useAuth } from "@/lib/auth";
 import { useAuctionState, usePlayers, useAmbassadors, useRealtimeAuction } from "@/lib/auction";
 import {
   adminDeleteAccount,
+  adminDeleteAmbassador,
+  adminDeletePlayer,
   adminRequeuePlayer,
   createStaff,
   listUsers,
   resetUserPassword,
   resetAuction,
-  seedDefaultAccounts,
-  setUserActive,
   systemStatus,
   updateAmbassador,
   updateSettings,
@@ -54,7 +54,6 @@ type AdminUser = {
   id: string;
   username: string;
   display_name: string | null;
-  is_active: boolean;
   created_at: string;
   roles: string[];
 };
@@ -203,7 +202,6 @@ function AccountsTab() {
     <div className="flex flex-col gap-4">
       <div className="grid gap-4 lg:grid-cols-2">
         <CreateStaffCard />
-        <SeedCard />
       </div>
 
       <div className="rounded-xl bg-panel p-4 ring-1 ring-line">
@@ -223,7 +221,6 @@ function AccountsTab() {
                   <th className="py-2 pr-3">Username</th>
                   <th className="py-2 pr-3">Roles</th>
                   <th className="py-2 pr-3">Joined</th>
-                  <th className="py-2 pr-3">Status</th>
                   <th className="py-2">Actions</th>
                 </tr>
               </thead>
@@ -242,30 +239,16 @@ function AccountsTab() {
 
 function UserRow({ user }: { user: AdminUser }) {
   const qc = useQueryClient();
-  const setActive = useServerFn(setUserActive);
   const resetPw = useServerFn(resetUserPassword);
   const [busy, setBusy] = useState(false);
-  const active = user.is_active;
-
-  const toggle = async () => {
-    setBusy(true);
-    try {
-      await setActive({ data: { userId: user.id, active: !active } });
-      toast.success(active ? "Account deactivated" : "Account activated");
-      await qc.invalidateQueries({ queryKey: ["admin_users"] });
-    } catch (err) {
-      toast.error(errText(err));
-    } finally {
-      setBusy(false);
-    }
-  };
 
   const reset = async () => {
-    if (!confirm(`Reset the password for ${user.username}?`)) return;
+    if (!confirm(`Generate a one-time password recovery link for ${user.username}? The password itself will never be shown.`)) return;
     setBusy(true);
     try {
       const res = await resetPw({ data: { userId: user.id } });
-      toast.success(`New password: ${res.password} — share it privately`, { duration: 15000 });
+      await navigator.clipboard.writeText(res.resetLink);
+      toast.success("Password recovery link copied to clipboard. Share it privately.", { duration: 9000 });
     } catch (err) {
       toast.error(errText(err));
     } finally {
@@ -284,16 +267,10 @@ function UserRow({ user }: { user: AdminUser }) {
         </span>
       </td>
       <td className="py-2 pr-3 text-mut">{new Date(user.created_at).toLocaleDateString()}</td>
-      <td className="py-2 pr-3">
-        <span className={active ? "text-sold" : "text-alert"}>{active ? "active" : "banned"}</span>
-      </td>
       <td className="py-2">
         <span className="flex gap-2">
-          <button disabled={busy} onClick={() => void toggle()} className="label-cond border border-line px-2 py-0.5 text-[11px] text-mut hover:text-foreground">
-            {active ? "Deactivate" : "Activate"}
-          </button>
           <button disabled={busy} onClick={() => void reset()} className="label-cond border border-line px-2 py-0.5 text-[11px] text-mut hover:text-foreground">
-            Reset pw
+            Reset password
           </button>
           <button
             disabled={busy}
@@ -374,11 +351,12 @@ function CreateStaffCard() {
   );
 }
 
-function SeedCard() {
+/* SeedCard removed: generated credentials must never be displayed by the admin UI. */
+function SeedCard_DISABLED() {
   const seed = useServerFn(seedDefaultAccounts);
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
-  const [creds, setCreds] = useState<{ username: string; password: string }[]>([]);
+  const [creds, setCreds] = useState<{ username: string }[]>([]);
 
   const run = async () => {
     if (!confirm("Create 24 ambassadors (Team 001–024) and 2 casters with random passwords?")) return;
@@ -414,20 +392,7 @@ function SeedCard() {
       {creds.length > 0 && (
         <div className="mt-3">
           <p className="text-[12px] text-mut">{creds.length} accounts created — save these passwords now:</p>
-          <textarea
-            readOnly
-            value={creds.map((c) => `${c.username} — ${c.password}`).join("\n")}
-            className="field mt-1 h-32 w-full font-mono text-[11px]"
-          />
-          <button
-            onClick={() => {
-              void navigator.clipboard.writeText(creds.map((c) => `${c.username} — ${c.password}`).join("\n"));
-              toast.success("Copied");
-            }}
-            className="label-cond mt-1 border border-line px-3 py-1.5 text-[12px] text-mut hover:text-foreground"
-          >
-            Copy all
-          </button>
+          <div className="mt-3 text-[12px] text-mut">{creds.map((x) => x.username).join(", ")}</div>
         </div>
       )}
     </div>
@@ -454,7 +419,7 @@ function TeamsTab() {
       ) : (
         <div className="mt-2 grid gap-2 md:grid-cols-2">
           {ambassadors.map((a) => (
-            <TeamRow key={a.id} id={a.id} userId={a.user_id} team={a.team_name} name={a.ambassador_name} points={a.starting_points} editable={editable} />
+            <TeamRow key={a.id} id={a.id} team={a.team_name} name={a.ambassador_name} points={a.starting_points} editable={editable} />
           ))}
         </div>
       )}
@@ -464,14 +429,12 @@ function TeamsTab() {
 
 function TeamRow({
   id,
-  userId,
   team,
   name,
   points,
   editable,
 }: {
   id: string;
-  userId: string;
   team: string;
   name: string;
   points: number;
@@ -509,7 +472,7 @@ function TeamRow({
         >
           Save
         </button>
-        <DeleteAccountButton userId={userId} label={name} />
+        <DeleteAmbassadorButton ambassadorId={id} label={name} />
       </div>
       <div className="mt-1.5 flex gap-2">
         <input className="field flex-1 !py-1.5 text-[12px]" value={f.team_name} onChange={(e) => setF({ ...f, team_name: e.target.value })} />
@@ -576,7 +539,7 @@ function PlayersTab() {
                   )}
                 </td>
                 <td className="py-2 pr-3">{p.status === "sold" && p.sold_price != null ? plainPoints(p.sold_price) : "—"}</td>
-                <td className="py-2"><PlayerActions id={p.id} userId={p.user_id} status={p.status} /></td>
+                <td className="py-2"><PlayerActions id={p.id} status={p.status} /></td>
               </tr>
             ))}
             {filtered.length === 0 && (
@@ -589,9 +552,9 @@ function PlayersTab() {
   );
 }
 
-function PlayerActions({ id, userId, status }: { id: string; userId: string; status: string }) {
+function PlayerActions({ id, status }: { id: string; status: string }) {
   const qc = useQueryClient();
-  const remove = useServerFn(adminDeleteAccount);
+  const remove = useServerFn(adminDeletePlayer);
   const requeue = useServerFn(adminRequeuePlayer);
   const [busy, setBusy] = useState(false);
 
@@ -626,7 +589,7 @@ function PlayerActions({ id, userId, status }: { id: string; userId: string; sta
         disabled={busy}
         onClick={() => {
           if (confirm("Are you sure you want to permanently delete this user? This will remove their account, login credentials, profile data and associated files.")) {
-            void run(() => remove({ data: { userId } }), "Player account deleted");
+            void run(() => remove({ data: { playerId: id } }), "Player account deleted");
           }
         }}
         className="label-cond border border-alert/40 px-2 py-0.5 text-[11px] text-alert disabled:opacity-30"
@@ -634,6 +597,34 @@ function PlayerActions({ id, userId, status }: { id: string; userId: string; sta
         Delete
       </button>
     </div>
+  );
+}
+
+function DeleteAmbassadorButton({ ambassadorId, label }: { ambassadorId: string; label: string }) {
+  const qc = useQueryClient();
+  const remove = useServerFn(adminDeleteAmbassador);
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <button
+      disabled={busy}
+      onClick={() => {
+        if (!confirm(`Permanently delete ambassador ${label}? Sold-player history will be preserved.`)) return;
+        setBusy(true);
+        void remove({ data: { ambassadorId } })
+          .then(async () => {
+            toast.success("Ambassador deleted");
+            await qc.invalidateQueries({ queryKey: ["ambassadors"] });
+            await qc.invalidateQueries({ queryKey: ["players"] });
+            await qc.invalidateQueries({ queryKey: ["admin_users"] });
+          })
+          .catch((err) => toast.error(errText(err)))
+          .finally(() => setBusy(false));
+      }}
+      className="label-cond border border-alert/40 px-2 py-0.5 text-[11px] text-alert disabled:opacity-30"
+    >
+      Delete
+    </button>
   );
 }
 
