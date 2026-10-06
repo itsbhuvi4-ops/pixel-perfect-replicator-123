@@ -12,4 +12,7 @@ jobs:
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
+      - run: bun run lint
+      - run: bun x tsc --noEmit
       - run: bun run build
+      - run: bun test src/lib/preloader-timeline.test.ts
