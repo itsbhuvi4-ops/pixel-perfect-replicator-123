@@ -77,8 +77,9 @@ function ChangePasswordPage() {
           .update({ must_change_password: false, updated_at: new Date().toISOString() })
           .eq("id", session.user.id);
       }
-      toast.success("Password changed");
-      navigate({ to: "/" });
+      await supabase.auth.signOut();
+      toast.success("Password changed. Please sign in again.");
+      navigate({ to: "/login", search: {} });
     } catch (err) {
       toast.error(errText(err));
     } finally {
