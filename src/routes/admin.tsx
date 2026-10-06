@@ -12,6 +12,7 @@ import {
   createStaff,
   listUsers,
   resetUserPassword,
+  resetAuction,
   seedDefaultAccounts,
   setUserActive,
   systemStatus,
@@ -751,6 +752,27 @@ function SettingsTab() {
     }
   };
 
+  const reset = useServerFn(resetAuction);
+  const [resetBusy, setResetBusy] = useState(false);
+
+  const runReset = async () => {
+    if (!confirm("Reset the entire auction? Previously sold/unsold players will become available again, team points will be restored, and all current auction bids/results/events/retains will be permanently deleted. This cannot be undone.")) return;
+    setResetBusy(true);
+    try {
+      const result = await reset();
+      toast.success(`Auction reset successfully — ${result.players_reset} players available again.`);
+      await qc.invalidateQueries({ queryKey: ["auction_state"] });
+      await qc.invalidateQueries({ queryKey: ["players"] });
+      await qc.invalidateQueries({ queryKey: ["ambassadors"] });
+      await qc.invalidateQueries({ queryKey: ["auction_events"] });
+      await qc.invalidateQueries({ queryKey: ["bids"] });
+    } catch (err) {
+      toast.error(errText(err));
+    } finally {
+      setResetBusy(false);
+    }
+  };
+
   return (
     <form onSubmit={submit} className="rounded-xl bg-panel p-4 ring-1 ring-line">
       <div className="label-cond text-[12px] text-mut">Tournament Branding & Auction Settings</div>
@@ -810,6 +832,22 @@ function SettingsTab() {
         <input type="checkbox" checked={f.apply_points_to_all} onChange={set("apply_points_to_all")} />
         Also reset every team's points to the new starting value (only works before the auction starts)
       </label>
+      <div className="mt-6 rounded-xl border border-alert/40 bg-alert/5 p-4">
+        <div className="label-cond text-[12px] text-alert">Danger Zone — Reset Auction</div>
+        <p className="mt-1 max-w-2xl text-[12px] text-mut">
+          Start the auction from zero. Previously sold, unsold and retained players become available again,
+          ambassador points return to their configured starting values, and the current auction bids/results/events/retains are permanently deleted.
+        </p>
+        <button
+          type="button"
+          disabled={resetBusy}
+          onClick={() => void runReset()}
+          className="label-cond mt-3 border border-alert/60 bg-alert/10 px-4 py-2 text-[13px] text-alert hover:bg-alert/20 disabled:opacity-50"
+        >
+          {resetBusy ? "Resetting auction…" : "RESET AUCTION"}
+        </button>
+      </div>
+
       <button disabled={busy} className="label-cond mt-4 bg-gold px-4 py-2 text-[13px] text-arena disabled:opacity-50">
         {busy ? "Saving…" : "Save tournament settings"}
       </button>
