@@ -78,7 +78,7 @@ export const setupFirstAdmin = createServerFn({ method: "POST" })
     setupCode: z.string().trim().min(12).max(200),
   }).parse(d))
   .handler(async ({ data }) => {
-    const expected = process.env.BIDX_FIRST_ADMIN_SETUP_CODE;
+    const expected = process.env["BIDX_FIRST_ADMIN_SETUP_CODE"];
     if (!expected || data.setupCode !== expected) throw new Error("Invalid setup code");
 
     const sa = await admin();
@@ -352,7 +352,7 @@ export const resetUserPassword = createServerFn({ method: "POST" })
       type: "recovery",
       email: usernameToEmail(profile.username),
       options: {
-        redirectTo: `${process.env.PUBLIC_SITE_URL ?? process.env.VITE_APP_URL ?? "https://auction-delta.lovable.app"}/change-password`,
+        redirectTo: `${process.env["PUBLIC_SITE_URL"] ?? process.env["VITE_APP_URL"] ?? "https://auction-delta.lovable.app"}/change-password`,
       },
     });
     if (error || !linkData?.properties?.action_link) throw new Error(friendly(error?.message));
@@ -397,7 +397,7 @@ export const seedDefaultAccounts = createServerFn({ method: "POST" })
       const pw = randomPassword();
       const id = await createAccount(u, pw, "caster");
       await sa.from("casters").insert({ user_id: id, caster_name: u });
-      created.push({ username: u, password: pw });
+      created.push({ username: u });
     }
     return { created };
   });
