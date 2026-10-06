@@ -85,13 +85,9 @@ export function useMyPlayer(userId: string | null | undefined) {
     queryKey: ["my_player", userId],
     enabled: !!userId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("players")
-        .select("*")
-        .eq("user_id", userId!)
-        .maybeSingle();
+      const { data, error } = await (supabase.rpc as any)("player_get_me");
       if (error) throw error;
-      return (data ?? null) as Player | null;
+      return ((data ?? [])[0] ?? null) as Player | null;
     },
   });
 }
@@ -101,13 +97,9 @@ export function useMyAmbassador(userId: string | null | undefined) {
     queryKey: ["my_ambassador", userId],
     enabled: !!userId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("ambassadors")
-        .select("*")
-        .eq("user_id", userId!)
-        .maybeSingle();
+      const { data, error } = await (supabase.rpc as any)("ambassador_get_me");
       if (error) throw error;
-      return (data ?? null) as Ambassador | null;
+      return ((data ?? [])[0] ?? null) as Ambassador | null;
     },
   });
 }
