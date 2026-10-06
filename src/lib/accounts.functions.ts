@@ -476,14 +476,12 @@ export const adminDeletePlayer = createServerFn({ method: "POST" })
     if (state?.current_player_id === player.id || player.status === "in_auction") {
       throw new Error("This player is currently on the auction block");
     }
-    if (player.status === "sold") {
-      throw new Error("Sold players cannot be deleted. They remain assigned to their ambassador team.");
-    }
-    if (!["pool", "unsold"].includes(player.status)) {
-      throw new Error("Only pool or unsold players can be deleted");
+    if (!["pool", "unsold", "sold"].includes(player.status)) {
+      throw new Error("Only pool, unsold, or sold players can be deleted");
     }
 
-    // Delete the player role row first so auction history can be preserved.
+    // Sold players are deletable too. Their immutable auction history is preserved
+    // by the database snapshot + ON DELETE SET NULL constraints.
     // The database trigger snapshots player identity before the row disappears.
     const { error: contactError } = await sa.from("player_contacts").delete().eq("player_id", player.id);
     if (contactError) throw new Error(friendly(contactError.message));
