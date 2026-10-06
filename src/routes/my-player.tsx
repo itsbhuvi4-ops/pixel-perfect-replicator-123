@@ -6,7 +6,7 @@ import { RoleGate, Center, errText } from "@/components/Guard";
 import { useAuth } from "@/lib/auth";
 import { useMyPlayer, useAuctionState, useRealtimeAuction, type Player } from "@/lib/auction";
 import { GAME_ROLES, ROLE_LABELS, money } from "@/lib/format";
-import { uploadPlayerFile } from "@/lib/storage";
+import { playerStoragePath, uploadPlayerFile } from "@/lib/storage";
 import { supabase } from "@/integrations/supabase/client";
 import { cleanupPlayerUploadObjects, markPlayerUploadPromptSeen } from "@/lib/accounts.functions";
 
@@ -150,6 +150,7 @@ function UsernameForm({ current }: { current: string }) {
       await changeUsername({ data: { username: value.trim() } });
       toast.success("Username updated");
     } catch (err) {
+      if (created.length) await cleanupPlayerUploadObjects({ data: { objects: created } }).catch(() => undefined);
       toast.error(errText(err));
     } finally {
       setBusy(false);
@@ -291,8 +292,8 @@ function UploadsSection({
     }
 
     setBusy(true);
+    const created: { bucket: "player-photos" | "player-videos"; path: string }[] = [];
     try {
-      const created: { bucket: "player-photos" | "player-videos"; path: string }[] = [];
       setProgress("Uploading photo…");
       const photoResult = photo ? await uploadPlayerFile("player-photos", userId, photo) : null;
       if (photoResult) created.push({ bucket: "player-photos", path: photoResult.path });
@@ -307,10 +308,18 @@ function UploadsSection({
         p_photo_url: photoUrl,
         p_video_url: videoUrl,
       });
-      if (error) {
-        await cleanupPlayerUploadObjects({ data: { objects: created } }).catch(() => undefined);
-        throw error;
+      if (error) throw error;
+
+      const obsolete: { bucket: "player-photos" | "player-videos"; path: string }[] = [];
+      if (photoResult && player.photo_url) {
+        const oldPath = playerStoragePath("player-photos", player.photo_url);
+        if (oldPath && oldPath !== photoResult.path) obsolete.push({ bucket: "player-photos", path: oldPath });
       }
+      if (videoResult && player.video_url) {
+        const oldPath = playerStoragePath("player-videos", player.video_url);
+        if (oldPath && oldPath !== videoResult.path) obsolete.push({ bucket: "player-videos", path: oldPath });
+      }
+      if (obsolete.length) await cleanupPlayerUploadObjects({ data: { objects: obsolete } }).catch(() => undefined);
 
       const next = Number(data?.information_change_count ?? count + 1);
       toast.success(next >= 3 ? "Uploads saved. Editing is now locked." : "Uploads saved");
