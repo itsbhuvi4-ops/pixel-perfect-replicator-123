@@ -1,11 +1,46 @@
 import { supabase } from "@/integrations/supabase/client";
 
-/** Upload a file into a player-owned storage folder and return a long-lived signed URL. */
-export async function uploadPlayerFile(bucket: string, uid: string, file: File): Promise<string> {
-  const path = `${uid}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
-  const { error } = await supabase.storage.from(bucket).upload(path, file);
+const RULES = {
+  "player-photos": {
+    maxBytes: 10 * 1024 * 1024,
+    mime: new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]),
+  },
+  "player-videos": {
+    maxBytes: 100 * 1024 * 1024,
+    mime: new Set(["video/mp4", "video/webm", "video/quicktime"]),
+  },
+} as const;
+
+export type PlayerUpload = { path: string; url: string };
+
+export async function uploadPlayerFile(
+  bucket: "player-photos" | "player-videos",
+  uid: string,
+  file: File,
+): Promise<PlayerUpload> {
+  const rule = RULES[bucket];
+  if (!rule.mime.has(file.type as never)) {
+    throw new Error(`Unsupported file type: ${file.type || "unknown"}`);
+  }
+  if (file.size > rule.maxBytes) {
+    throw new Error(`${bucket === "player-photos" ? "Photo" : "Video"} is too large`);
+  }
+
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120);
+  const path = `${uid}/${crypto.randomUUID()}-${safeName}`;
+
+  const { error } = await supabase.storage.from(bucket).upload(path, file, {
+    cacheControl: "3600",
+    upsert: false,
+    contentType: file.type,
+  });
   if (error) throw error;
-  const { data, error: se } = await supabase.storage.from(bucket).createSignedUrl(path, 315360000);
-  if (se) throw se;
-  return data.signedUrl;
+
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+  return { path, url: data.publicUrl };
+}
+
+export async function removePlayerFile(bucket: "player-photos" | "player-videos", path: string) {
+  const { error } = await supabase.storage.from(bucket).remove([path]);
+  if (error) throw error;
 }
