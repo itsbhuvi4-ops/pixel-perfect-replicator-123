@@ -134,8 +134,14 @@ export type Database = {
       auction_state: {
         Row: {
           base_price: number
+          bidding_deadline_at: string | null
           bidding_open: boolean
+          bidding_seconds_remaining: number | null
           caster_cam_live: boolean
+          caster_heartbeat_at: string | null
+          caster_lease_until: string | null
+          caster_owner_id: string | null
+          caster_session_id: string | null
           caster_stream_url: string | null
           current_bid: number | null
           current_bidder_id: string | null
@@ -151,12 +157,21 @@ export type Database = {
           retain_price: number
           status: Database["public"]["Enums"]["auction_status"]
           tournament_name: string
+          tournament_season: string | null
+          tournament_logo_url: string | null
+          auction_branding: string | null
           updated_at: string
         }
         Insert: {
           base_price?: number
+          bidding_deadline_at?: string | null
           bidding_open?: boolean
+          bidding_seconds_remaining?: number | null
           caster_cam_live?: boolean
+          caster_heartbeat_at?: string | null
+          caster_lease_until?: string | null
+          caster_owner_id?: string | null
+          caster_session_id?: string | null
           caster_stream_url?: string | null
           current_bid?: number | null
           current_bidder_id?: string | null
@@ -172,6 +187,9 @@ export type Database = {
           retain_price?: number
           status?: Database["public"]["Enums"]["auction_status"]
           tournament_name?: string
+          tournament_season?: string | null
+          tournament_logo_url?: string | null
+          auction_branding?: string | null
           updated_at?: string
         }
         Update: {
