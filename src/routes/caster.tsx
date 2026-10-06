@@ -8,7 +8,7 @@ import { PlayerStage } from "@/components/PlayerStage";
 import { LiveTicker } from "@/components/LiveTicker";
 import { AICommentaryPanel } from "@/components/AICommentaryPanel";
 import { useAuctionEvents, useAuctionState, usePlayers, useRealtimeAuction, useAmbassadors, useBids } from "@/lib/auction";
-import { setAuctionStatus, setCasterCam } from "@/lib/accounts.functions";
+import { claimCasterCamera, heartbeatCasterCamera, releaseCasterCamera, setAuctionStatus } from "@/lib/accounts.functions";
 import { startCasterBroadcast, type CamStatus } from "@/lib/caster-cam";
 import { money, statusLabel } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
@@ -368,7 +368,9 @@ function AuctionResultFlash({ events }: { events: Awaited<ReturnType<typeof useA
 
 function CasterCamCard() {
   const qc = useQueryClient();
-  const setCaster = useServerFn(setCasterCam);
+  const claim = useServerFn(claimCasterCamera);
+  const heartbeat = useServerFn(heartbeatCasterCamera);
+  const release = useServerFn(releaseCasterCamera);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [videoId, setVideoId] = useState("default");
   const [audioId, setAudioId] = useState("default");
@@ -377,6 +379,7 @@ function CasterCamCard() {
   const [viewers, setViewers] = useState(0);
   const [live, setLive] = useState(false);
   const stopRef = useRef<null | (() => void)>(null);
+  const sessionRef = useRef<string | null>(null);
   const previewRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -391,6 +394,28 @@ function CasterCamCard() {
     previewRef.current.srcObject = preview;
     if (preview) void previewRef.current.play().catch(() => {});
   }, [preview]);
+  useEffect(() => {
+    if (!live || !sessionRef.current) return;
+    const timer = window.setInterval(async () => {
+      const sessionId = sessionRef.current;
+      if (!sessionId) return;
+      try {
+        await heartbeat({ data: { sessionId } });
+      } catch (err) {
+        toast.error("Caster lease expired. Live broadcast stopped.");
+        stopRef.current?.();
+        stopRef.current = null;
+        sessionRef.current = null;
+        setLive(false);
+        setStatus("error");
+        setViewers(0);
+        await qc.invalidateQueries({ queryKey: ["auction_state"] });
+      }
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [live, heartbeat, qc]);
+
+
 
   const startCamera = async () => {
     if (preview) return;
@@ -414,17 +439,22 @@ function CasterCamCard() {
       return;
     }
     try {
+      const lease = await claim();
+      sessionRef.current = lease.session_id;
       stopRef.current = startCasterBroadcast(preview, (nextStatus, count) => {
         setStatus(nextStatus);
         if (count !== undefined) setViewers(count);
-      });
-      await setCaster({ data: { live: true } });
+      }, lease.session_id);
       setLive(true);
       toast.success("● LIVE — Caster camera is broadcasting");
       await qc.invalidateQueries({ queryKey: ["auction_state"] });
     } catch (err) {
       stopRef.current?.();
       stopRef.current = null;
+      const sessionId = sessionRef.current;
+      sessionRef.current = null;
+      if (sessionId) await release({ data: { sessionId } }).catch(() => undefined);
+      setLive(false);
       toast.error(errText(err));
     }
   };
@@ -432,12 +462,14 @@ function CasterCamCard() {
   const stopLive = async () => {
     stopRef.current?.();
     stopRef.current = null;
+    const sessionId = sessionRef.current;
+    sessionRef.current = null;
+    if (sessionId) await release({ data: { sessionId } }).catch(() => undefined);
     if (preview) preview.getTracks().forEach((track) => track.stop());
     setPreview(null);
     setLive(false);
     setStatus("idle");
     setViewers(0);
-    await setCaster({ data: { live: false } });
     await qc.invalidateQueries({ queryKey: ["auction_state"] });
   };
 
