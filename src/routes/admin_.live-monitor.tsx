@@ -14,7 +14,7 @@ function AdminLiveMonitor() {
   const { data: state } = useAuctionState();
   const { data: players = [] } = usePlayers();
   const { data: events = [] } = useAuctionEvents();
-  const { stream, status } = useCasterCamStream(state?.caster_cam_live ?? false);
+  const { stream, status } = useCasterCamStream(state?.caster_cam_live ?? false, state?.caster_session_id ?? null);
   const current = players.find((p) => p.id === state?.current_player_id);
 
   return (
