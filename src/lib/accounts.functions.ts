@@ -352,7 +352,7 @@ export const resetUserPassword = createServerFn({ method: "POST" })
       type: "recovery",
       email: usernameToEmail(profile.username),
       options: {
-        redirectTo: ${process.env.PUBLIC_SITE_URL ?? process.env.VITE_APP_URL ?? "https://auction-delta.lovable.app"}/change-password,
+        redirectTo: `${process.env.PUBLIC_SITE_URL ?? process.env.VITE_APP_URL ?? "https://auction-delta.lovable.app"}/change-password`,
       },
     });
     if (error || !linkData?.properties?.action_link) throw new Error(friendly(error?.message));
