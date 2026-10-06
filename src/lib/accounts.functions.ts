@@ -637,18 +637,6 @@ export const setAuctionStatus = createServerFn({ method: "POST" })
     return result as { ok: boolean; status: string; started?: boolean; selection?: { completed?: boolean } | null };
   });
 
-export const setCasterCam = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ live: z.boolean() }).parse(d))
-  .handler(async ({ data, context }) => {
-    await requireRole(context, ["caster", "admin"]);
-    const sa = await admin();
-    const patch: { updated_at: string; caster_cam_live: boolean } = { updated_at: new Date().toISOString(), caster_cam_live: data.live };
-    const { error } = await sa.from("auction_state").update(patch).eq("id", 1);
-    if (error) throw new Error(friendly(error.message));
-    return { ok: true };
-  });
-
 export const systemStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
