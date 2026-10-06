@@ -14,7 +14,7 @@ const FACES = [
 
 /** The source opening is a locked-off, film-textured, independently morphing wordmark. */
 function drawOpening(ctx: CanvasRenderingContext2D, width: number, height: number, seconds: number, colors: string[], reduced: boolean) {
-  const [background, ink, accent, dust] = colors;
+  const [background = "", ink = "", accent = "", dust = ""] = colors;
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = background;
   ctx.fillRect(0, 0, width, height);
@@ -34,8 +34,8 @@ function drawOpening(ctx: CanvasRenderingContext2D, width: number, height: numbe
     const cut = Math.floor(seconds * (i % 3 === 0 ? 3.7 : 2.9) + i * 2.37);
     const face = resolved ? 1 : (cut * 5 + i * 3) % FACES.length;
     const italic = !resolved && (cut + i) % 4 === 0;
-    const scaleY = resolved ? 1 : [1, 0.86, 1.15, 0.96][(cut + i) % 4];
-    const letterSize = size * (resolved ? 1 : [1, 0.8, 1.08, 0.92, 1.16][(cut + i * 2) % 5]);
+    const scaleY = resolved ? 1 : ([1, 0.86, 1.15, 0.96][(cut + i) % 4] ?? 1);
+    const letterSize = size * (resolved ? 1 : ([1, 0.8, 1.08, 0.92, 1.16][(cut + i * 2) % 5] ?? 1));
     ctx.save();
     ctx.translate(-total / 2 + cell * (i + 0.5), resolved ? 0 : Math.sin(cut + i) * size * 0.028);
     ctx.scale(1, scaleY);
@@ -47,13 +47,13 @@ function drawOpening(ctx: CanvasRenderingContext2D, width: number, height: numbe
     ctx.fillStyle = ink;
     ctx.shadowColor = resolved ? accent : ink;
     ctx.shadowBlur = resolved ? size * 0.12 : size * (face === 4 ? 0.22 : 0.11);
-    ctx.fillText(WORDMARK[i], 0, 0);
+    ctx.fillText(WORDMARK.charAt(i), 0, 0);
     // Fine outlined alternate impressions, never substitute unrelated symbols for the brand.
     if (!resolved && face === 5) {
       ctx.shadowBlur = size * 0.06;
       ctx.lineWidth = 0.65;
       ctx.strokeStyle = ink;
-      ctx.strokeText(WORDMARK[i], 1.2, -0.8);
+      ctx.strokeText(WORDMARK.charAt(i), 1.2, -0.8);
     }
     ctx.restore();
   }
@@ -117,7 +117,7 @@ export function BrandPreloader({ children }: { children: ReactNode }) {
       }
       drawOpening(context, width, height, elapsed, colors, motion.matches);
       layer.style.opacity = phase === "fade" ? String(Math.max(0, 1 - (elapsed - PRELOADER_TIMING.fade) / (PRELOADER_TIMING.end - PRELOADER_TIMING.fade))) : "1";
-      element.dataset.phase = phase;
+      element.dataset['phase'] = phase;
       animationFrame = requestAnimationFrame(tick);
     };
     animationFrame = requestAnimationFrame(tick);
