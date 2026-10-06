@@ -9,6 +9,7 @@ type AuthValue = {
   user: User | null;
   roles: AppRole[];
   username: string | null;
+  mustChangePassword: boolean;
   loading: boolean;
   signOut: () => Promise<void>;
 };
@@ -18,6 +19,7 @@ const AuthContext = createContext<AuthValue>({
   user: null,
   roles: [],
   username: null,
+  mustChangePassword: false,
   loading: true,
   signOut: async () => {},
 });
@@ -26,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [username, setUsername] = useState<string | null>(null);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!next) {
         setRoles([]);
         setUsername(null);
+        setMustChangePassword(false);
       }
     });
     supabase.auth.getSession().then(({ data }) => {
@@ -50,11 +54,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (async () => {
       const [{ data: roleRows }, { data: profile }] = await Promise.all([
         supabase.from("user_roles").select("role").eq("user_id", uid),
-        supabase.from("profiles").select("username").eq("id", uid).maybeSingle(),
+        supabase.from("profiles").select("username,must_change_password").eq("id", uid).maybeSingle(),
       ]);
       if (cancelled) return;
       setRoles((roleRows ?? []).map((r) => r.role as AppRole));
       setUsername(profile?.username ?? null);
+      setMustChangePassword(Boolean(profile?.must_change_password));
       setLoading(false);
     })();
     return () => {
@@ -67,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user: session?.user ?? null,
     roles,
     username,
+    mustChangePassword,
     loading,
     signOut: async () => {
       await supabase.auth.signOut();
