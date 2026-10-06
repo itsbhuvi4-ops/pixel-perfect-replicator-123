@@ -26,11 +26,17 @@ function ChangePasswordPage() {
   const navigate = useNavigate();
   const [current, setCurrent] = useState("");
   const [password, setPassword] = useState("");
+  const [recoveryMode, setRecoveryMode] = useState(false);
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    if (window.location.hash.includes("type=recovery")) setRecoveryMode(true);
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") setRecoveryMode(true);
+    });
     if (!loading && !session) navigate({ to: "/login", search: {} });
+    return () => sub.subscription.unsubscribe();
   }, [loading, session, navigate]);
 
   const submit = async (e: React.FormEvent) => {
@@ -47,16 +53,21 @@ function ChangePasswordPage() {
       toast.error("Unable to verify your account. Please sign in again.");
       return;
     }
+    if (!recoveryMode && !current) {
+      toast.error("Enter your current password");
+      return;
+    }
     setBusy(true);
     try {
-      // Verify the current password server-side before allowing the change.
-      const { error: verifyError } = await supabase.auth.signInWithPassword({
-        email: usernameToEmail(username),
-        password: current,
-      });
-      if (verifyError) {
-        toast.error("Current password is incorrect");
-        return;
+      if (!recoveryMode) {
+        const { error: verifyError } = await supabase.auth.signInWithPassword({
+          email: usernameToEmail(username),
+          password: current,
+        });
+        if (verifyError) {
+          toast.error("Current password is incorrect");
+          return;
+        }
       }
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
@@ -83,15 +94,18 @@ function ChangePasswordPage() {
         Enter your current password, then choose a new one. Your password is never shown or stored in plain text.
       </p>
       <form onSubmit={submit} className="mt-6 grid gap-3">
-        <input
-          className="field"
-          type="password"
-          placeholder="Current password"
-          value={current}
-          onChange={(e) => setCurrent(e.target.value)}
-          required
-          autoComplete="current-password"
-        />
+        {!recoveryMode && (
+          <input
+            className="field"
+            type="password"
+            placeholder="Current password"
+            value={current}
+            onChange={(e) => setCurrent(e.target.value)}
+            required
+            autoComplete="current-password"
+          />
+        )}
+        {recoveryMode && <p className="rounded-lg bg-gold/10 p-3 text-xs text-gold">Password recovery mode: choose a new password below. Your old password is not required.</p>}
         <input
           className="field"
           type="password"
