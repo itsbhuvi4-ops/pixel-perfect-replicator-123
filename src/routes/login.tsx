@@ -1,10 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { homeForRoles, type AppRole } from "@/lib/auth";
 import { usernameToEmail } from "@/lib/format";
-import { verifyLogin } from "@/lib/accounts.functions";
+import { getFirstAdminSetupStatus, setupFirstAdmin, verifyLogin } from "@/lib/accounts.functions";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -32,6 +32,37 @@ function LoginPage() {
   const [role, setRole] = useState<AppRole>("player");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [setupAvailable, setSetupAvailable] = useState(false);
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [setupBusy, setSetupBusy] = useState(false);
+  const [setup, setSetup] = useState({ username: "", password: "", setupCode: "" });
+
+  useEffect(() => {
+    let cancelled = false;
+    getFirstAdminSetupStatus()
+      .then((res) => { if (!cancelled) setSetupAvailable(res.available); })
+      .catch(() => { if (!cancelled) setSetupAvailable(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const submitFirstAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSetupBusy(true);
+    setErr(null);
+    try {
+      await setupFirstAdmin({ data: setup });
+      const { error } = await supabase.auth.signInWithPassword({
+        email: usernameToEmail(setup.username),
+        password: setup.password,
+      });
+      if (error) throw error;
+      window.location.href = "/admin";
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : "First-admin setup failed");
+    } finally {
+      setSetupBusy(false);
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +100,25 @@ function LoginPage() {
         {err && <p className="text-sm text-alert">{err}</p>}
         <button disabled={busy} className="neo-action label-cond bg-gold py-3 text-[13px] text-arena disabled:opacity-50">{busy ? "Signing in…" : "Sign in"}</button>
       </form>
+
+      {setupAvailable && (
+        <div className="mt-6 border-t border-line pt-5">
+          <button type="button" onClick={() => setSetupOpen((v) => !v)} className="label-cond text-[11px] text-gold hover:text-foreground">
+            {setupOpen ? "Hide first-admin setup" : "First admin? Secure setup"}
+          </button>
+          {setupOpen && (
+            <form onSubmit={submitFirstAdmin} className="mt-3 grid gap-2">
+              <p className="text-[11px] leading-5 text-mut">Available only while no admin account exists. The setup code is verified on the server and is never stored in browser code.</p>
+              <input className="field" placeholder="Admin username" value={setup.username} onChange={(e) => setSetup({ ...setup, username: e.target.value })} required minLength={3} />
+              <input className="field" type="password" placeholder="Admin password (8+)" value={setup.password} onChange={(e) => setSetup({ ...setup, password: e.target.value })} required minLength={8} />
+              <input className="field" type="password" placeholder="Private setup code" value={setup.setupCode} onChange={(e) => setSetup({ ...setup, setupCode: e.target.value })} required minLength={12} autoComplete="off" />
+              <button disabled={setupBusy} className="label-cond border border-gold/50 bg-gold/10 py-2.5 text-[12px] text-gold disabled:opacity-40">
+                {setupBusy ? "Creating admin…" : "Create first admin"}
+              </button>
+            </form>
+          )}
+        </div>
+      )}
       </section>
     </main>
   );
