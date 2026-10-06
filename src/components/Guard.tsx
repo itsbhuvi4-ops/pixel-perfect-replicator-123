@@ -4,7 +4,7 @@ import { useAuth, type AppRole } from "@/lib/auth";
 
 /** UI gate only — every action is re-checked by the server. */
 export function RoleGate({ role, children }: { role: AppRole | AppRole[]; children: ReactNode }) {
-  const { session, roles, loading } = useAuth();
+  const { session, roles, mustChangePassword, loading } = useAuth();
   const allowed = Array.isArray(role) ? role : [role];
   if (loading) return <Center>Loading…</Center>;
   if (!session)
@@ -16,6 +16,16 @@ export function RoleGate({ role, children }: { role: AppRole | AppRole[]; childr
         </Link>
       </Center>
     );
+  if (mustChangePassword) {
+    return (
+      <Center>
+        <p>Your password must be changed before continuing.</p>
+        <Link to="/change-password" className="label-cond mt-4 inline-block bg-gold px-4 py-2 text-[12px] text-arena">
+          Change Password
+        </Link>
+      </Center>
+    );
+  }
   if (!roles.some((r) => allowed.includes(r))) return <Center>This page isn't available for your account.</Center>;
   return <>{children}</>;
 }
