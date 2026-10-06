@@ -36,6 +36,7 @@ grant execute on function public.player_get_me() to authenticated;
 grant execute on function public.ambassador_get_me() to authenticated;
 
 
+drop policy if exists "first admin claim is server only" on public.first_admin_setup_claim;
 create policy "first admin claim is server only" on public.first_admin_setup_claim
 for select to anon,authenticated using (false);
 create index if not exists auction_state_current_player_idx on public.auction_state(current_player_id);
