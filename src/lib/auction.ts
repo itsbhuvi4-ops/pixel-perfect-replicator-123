@@ -136,7 +136,7 @@ export function useRealtimeAuction() {
 
     // Public audience polling deliberately avoids subscribing to private table
     // rows over Postgres Changes. Authenticated roles keep the realtime channel.
-    if (!session) {
+    if (!session?.user.id) {
       const timer = window.setInterval(invalidate, 2000);
       invalidate();
       return () => window.clearInterval(timer);
