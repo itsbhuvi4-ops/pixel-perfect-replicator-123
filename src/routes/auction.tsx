@@ -9,6 +9,8 @@ export const Route = createFileRoute("/auction")({
       { name: "description", content: "Watch the BidX player auction live, no account needed. Bids update in real time." },
       { property: "og:title", content: "Watch Live — BidX Auction" },
       { property: "og:description", content: "Live esports player auction with real-time bidding." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: () => <LiveAuction audience />,

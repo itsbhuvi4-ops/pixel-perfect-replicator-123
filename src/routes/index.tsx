@@ -11,6 +11,8 @@ export const Route = createFileRoute("/")({
       { name: "description", content: "A cinematic 3D live player auction arena for esports teams, players and audiences." },
       { property: "og:title", content: "BIDXAUCTION — Live Player Auction" },
       { property: "og:description", content: "Enter the arena. Watch every bid happen live." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: LandingPage,

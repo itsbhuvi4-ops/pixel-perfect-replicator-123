@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Reference-based BIDXAUCTION startup animation and website handoff
 - [x] Database upgrade: stop/retain states, results, retains, casters, safe bid/finalize/retain actions, private videos
 - [x] Login with role check, player registration, live page
 - [x] Ambassador, caster, admin, player dashboards; /auction page; WebRTC CasterCam; health check

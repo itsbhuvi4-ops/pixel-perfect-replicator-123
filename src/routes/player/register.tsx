@@ -15,6 +15,8 @@ export const Route = createFileRoute("/player/register")({
       { name: "description", content: "Register once to enter the auction player pool." },
       { property: "og:title", content: "Player Registration — BidX Auction" },
       { property: "og:description", content: "Register once to enter the auction pool." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: RegisterPage,
