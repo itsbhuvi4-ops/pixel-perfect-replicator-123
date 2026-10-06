@@ -454,7 +454,6 @@ export const adminDeletePlayer = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireRole(context, ["admin"]);
     const sa = await admin();
-
     const [{ data: player }, { data: state }] = await Promise.all([
       sa.from("players").select("id,user_id,status").eq("id", data.playerId).maybeSingle(),
       sa.from("auction_state").select("current_player_id").eq("id", 1).maybeSingle(),
@@ -468,24 +467,26 @@ export const adminDeletePlayer = createServerFn({ method: "POST" })
       throw new Error("Only pool, unsold, or sold players can be deleted");
     }
 
-    // Sold players are deletable too. Their immutable auction history is preserved
-    // by the database snapshot + ON DELETE SET NULL constraints.
-    // The database trigger snapshots player identity before the row disappears.
-    const { error: contactError } = await sa.from("player_contacts").delete().eq("player_id", player.id);
-    if (contactError) throw new Error(friendly(contactError.message));
-
-    const { error: playerError } = await sa.from("players").delete().eq("id", player.id);
-    if (playerError) throw new Error(friendly(playerError.message));
-
-    const { error: rolesError } = await sa.from("user_roles").delete().eq("user_id", player.user_id);
-    if (rolesError) throw new Error(friendly(rolesError.message));
-
-    const { error: profileError } = await sa.from("profiles").delete().eq("id", player.user_id);
-    if (profileError) throw new Error(friendly(profileError.message));
+    // Use the Auth delete as the single destructive operation. Public player,
+    // profile, role and contact rows are ON DELETE CASCADE/SET NULL from auth.users,
+    // while the database trigger snapshots the player's auction identity first.
+    const { data: objects, error: listError } = await sa.storage.from("player-photos").list(player.user_id, { limit: 1000 });
+    if (listError) throw new Error(friendly(listError.message));
+    const photoNames = (objects ?? []).map((o) => o.name).filter(Boolean).map((name) => `${player.user_id}/${name}`);
+    if (photoNames.length) {
+      const { error } = await sa.storage.from("player-photos").remove(photoNames);
+      if (error) throw new Error(friendly(error.message));
+    }
+    const { data: videos, error: videoListError } = await sa.storage.from("player-videos").list(player.user_id, { limit: 1000 });
+    if (videoListError) throw new Error(friendly(videoListError.message));
+    const videoNames = (videos ?? []).map((o) => o.name).filter(Boolean).map((name) => `${player.user_id}/${name}`);
+    if (videoNames.length) {
+      const { error } = await sa.storage.from("player-videos").remove(videoNames);
+      if (error) throw new Error(friendly(error.message));
+    }
 
     const { error: authError } = await sa.auth.admin.deleteUser(player.user_id);
     if (authError) throw new Error(friendly(authError.message));
-
     return { ok: true };
   });
 
