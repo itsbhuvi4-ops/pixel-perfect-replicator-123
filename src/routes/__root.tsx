@@ -16,6 +16,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/lib/auth";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Toaster } from "@/components/ui/sonner";
+import { BrandPreloader } from "@/components/BrandPreloader";
 
 function NotFoundComponent() {
   return (
@@ -91,7 +92,7 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body className="min-h-screen bg-background text-foreground">
-        {children}
+        <BrandPreloader>{children}</BrandPreloader>
         <Scripts />
       </body>
     </html>

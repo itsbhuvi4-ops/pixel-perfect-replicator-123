@@ -22,7 +22,13 @@ import { useCasterCamStream } from "@/lib/use-caster-cam";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/ambassador")({
-  head: () => ({ meta: [{ title: "Ambassador — Bid X Auction" }, { name: "robots", content: "noindex" }] }),
+  head: () => ({ meta: [{ title: "Ambassador — Bid X Auction" }, { name: "robots", content: "noindex" },
+      { name: "description", content: "Your BIDXAUCTION team, points, roster and live bidding workspace." },
+      { property: "og:title", content: "Ambassador — BIDXAUCTION" },
+      { property: "og:description", content: "Your BIDXAUCTION team, points, roster and live bidding workspace." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ] }),
   component: () => (
     <RoleGate role="ambassador">
       <AmbassadorConsole />

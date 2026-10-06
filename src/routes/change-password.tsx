@@ -11,6 +11,11 @@ export const Route = createFileRoute("/change-password")({
     meta: [
       { title: "Change Password — BidX Auction" },
       { name: "robots", content: "noindex" },
+      { name: "description", content: "Securely update your BIDXAUCTION account password." },
+      { property: "og:title", content: "Change Password — BIDXAUCTION" },
+      { property: "og:description", content: "Securely update your BIDXAUCTION account password." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: ChangePasswordPage,

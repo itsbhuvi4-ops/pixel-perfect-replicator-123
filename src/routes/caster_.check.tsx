@@ -10,6 +10,11 @@ export const Route = createFileRoute("/caster_/check")({
     meta: [
       { title: "Equipment Check — BidX Auction" },
       { name: "robots", content: "noindex" },
+      { name: "description", content: "Check BIDXAUCTION caster camera, microphone and team presence." },
+      { property: "og:title", content: "Equipment Check — BIDXAUCTION" },
+      { property: "og:description", content: "Check BIDXAUCTION caster camera, microphone and team presence." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: () => (

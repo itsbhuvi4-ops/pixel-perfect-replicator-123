@@ -45,6 +45,10 @@
 }
 
 :root {
+  --opening-background: #040507;
+  --opening-ink: #d9dfcd;
+  --opening-accent: #a99bc8;
+  --opening-dust: #b1b4bc;
   --radius: .75rem;
   --arena: #030208;
   --panel: #08070e;
@@ -80,6 +84,28 @@
   * { border-color: var(--color-border); }
   html { scroll-behavior: smooth; background: #030208; }
   body { margin: 0; background: #030208; color: var(--color-foreground); font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
+}
+
+.brand-opening {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--opening-background);
+  color: var(--opening-ink);
+}
+.brand-opening-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.brand-opening-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Arial Black", sans-serif;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 0;
 }
 
 @keyframes bidxScroll {

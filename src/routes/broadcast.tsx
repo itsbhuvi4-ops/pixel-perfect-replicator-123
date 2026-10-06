@@ -22,6 +22,10 @@ export const Route = createFileRoute("/broadcast")({
     meta: [
       { title: "Broadcast — BidX Auction" },
       { name: "description", content: "Fullscreen broadcast output for OBS and YouTube." },
+      { property: "og:title", content: "Broadcast — BIDXAUCTION" },
+      { property: "og:description", content: "Fullscreen BIDXAUCTION player auction broadcast output." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: BroadcastPage,

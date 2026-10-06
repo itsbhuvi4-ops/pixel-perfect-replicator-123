@@ -13,6 +13,8 @@ export const Route = createFileRoute("/login")({
       { name: "description", content: "Sign in as admin, caster, ambassador or player." },
       { property: "og:title", content: "Login — BidX Auction" },
       { property: "og:description", content: "One login for every auction role." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   validateSearch: (s: Record<string, unknown>): { next?: string | undefined } => ({
