@@ -159,7 +159,7 @@ export const adminDeleteAccount = createServerFn({ method: "POST" })
         sa.from("casters").select("id").eq("user_id", data.userId).maybeSingle(),
         sa.from("profiles").select("id").eq("id", data.userId).maybeSingle(),
         sa.from("auction_state")
-          .select("status,current_player_id,current_bid,current_bidder_id,bidding_open")
+          .select("status,current_player_id,current_bidder_id")
           .eq("id", 1)
           .maybeSingle(),
       ]);
@@ -171,12 +171,12 @@ export const adminDeleteAccount = createServerFn({ method: "POST" })
     const deletingCurrentPlayer = !!player?.id && state?.current_player_id === player.id;
     const deletingCurrentBidder = !!ambassador?.id && state?.current_bidder_id === ambassador.id;
 
-    // Clear any live-lot references before removing the role records.
-    if (deletingCurrentPlayer) {
+    // Remove transient live-auction references first. History rows remain untouched.
+    if (deletingCurrentPlayer || deletingCurrentBidder) {
       const { error } = await sa
         .from("auction_state")
         .update({
-          current_player_id: null,
+          current_player_id: deletingCurrentPlayer ? null : state?.current_player_id ?? null,
           current_bid: null,
           current_bidder_id: null,
           bidding_open: false,
@@ -185,31 +185,18 @@ export const adminDeleteAccount = createServerFn({ method: "POST" })
         .eq("id", 1);
       if (error) throw new Error(friendly(error.message));
 
-      await sa.from("auction_events").insert({
+      const { error: eventError } = await sa.from("auction_events").insert({
         event_type: "ADMIN_ACCOUNT_DELETED",
-        message: "Admin deleted the current player account; the active lot was removed.",
+        message: deletingCurrentPlayer
+          ? "Admin deleted the current player account; the active lot was cleared."
+          : "Admin deleted the current bidder account; the active bid was cleared.",
       });
-    } else if (deletingCurrentBidder) {
-      const { error } = await sa
-        .from("auction_state")
-        .update({
-          current_bid: null,
-          current_bidder_id: null,
-          bidding_open: false,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", 1);
-      if (error) throw new Error(friendly(error.message));
-
-      await sa.from("auction_events").insert({
-        event_type: "ADMIN_ACCOUNT_DELETED",
-        message: "Admin deleted the current bidder account; the active bid was cleared.",
-      });
+      if (eventError) throw new Error(friendly(eventError.message));
     }
 
-    // Preserve immutable auction history. The history-safe migration changes
-    // player/ambassador references in bids/results/retains to ON DELETE SET NULL
-    // and stores identity snapshots, so do not delete those rows here.
+    // Delete owned player media before auth.users deletion. Auth cascades then
+    // removes profiles, roles, role records and the player/ambassador/caster row
+    // through the verified ON DELETE CASCADE relationships.
     async function removeUserFolder(bucket: string, uid: string) {
       const { data: objects, error: listError } = await sa.storage.from(bucket).list(uid, { limit: 1000 });
       if (listError) throw new Error(friendly(listError.message));
@@ -225,45 +212,10 @@ export const adminDeleteAccount = createServerFn({ method: "POST" })
       await removeUserFolder("player-videos", data.userId);
     }
 
-    // Clear the live auction references if this account is currently involved.
-    // Historical bid/result/event rows are intentionally preserved.
-    if (deletingCurrentPlayer || deletingCurrentBidder) {
-      const { error } = await sa.from("auction_state").update({
-        current_player_id: deletingCurrentPlayer ? null : state?.current_player_id ?? null,
-        current_bid: null,
-        current_bidder_id: null,
-        bidding_open: false,
-        updated_at: new Date().toISOString(),
-      }).eq("id", 1);
-      if (error) throw new Error(friendly(error.message));
-
-      const { error: eventError } = await sa.from("auction_events").insert({
-        event_type: "ADMIN_ACCOUNT_DELETED",
-        message: deletingCurrentPlayer
-          ? "Admin deleted the current player account; the active lot was cleared."
-          : "Admin deleted the current bidder account; the active bid was cleared.",
-      });
-      if (eventError) throw new Error(friendly(eventError.message));
-    }
-
-    // Explicitly remove role/profile rows before deleting auth.users.
-    // auth.users then becomes permanently unusable for the deleted credentials.
-    const roleDeletes = [
-      player?.id ? sa.from("players").delete().eq("id", player.id) : null,
-      ambassador?.id ? sa.from("ambassadors").delete().eq("id", ambassador.id) : null,
-      caster?.id ? sa.from("casters").delete().eq("id", caster.id) : null,
-    ].filter(Boolean) as PromiseLike<{ error: { message: string } | null }>[];
-
-    const roleResults = await Promise.all(roleDeletes);
-    const roleFailure = roleResults.find((x) => x.error);
-    if (roleFailure?.error) throw new Error(friendly(roleFailure.error.message));
-
-    const { error: rolesError } = await sa.from("user_roles").delete().eq("user_id", data.userId);
-    if (rolesError) throw new Error(friendly(rolesError.message));
-
-    const { error: profileError } = await sa.from("profiles").delete().eq("id", data.userId);
-    if (profileError) throw new Error(friendly(profileError.message));
-
+    // IMPORTANT: do not manually delete public role/profile rows before this call.
+    // Doing so can leave a half-deleted account if Auth rejects the final delete.
+    // auth.admin.deleteUser() is the single source of truth and the database FKs
+    // cascade the related public records safely.
     const { error: authError } = await sa.auth.admin.deleteUser(data.userId);
     if (authError) {
       console.error("[accounts] Supabase auth user deletion failed", {
@@ -273,13 +225,28 @@ export const adminDeleteAccount = createServerFn({ method: "POST" })
       });
       throw new Error(
         /database error deleting user/i.test(authError.message)
-          ? "Database still has a reference to this account. Apply the latest Supabase migration and try again."
+          ? "Database still has a reference to this account. No account records were manually removed; try again after the database fix."
           : friendly(authError.message),
       );
     }
 
+    // Defensive verification: a successful Auth delete must leave no application
+    // account rows behind. This prevents the old "can't delete again" half-state.
+    const [{ data: remainingProfile }, { data: remainingPlayer }, { data: remainingAmbassador }, { data: remainingCaster }] =
+      await Promise.all([
+        sa.from("profiles").select("id").eq("id", data.userId).maybeSingle(),
+        sa.from("players").select("id").eq("user_id", data.userId).maybeSingle(),
+        sa.from("ambassadors").select("id").eq("user_id", data.userId).maybeSingle(),
+        sa.from("casters").select("id").eq("user_id", data.userId).maybeSingle(),
+      ]);
+    if (remainingProfile || remainingPlayer || remainingAmbassador || remainingCaster) {
+      throw new Error("Account deletion did not fully complete. Please retry.");
+    }
+
     if (deletingCurrentPlayer && state?.status === "live") {
-      const { error: nextError } = await (sa as any).rpc("admin_select_next_player_after_delete");
+      const { error: nextError } = await (sa as any).rpc("admin_select_next_player_after_delete", {
+        p_request_id: crypto.randomUUID(),
+      });
       if (nextError) throw new Error(friendly(nextError.message));
     }
 
@@ -418,9 +385,11 @@ export const resetAuction = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     await requireRole(context, ["admin"]);
     const sa = await admin();
-    // This migrated RPC is not yet represented in the generated client types.
-    const resetRpc = sa.rpc as unknown as (name: "admin_reset_auction") => Promise<{ data: unknown; error: { message: string } | null }>;
-    const { data, error } = await resetRpc.call(sa, "admin_reset_auction");
+    // The reset RPC uses an explicit request id so PostgREST has an unambiguous
+    // named-parameter contract and does not rely on a stale zero-argument signature.
+    const { data, error } = await (sa as any).rpc("admin_reset_auction", {
+      p_request_id: crypto.randomUUID(),
+    });
     if (error) throw new Error(friendly(error.message));
     return data as {
       ok: boolean;
