@@ -163,7 +163,8 @@ export function useRealtimeAuction() {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("online", invalidate);
-    }
+    };
+  }, [qc, session?.user.id]);
 }
 
 export function minimumNextBid(state: AuctionState | null | undefined): number {
