@@ -351,54 +351,6 @@ function CreateStaffCard() {
   );
 }
 
-/* SeedCard removed: generated credentials must never be displayed by the admin UI. */
-function SeedCard_DISABLED() {
-  const seed = useServerFn(seedDefaultAccounts);
-  const qc = useQueryClient();
-  const [busy, setBusy] = useState(false);
-  const [creds, setCreds] = useState<{ username: string }[]>([]);
-
-  const run = async () => {
-    if (!confirm("Create 24 ambassadors (Team 001–024) and 2 casters with random passwords?")) return;
-    setBusy(true);
-    try {
-      const res = await seed();
-      setCreds(res?.created ?? []);
-      if (!res?.created?.length) toast.info("Nothing to create — all default accounts already exist");
-      else toast.success(`${res.created.length} accounts created`);
-      await qc.invalidateQueries({ queryKey: ["admin_users"] });
-      await qc.invalidateQueries({ queryKey: ["ambassadors"] });
-    } catch (err) {
-      toast.error(errText(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="rounded-xl bg-panel p-4 ring-1 ring-line">
-      <div className="label-cond text-[12px] text-mut">Seed default accounts</div>
-      <p className="mt-1 text-[13px] text-mut">
-        Creates <span className="text-gold">Ambassador#001…024</span> (Team 001…024) and{" "}
-        <span className="text-gold">Caster#001/002</span> with random passwords. Existing usernames are skipped.
-      </p>
-      <button
-        onClick={() => void run()}
-        disabled={busy}
-        className="label-cond mt-3 border border-gold/50 bg-gold/10 px-4 py-2 text-[13px] text-gold disabled:opacity-50"
-      >
-        {busy ? "Seeding…" : "Seed 24 ambassadors + 2 casters"}
-      </button>
-      {creds.length > 0 && (
-        <div className="mt-3">
-          <p className="text-[12px] text-mut">{creds.length} accounts created — save these passwords now:</p>
-          <div className="mt-3 text-[12px] text-mut">{creds.map((x) => x.username).join(", ")}</div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 /* ---------------- Teams ---------------- */
 
 function TeamsTab() {
