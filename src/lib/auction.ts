@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
+import { useAuth } from "@/lib/auth";
 
 export type AuctionState = Tables<"auction_state">;
 export type Player = Tables<"players">;
@@ -14,7 +15,7 @@ export function useAuctionState() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("auction_state")
-        .select("*")
+        .select("id,status,current_player_id,current_bid,current_bidder_id,base_price,min_increment,lot_counter,max_players,max_ambassadors,max_casters,tournament_name,updated_at,default_starting_points,retain_price,max_retains,caster_cam_live,bidding_open,tournament_season,tournament_logo_url,auction_branding,caster_session_id")
         .eq("id", 1)
         .maybeSingle();
       if (error) throw error;
@@ -29,7 +30,7 @@ export function usePlayers() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("players")
-        .select("*")
+        .select("id,player_name,ingame_name,game_id,photo_url,video_url,primary_role,secondary_role,info,status,sold_price,ambassador_id,sold_at,lot_number,team_name,experience,created_at,updated_at")
         .order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? []) as Player[];
@@ -43,7 +44,7 @@ export function useAmbassadors() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ambassadors")
-        .select("*")
+        .select("id,ambassador_name,team_name,photo_url,info,discord,starting_points,remaining_points,created_at,updated_at")
         .order("remaining_points", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Ambassador[];
@@ -57,7 +58,7 @@ export function useAuctionEvents(limit = 25) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("auction_events")
-        .select("*")
+        .select("id,event_type,message,player_id,ambassador_id,amount,created_at,player_name_snapshot,ingame_name_snapshot,game_id_snapshot,ambassador_name_snapshot,team_name_snapshot")
         .order("created_at", { ascending: false })
         .limit(limit);
       if (error) throw error;
@@ -73,7 +74,7 @@ export function useBids(playerId: string | null | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bids")
-        .select("*")
+        .select("id,player_id,ambassador_id,amount,created_at")
         .eq("player_id", playerId!)
         .order("created_at", { ascending: false })
         .limit(30);
@@ -134,13 +135,25 @@ export function useMyRoster(ambassadorId: string | null | undefined) {
 /** Subscribe once per page to keep every auction query in sync with the server. */
 export function useRealtimeAuction() {
   const qc = useQueryClient();
+  const { session } = useAuth();
+
   useEffect(() => {
     const invalidate = () => {
       qc.invalidateQueries({ queryKey: ["auction_state"] });
       qc.invalidateQueries({ queryKey: ["players"] });
       qc.invalidateQueries({ queryKey: ["ambassadors"] });
       qc.invalidateQueries({ queryKey: ["auction_events"] });
+      qc.invalidateQueries({ queryKey: ["bids"] });
     };
+
+    // Public audience polling deliberately avoids subscribing to private table
+    // rows over Postgres Changes. Authenticated roles keep the realtime channel.
+    if (!session) {
+      const timer = window.setInterval(invalidate, 2000);
+      invalidate();
+      return () => window.clearInterval(timer);
+    }
+
     const channel = supabase
       .channel("auction-sync")
       .on("postgres_changes", { event: "*", schema: "public", table: "auction_state" }, invalidate)
@@ -161,7 +174,7 @@ export function useRealtimeAuction() {
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("online", invalidate);
     };
-  }, [qc]);
+  }, [qc, session?.user.id]);
 }
 
 export function minimumNextBid(state: AuctionState | null | undefined): number {
