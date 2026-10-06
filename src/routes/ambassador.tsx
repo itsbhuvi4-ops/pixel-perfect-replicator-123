@@ -261,7 +261,8 @@ function WarMetric({ label, value, accent = false }: { label: string; value: str
 }
 
 function CasterCamera() {
-  const { stream, status } = useCasterCamStream(true);
+  const { data: state } = useAuctionState();
+  const { stream, status } = useCasterCamStream(Boolean(state?.caster_cam_live), state?.caster_session_id ?? null);
   return <CasterLivePanel stream={stream} status={status} />;
 }
 
