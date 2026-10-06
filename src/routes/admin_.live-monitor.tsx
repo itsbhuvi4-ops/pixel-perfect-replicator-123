@@ -5,6 +5,7 @@ import { useAuctionState, useAuctionEvents, usePlayers, useRealtimeAuction } fro
 import { useCasterCamStream } from "@/lib/use-caster-cam";
 
 export const Route = createFileRoute("/admin_/live-monitor")({
+  head: () => ({ meta: [{ title: "Live Monitor — BIDXAUCTION" }, { name: "description", content: "Monitor the BIDXAUCTION live player auction and broadcast." }, { property: "og:title", content: "Live Monitor — BIDXAUCTION" }, { property: "og:description", content: "Monitor the BIDXAUCTION live player auction and broadcast." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" }] }),
   component: () => <RoleGate role="admin"><AdminLiveMonitor /></RoleGate>,
 });
 

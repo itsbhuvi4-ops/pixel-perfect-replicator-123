@@ -25,6 +25,11 @@ export const Route = createFileRoute("/admin")({
     meta: [
       { title: "Admin — BidX Auction" },
       { name: "robots", content: "noindex" },
+      { name: "description", content: "Manage BIDXAUCTION accounts, players, teams and auction settings." },
+      { property: "og:title", content: "Admin — BIDXAUCTION" },
+      { property: "og:description", content: "Manage BIDXAUCTION accounts, players, teams and auction settings." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: () => (

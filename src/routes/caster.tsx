@@ -18,6 +18,11 @@ export const Route = createFileRoute("/caster")({
     meta: [
       { title: "Caster Console — BidX Auction" },
       { name: "robots", content: "noindex" },
+      { name: "description", content: "Control BIDXAUCTION player reveals, bidding and live commentary." },
+      { property: "og:title", content: "Caster Console — BIDXAUCTION" },
+      { property: "og:description", content: "Control BIDXAUCTION player reveals, bidding and live commentary." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: () => (

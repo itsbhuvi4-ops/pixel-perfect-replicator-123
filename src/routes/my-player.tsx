@@ -11,7 +11,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { markPlayerUploadPromptSeen } from "@/lib/accounts.functions";
 
 export const Route = createFileRoute("/my-player")({
-  head: () => ({ meta: [{ title: "Player — Bid X Auction" }, { name: "robots", content: "noindex" }] }),
+  head: () => ({ meta: [{ title: "Player — Bid X Auction" }, { name: "robots", content: "noindex" },
+      { name: "description", content: "View your BIDXAUCTION player profile and auction result." },
+      { property: "og:title", content: "My Player — BIDXAUCTION" },
+      { property: "og:description", content: "View your BIDXAUCTION player profile and auction result." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ] }),
   component: () => (
     <RoleGate role="player">
       <PlayerPage />
