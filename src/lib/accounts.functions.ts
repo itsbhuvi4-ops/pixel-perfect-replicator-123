@@ -418,7 +418,9 @@ export const resetAuction = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     await requireRole(context, ["admin"]);
     const sa = await admin();
-    const { data, error } = await sa.rpc("admin_reset_auction");
+    // This migrated RPC is not yet represented in the generated client types.
+    const resetRpc = sa.rpc as unknown as (name: "admin_reset_auction") => Promise<{ data: unknown; error: { message: string } | null }>;
+    const { data, error } = await resetRpc.call(sa, "admin_reset_auction");
     if (error) throw new Error(friendly(error.message));
     return data as {
       ok: boolean;

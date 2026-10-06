@@ -1,9 +1,9 @@
 /** Reference: 30fps opening, with independent letter cuts followed by a resolved hold. */
 export const PRELOADER_TIMING = {
-  reveal: 0.35,
-  settle: 17.8,
-  fade: 20.3,
-  end: 21.1,
+  reveal: 0.12,
+  settle: 5.6,
+  fade: 6.5,
+  end: 7,
   reducedEnd: 1.25,
 } as const;
 

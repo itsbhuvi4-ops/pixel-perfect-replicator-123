@@ -19,19 +19,20 @@ function drawOpening(ctx: CanvasRenderingContext2D, width: number, height: numbe
   ctx.fillStyle = background;
   ctx.fillRect(0, 0, width, height);
   const resolved = reduced || seconds >= PRELOADER_TIMING.settle;
-  const reveal = reduced ? 1 : Math.min(1, Math.max(0.12, seconds / 1.6));
+  const referenceSeconds = seconds * (17.8 / PRELOADER_TIMING.settle);
+  const reveal = reduced ? 1 : Math.min(1, Math.max(0.12, referenceSeconds / 1.6));
   const size = Math.min(width * 0.068, height * 0.16, 108);
   const cell = size * 0.82;
   const total = cell * WORDMARK.length;
-  const drift = resolved ? 0 : Math.sin(seconds * 0.29) * size * 0.014;
-  const zoom = resolved ? 1 : 0.975 + Math.min(seconds / 18, 1) * 0.025;
+  const drift = resolved ? 0 : Math.sin(referenceSeconds * 0.29) * size * 0.014;
+  const zoom = resolved ? 1 : 0.975 + Math.min(referenceSeconds / 18, 1) * 0.025;
 
   ctx.save();
   ctx.translate(width / 2 + drift, height / 2);
   ctx.scale(zoom, zoom);
   for (let i = 0; i < WORDMARK.length; i++) {
     // Different cuts per letter recreate the asynchronous montage rather than a word-wide glitch.
-    const cut = Math.floor(seconds * (i % 3 === 0 ? 3.7 : 2.9) + i * 2.37);
+    const cut = Math.floor(referenceSeconds * (i % 3 === 0 ? 3.7 : 2.9) + i * 2.37);
     const face = resolved ? 1 : (cut * 5 + i * 3) % FACES.length;
     const italic = !resolved && (cut + i) % 4 === 0;
     const scaleY = resolved ? 1 : ([1, 0.86, 1.15, 0.96][(cut + i) % 4] ?? 1);
@@ -92,8 +93,9 @@ export function BrandPreloader({ children }: { children: ReactNode }) {
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     let animationFrame = 0;
-    let elapsed = 0;
-    let previous = performance.now();
+    const startedAt = performance.now();
+    const handoff = window.setTimeout(() => setFinished(true),
+      (motion.matches ? PRELOADER_TIMING.reducedEnd : PRELOADER_TIMING.end) * 1000);
     let width = 0;
     let height = 0;
     const resize = () => {
@@ -107,9 +109,8 @@ export function BrandPreloader({ children }: { children: ReactNode }) {
     resize();
     window.addEventListener("resize", resize);
     const tick = (now: number) => {
-      // Pause while hidden, so returning visitors still see the final reveal and handoff.
-      if (!document.hidden) elapsed += Math.min((now - previous) / 1000, 0.1);
-      previous = now;
+      // Wall-clock timing reveals the website after seven seconds even after a slow frame.
+      const elapsed = (now - startedAt) / 1000;
       const phase = preloaderPhase(elapsed, motion.matches);
       if (phase === "done") {
         setFinished(true);
@@ -122,6 +123,7 @@ export function BrandPreloader({ children }: { children: ReactNode }) {
     };
     animationFrame = requestAnimationFrame(tick);
     return () => {
+      window.clearTimeout(handoff);
       cancelAnimationFrame(animationFrame);
       window.removeEventListener("resize", resize);
       document.body.style.overflow = originalOverflow;
