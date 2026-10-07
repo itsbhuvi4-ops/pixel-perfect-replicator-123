@@ -14,6 +14,7 @@ import type { ErrorComponentProps } from "@tanstack/react-router";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/lib/auth";
+import { ConvexAuthBridge } from "@/components/ConvexAuthBridge";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Toaster } from "@/components/ui/sonner";
 import { BrandPreloader } from "@/components/BrandPreloader";
@@ -99,9 +100,7 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
-const CONFIG_OK = Boolean(
-  import.meta.env['VITE_SUPABASE_URL'] && import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'],
-);
+const CONFIG_OK = Boolean(import.meta.env['VITE_CONVEX_URL']);
 
 function ConfigError() {
   useEffect(() => {
@@ -115,7 +114,7 @@ function ConfigError() {
         </div>
         <h1 className="mt-4 text-lg font-semibold">App configuration is missing</h1>
         <p className="mt-2 text-sm text-mut">
-          This version of the site was published without its connection settings, so the
+          This version of the site was published without its Convex connection setting, so the
           auction can't load. Please try again shortly.
         </p>
         <button
@@ -147,11 +146,13 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <SiteHeader />
-        <Outlet />
-        <Toaster />
-      </AuthProvider>
+      <ConvexAuthBridge>
+        <AuthProvider>
+          <SiteHeader />
+          <Outlet />
+          <Toaster />
+        </AuthProvider>
+      </ConvexAuthBridge>
     </QueryClientProvider>
   );
 }

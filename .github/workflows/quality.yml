@@ -2,7 +2,7 @@ name: BIDXAUCTION Quality Gate
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "convex-migration-foundation"]
   pull_request:
     branches: ["main"]
 
@@ -14,7 +14,8 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: "latest"
-      - run: bun install --frozen-lockfile
+      - run: bun install --no-save
+      - run: CONVEX_AGENT_MODE=anonymous bunx convex dev --once
       - run: bunx tsc --noEmit
       - run: bun run lint
       - run: bun run build

@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { RoleGate, Center, errText } from "@/components/Guard";
@@ -15,11 +14,11 @@ import {
   useMyRoster,
   usePlayers,
   useRealtimeAuction,
+  usePlaceBid,
   minimumNextBid,
 } from "@/lib/auction";
 import { money } from "@/lib/format";
 import { useCasterCamStream } from "@/lib/use-caster-cam";
-import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/ambassador")({
   head: () => ({ meta: [{ title: "Ambassador — Bid X Auction" }, { name: "robots", content: "noindex" },
@@ -177,7 +176,7 @@ function PlayerAuction() {
   const { data: bids = [] } = useBids(current?.id);
   const { data: ambassadors = [] } = useAmbassadors();
   const { data: me } = useMyAmbassador(useAuth().user?.id);
-  const qc = useQueryClient();
+  const placeBid = usePlaceBid();
   const [busy, setBusy] = useState(false);
   const live = state?.status === "live" && !!current && !!state?.bidding_open;
   const minNext = minimumNextBid(state);
@@ -186,17 +185,8 @@ function PlayerAuction() {
     if (!me) return;
     setBusy(true);
     try {
-      const { error } = await supabase.rpc("place_bid_v3", {
-        p_amount: amount,
-        p_idempotency_key: crypto.randomUUID(),
-      });
-      if (error) throw error;
+      await placeBid({ amount, idempotencyKey: crypto.randomUUID() });
       toast.success(`Bid ${money(amount)} placed`);
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: ["auction_state"] }),
-        qc.invalidateQueries({ queryKey: ["bids"] }),
-        qc.invalidateQueries({ queryKey: ["ambassadors"] }),
-      ]);
     } catch (err) {
       toast.error(errText(err));
     } finally {
