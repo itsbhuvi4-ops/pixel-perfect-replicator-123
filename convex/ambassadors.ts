@@ -38,7 +38,8 @@ export const list = query({
 
 export const create = mutation({
   args: {
-    userId: v.id("users"),\n    ambassadorName: v.string(), teamName: v.string(),
+    userId: v.id("users"),
+    ambassadorName: v.string(), teamName: v.string(),
     discord: v.optional(v.string()), info: v.optional(v.string()),
     startingPoints: v.number(),
   },
@@ -101,7 +102,7 @@ export const deleteAmbassador = mutation({
 
 export const roster = query({
   args: { ambassadorId: v.id("ambassadors") },
-  handler: async ctx => {
+  handler: async (ctx, args) => {
     const rows = await ctx.db.query("players").withIndex("by_ambassador_id", q => q.eq("ambassadorId", args.ambassadorId)).collect();
     return rows.map(p => ({
       id: p._id, player_name: p.playerName, ingame_name: p.ingameName,
