@@ -369,7 +369,7 @@ function CasterCamCard() {
       }
     }, 5000);
     return () => window.clearInterval(timer);
-  }, [live, heartbeat, qc]);
+  }, [live, heartbeat]);
 
 
 
@@ -400,10 +400,10 @@ function CasterCamCard() {
       stopRef.current = await startCasterBroadcast(preview, (nextStatus, count) => {
         setStatus(nextStatus);
         if (count !== undefined) setViewers(count);
-      }, lease.session_id);
+      }, lease.sessionId);
       setLive(true);
       toast.success("● LIVE — Caster camera is broadcasting");
-      await qc.invalidateQueries({ queryKey: ["auction_state"] });
+
     } catch (err) {
       stopRef.current?.();
       stopRef.current = null;
