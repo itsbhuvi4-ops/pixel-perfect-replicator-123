@@ -1,4 +1,4 @@
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { useAuth } from "@/lib/auth";
 import { convexApi } from "@/lib/convex-api";
 
@@ -115,6 +115,10 @@ export function useMyAmbassador(_userId: string | null | undefined) {
 export function useMyRoster(ambassadorId: string | null | undefined) {
   const data = useQuery(convexApi.ambassadors.roster, ambassadorId ? { ambassadorId } : "skip");
   return { data: (data ?? []) as Player[], isLoading: data === undefined };
+}
+
+export function usePlaceBid() {
+  return useMutation(convexApi.auction.placeBid);
 }
 
 export function useRealtimeAuction() {
