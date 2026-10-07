@@ -567,8 +567,8 @@ export const adminDeleteAmbassador = createServerFn({ method: "POST" })
     if (!ambassador) throw new Error("Ambassador not found");
     if (ambassador.user_id === context.userId) throw new Error("You can't delete your own account");
 
-    const { data: state } = await sa.from("auction_state").select("status,current_bidder_id").eq("id", 1).maybeSingle();
-    if (state?.current_bidder_id === ambassador.id && state.status === "live") {
+    const { data: state } = await sa.from("auction_state").select("status,current_bidder_id,current_player_id").eq("id", 1).maybeSingle();
+    if (state?.current_bidder_id === ambassador.id) {
       throw new Error("This ambassador is the active bidder; finish or clear the current lot first");
     }
 
