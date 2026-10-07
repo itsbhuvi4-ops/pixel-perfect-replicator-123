@@ -73,6 +73,7 @@ function LoginPage() {
     const res = await verify({ data: { role } });
     setBusy(false);
     if (!res.ok) { await supabase.auth.signOut(); setErr(res.error); return; }
+    if (res.mustChangePassword) { window.location.href = "/change-password"; return; }
     if (next) { window.location.href = next; return; }
     window.location.href = homeForRoles([role]);
   };
