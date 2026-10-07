@@ -321,3 +321,38 @@ export const finalizeExpired = internalMutation({
     return null;
   },
 });
+
+export const publicBids = query({
+  args: { playerId: v.optional(v.id("players")) },
+  args: { playerId: v.optional(v.id("players")) },
+  handler: async ctx => {
+    if (!args.playerId) return [];
+    const rows = await ctx.db.query("bids")
+      .withIndex("by_player_and_created_at", q => q.eq("playerId", args.playerId))
+      .order("desc").take(30);
+    return rows.map(b => ({
+      id: b._id,
+      player_id: b.playerId,
+      ambassador_id: b.ambassadorId,
+      amount: b.amount,
+      created_at: b.createdAt,
+    }));
+  },
+});
+
+export const publicEvents = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async ctx => {
+    const rows = await ctx.db.query("auctionEvents").withIndex("by_created_at")
+      .order("desc").take(Math.min(100, Math.max(1, Math.floor(args.limit ?? 25))));
+    return rows.map(e => ({
+      id: e._id,
+      event_type: e.eventType,
+      message: e.message,
+      player_id: e.playerId ?? null,
+      ambassador_id: e.ambassadorId ?? null,
+      amount: e.amount ?? null,
+      created_at: e.createdAt,
+    }));
+  },
+});
