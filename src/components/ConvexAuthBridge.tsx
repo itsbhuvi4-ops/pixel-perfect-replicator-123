@@ -1,7 +1,6 @@
-import { useCallback, useMemo, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth";
 
 const url = import.meta.env.VITE_CONVEX_URL as string | undefined;
 if (!url) throw new Error("VITE_CONVEX_URL is required for the Convex migration build");
@@ -9,7 +8,26 @@ if (!url) throw new Error("VITE_CONVEX_URL is required for the Convex migration 
 const convex = new ConvexReactClient(url);
 
 function useSupabaseConvexAuth() {
-  const { session, loading } = useAuth();
+  const [session, setSession] = useState<Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"]>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getSession().then(({ data }) => {
+      if (!cancelled) {
+        setSession(data.session);
+        setLoading(false);
+      }
+    });
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, next) => {
+      setSession(next);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+      subscription.subscription.unsubscribe();
+    };
+  }, []);
 
   const fetchAccessToken = useCallback(async ({ forceRefreshToken }: { forceRefreshToken: boolean }) => {
     if (!session) return null;
