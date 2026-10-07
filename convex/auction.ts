@@ -10,6 +10,36 @@ async function getState(ctx: any) {
   return state;
 }
 
+export const publicState = query({
+  args: {},
+  handler: async ctx => {
+    const state = await getState(ctx);
+    return {
+      id: state._id,
+      status: state.status,
+      current_player_id: state.currentPlayerId,
+      current_bid: state.currentBid ?? null,
+      current_bidder_id: state.currentBidderId ?? null,
+      base_price: state.basePrice,
+      min_increment: state.minIncrement,
+      lot_counter: state.lotCounter,
+      max_players: state.maxPlayers,
+      max_ambassadors: state.maxAmbassadors,
+      max_casters: state.maxCasters,
+      tournament_name: state.tournamentName,
+      tournament_season: state.tournamentSeason ?? null,
+      default_starting_points: state.defaultStartingPoints,
+      retain_price: state.retainPrice,
+      max_retains: state.maxRetains,
+      caster_cam_live: Boolean(state.casterCamLive && (state.casterLeaseUntil ?? 0) > Date.now()),
+      bidding_open: state.biddingOpen,
+      bidding_deadline_at: state.biddingDeadlineAt ?? null,
+      updated_at: state.updatedAt,
+      caster_session_id: state.casterSessionId ?? null,
+    };
+  },
+});
+
 export const state = query({
   args: {},
   handler: async ctx => getState(ctx),
