@@ -267,6 +267,56 @@ export const finalize = mutation({
 });
 
 
+
+export const openBiddingScheduled = internalMutation({
+  args: { stateId: v.id("auctionState"), playerId: v.id("players") },
+  handler: async ctx => {
+    const state = await ctx.db.get(args.stateId);
+    if (!state || state.status !== "live" || state.currentPlayerId !== args.playerId || state.biddingOpen) return null;
+    const duration = 30;
+    const now = Date.now();
+    await ctx.db.patch(state._id, {
+      biddingOpen: true,
+      biddingDeadlineAt: now + duration * 1000,
+      biddingSecondsRemaining: duration,
+      updatedAt: now,
+    });
+    await ctx.scheduler.runAfter(duration * 1000, internal.auction.finalizeExpired, { stateId: state._id });
+    return null;
+  },
+});
+
+export const advanceRandom = internalMutation({
+  args: { stateId: v.id("auctionState") },
+  handler: async ctx => {
+    const state = await ctx.db.get(args.stateId);
+    if (!state || state.status !== "live" || state.currentPlayerId) return null;
+    const pool = await ctx.db.query("players").withIndex("by_status", q => q.eq("status", "pool")).collect();
+    if (!pool.length) {
+      await ctx.db.patch(state._id, { status: "completed", biddingOpen: false, updatedAt: Date.now() });
+      return null;
+    }
+    const player = pool[Math.floor(Math.random() * pool.length)];
+    const now = Date.now();
+    await ctx.db.patch(player._id, { status: "in_auction", lotNumber: state.lotCounter + 1, updatedAt: now });
+    await ctx.db.patch(state._id, {
+      currentPlayerId: player._id,
+      currentBid: state.basePrice,
+      currentBidderId: null,
+      biddingOpen: false,
+      biddingDeadlineAt: null,
+      biddingSecondsRemaining: null,
+      lotCounter: state.lotCounter + 1,
+      updatedAt: now,
+    });
+    await ctx.db.insert("auctionEvents", {
+      eventType: "PLAYER_REVEALED", message: "Player revealed", playerId: player._id, createdAt: now,
+    });
+    await ctx.scheduler.runAfter(4000, internal.auction.openBiddingScheduled, { stateId: state._id, playerId: player._id });
+    return player._id;
+  },
+});
+
 export const finalizeExpired = internalMutation({
   args: { stateId: v.id("auctionState") },
   handler: async (ctx, args) => {
