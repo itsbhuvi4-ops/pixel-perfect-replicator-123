@@ -1,28 +1,23 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { getWebRtcIceServers } from "@/lib/accounts.functions";
 
 export const CAM_CHANNEL_PREFIX = "bidx-caster-cam:";
 
-const turnUrls = [
-  ...(String(import.meta.env["VITE_TURN_URLS"] ?? "").split(",").map((v) => v.trim()).filter(Boolean)),
-  String(import.meta.env["VITE_TURN_URL"] ?? "").trim(),
-  String(import.meta.env["VITE_TURN_TCP_URL"] ?? "").trim(),
-  String(import.meta.env["VITE_TURN_TLS_URL"] ?? "").trim(),
-].filter(Boolean);
-const turnUsername = import.meta.env["VITE_TURN_USERNAME"] as string | undefined;
-const turnCredential = import.meta.env["VITE_TURN_CREDENTIAL"] as string | undefined;
-
-const ICE_CONFIG: RTCConfiguration = {
-  iceServers: [
-    { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
-    ...(turnUrls.length && turnUsername && turnCredential
-      ? [{ urls: turnUrls, username: turnUsername, credential: turnCredential }]
-      : []),
-  ],
+const DEFAULT_ICE: RTCConfiguration = {
+  iceServers: [{ urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }],
   iceCandidatePoolSize: 10,
   bundlePolicy: "max-bundle",
   rtcpMuxPolicy: "require",
 };
+
+let iceConfigPromise: Promise<RTCConfiguration> | null = null;
+async function getIceConfig(): Promise<RTCConfiguration> {
+  if (!iceConfigPromise) {
+    iceConfigPromise = getWebRtcIceServers().then((result) => result as RTCConfiguration).catch(() => DEFAULT_ICE);
+  }
+  return iceConfigPromise;
+}
 
 export type CamStatus = "idle" | "connecting" | "live" | "ended" | "error";
 
@@ -47,11 +42,12 @@ function topic(sessionId: string) {
   return `${CAM_CHANNEL_PREFIX}${sessionId}`;
 }
 
-export function startCasterBroadcast(
+export async function startCasterBroadcast(
   stream: MediaStream,
   onStatus: (status: CamStatus, viewers?: number) => void,
   sessionId: string,
-): () => void {
+): Promise<() => void> {
+  const iceConfig = await getIceConfig();
   const casterId = id();
   const peers = new Map<string, RTCPeerConnection>();
   const pendingIce = new Map<string, RTCIceCandidateInit[]>();
@@ -82,7 +78,7 @@ export function startCasterBroadcast(
 
   const connect = async (viewerId: string) => {
     if (stopped || !channel || peers.has(viewerId)) return;
-    const pc = new RTCPeerConnection(ICE_CONFIG);
+    const pc = new RTCPeerConnection(iceConfig);
     peers.set(viewerId, pc);
     pendingIce.set(viewerId, []);
     stream.getTracks().forEach((track) => pc.addTrack(track, stream));
@@ -180,6 +176,7 @@ export function watchCasterCam(
   }
 
   const viewerId = id();
+  const iceConfigForViewer = getIceConfig();
   let channel: RealtimeChannel | null = null;
   let pc: RTCPeerConnection | null = null;
   let casterId: string | null = null;
@@ -206,7 +203,8 @@ export function watchCasterCam(
   const connect = async (offer: Extract<Signal, { kind: "offer" }>) => {
     cleanup();
     casterId = offer.from;
-    const next = new RTCPeerConnection(ICE_CONFIG);
+    const iceConfig = await iceConfigForViewer;
+    const next = new RTCPeerConnection(iceConfig);
     pc = next;
     const remoteStream = new MediaStream();
 
