@@ -32,7 +32,7 @@ const gameRole = v.union(
   v.literal("supporter"),
 );
 
-const nullableId = (table: Parameters<typeof v.id>[0]) => v.optional(v.id(table));
+const nullableId = (table: Parameters<typeof v.id>[0]) => v.optional(v.union(v.null(), v.id(table)));
 
 export default defineSchema({
   users: defineTable({
