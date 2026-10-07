@@ -61,6 +61,7 @@ export default defineSchema({
     playerName: v.string(),
     ingameName: v.string(),
     gameId: v.string(),
+    uid: v.optional(v.string()),
     photoStorageId: v.optional(v.id("_storage")),
     videoStorageId: v.optional(v.id("_storage")),
     primaryRole: gameRole,
@@ -79,6 +80,7 @@ export default defineSchema({
   })
     .index("by_user_id", ["userId"])
     .index("by_game_id", ["gameId"])
+    .index("by_uid", ["uid"])
     .index("by_status", ["status"])
     .index("by_ambassador_id", ["ambassadorId"])
     .index("by_status_and_lot_number", ["status", "lotNumber"]),
