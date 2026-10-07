@@ -324,7 +324,6 @@ export const finalizeExpired = internalMutation({
 
 export const publicBids = query({
   args: { playerId: v.optional(v.id("players")) },
-  args: { playerId: v.optional(v.id("players")) },
   handler: async ctx => {
     if (!args.playerId) return [];
     const rows = await ctx.db.query("bids")
