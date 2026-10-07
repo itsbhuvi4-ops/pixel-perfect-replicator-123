@@ -110,7 +110,7 @@ export const revealNextRandom = mutation({
     await ctx.db.patch(player._id, { status: "in_auction", lotNumber: state.lotCounter + 1, updatedAt: now });
     await ctx.db.patch(state._id, {
       currentPlayerId: player._id, currentBid: state.basePrice, currentBidderId: null,
-      biddingOpen: false, biddingDeadlineAt: undefined, biddingSecondsRemaining: undefined,
+      biddingOpen: false, biddingDeadlineAt: null, biddingSecondsRemaining: null,
       lotCounter: state.lotCounter + 1, updatedAt: now,
     });
     await ctx.db.insert("auctionEvents", {
@@ -212,8 +212,8 @@ export const finalize = mutation({
       });
       await ctx.db.patch(state._id, {
         currentPlayerId: null, currentBid: null, currentBidderId: null,
-        biddingOpen: false, biddingDeadlineAt: undefined,
-        biddingSecondsRemaining: undefined, updatedAt: now,
+        biddingOpen: false, biddingDeadlineAt: null,
+        biddingSecondsRemaining: null, updatedAt: now,
       });
       return { status: "sold" as const, playerId: player._id };
     }
@@ -229,8 +229,8 @@ export const finalize = mutation({
     });
     await ctx.db.patch(state._id, {
       currentPlayerId: null, currentBid: null, currentBidderId: null,
-      biddingOpen: false, biddingDeadlineAt: undefined,
-      biddingSecondsRemaining: undefined, updatedAt: now,
+      biddingOpen: false, biddingDeadlineAt: null,
+      biddingSecondsRemaining: null, updatedAt: now,
     });
     return { status: "unsold" as const, playerId: player._id };
   },
@@ -285,8 +285,8 @@ export const finalizeExpired = internalMutation({
 
     await ctx.db.patch(state._id, {
       currentPlayerId: null, currentBid: null, currentBidderId: null,
-      biddingOpen: false, biddingDeadlineAt: undefined,
-      biddingSecondsRemaining: undefined, updatedAt: now,
+      biddingOpen: false, biddingDeadlineAt: null,
+      biddingSecondsRemaining: null, updatedAt: now,
     });
     return null;
   },
