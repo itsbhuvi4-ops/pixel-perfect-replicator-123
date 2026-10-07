@@ -8,6 +8,13 @@
       "when": 1791394941096,
       "tag": "0000_bidx_account_delete_fk_cleanup_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791395412683,
+      "tag": "0001_bidx_reset_auction_safe_deletes",
+      "breakpoints": true
     }
   ]
 }
