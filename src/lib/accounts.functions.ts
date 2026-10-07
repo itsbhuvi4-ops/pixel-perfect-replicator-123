@@ -382,43 +382,6 @@ export const resetUserPassword = createServerFn({ method: "POST" })
     return { resetLink: linkData.properties.action_link };
   });
 
-function randomPassword() {
-  const bytes = crypto.getRandomValues(new Uint8Array(9));
-  return Array.from(bytes, (b) => "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789"[b % 55]).join("") + "!7";
-}
-
-export const seedDefaultAccounts = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    await requireRole(context, ["admin"]);
-    const sa = await admin();
-    const { data: st } = await sa.from("auction_state").select("default_starting_points").eq("id", 1).single();
-    const start = st?.default_starting_points ?? 50000;
-    const created: { username: string }[] = [];
-    for (let i = 1; i <= 24; i++) {
-      const u = `Ambassador#${String(i).padStart(3, "0")}`;
-      const { data: exists } = await sa.from("profiles").select("id").ilike("username", u).maybeSingle();
-      if (exists) continue;
-      const pw = randomPassword();
-      const id = await createAccount(u, pw, "ambassador");
-      await sa.from("ambassadors").insert({
-        user_id: id, ambassador_name: u, team_name: `Team ${String(i).padStart(3, "0")}`,
-        starting_points: start, remaining_points: start,
-      });
-      created.push({ username: u });
-    }
-    for (let i = 1; i <= 2; i++) {
-      const u = `Caster#${String(i).padStart(3, "0")}`;
-      const { data: exists } = await sa.from("profiles").select("id").ilike("username", u).maybeSingle();
-      if (exists) continue;
-      const pw = randomPassword();
-      const id = await createAccount(u, pw, "caster");
-      await sa.from("casters").insert({ user_id: id, caster_name: u });
-      created.push({ username: u });
-    }
-    return { created };
-  });
-
 export const createStaff = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
