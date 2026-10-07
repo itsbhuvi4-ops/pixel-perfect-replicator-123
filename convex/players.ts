@@ -15,6 +15,33 @@ export const mine = query({
   },
 });
 
+export const listPublic = query({
+  args: {},
+  handler: async ctx => {
+    const rows = await ctx.db.query("players").collect();
+    return Promise.all(rows.map(async p => ({
+      id: p._id,
+      player_name: p.playerName,
+      ingame_name: p.ingameName,
+      game_id: p.gameId,
+      primary_role: p.primaryRole,
+      secondary_role: p.secondaryRole ?? null,
+      info: p.info ?? null,
+      experience: p.experience ?? null,
+      team_name: p.teamName ?? null,
+      status: p.status,
+      sold_price: p.soldPrice ?? null,
+      ambassador_id: p.ambassadorId ?? null,
+      sold_at: p.soldAt ?? null,
+      lot_number: p.lotNumber ?? null,
+      created_at: p.createdAt,
+      updated_at: p.updatedAt,
+      photo_url: p.photoStorageId ? await ctx.storage.getUrl(p.photoStorageId) : null,
+      video_url: p.videoStorageId ? await ctx.storage.getUrl(p.videoStorageId) : null,
+    })));
+  },
+});
+
 export const listPublicPool = query({
   args: {},
   handler: async ctx => ctx.db.query("players").withIndex("by_status", q => q.eq("status", "pool")).collect(),
