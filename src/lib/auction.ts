@@ -4,7 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth";
 
-export type AuctionState = Tables<"auction_state">;
+// Some columns exist only in certain environments; keep them optional.
+export type AuctionState = Tables<"auction_state"> & {
+  caster_session_id?: string | null;
+  bidding_deadline_at?: string | null;
+  tournament_season?: string | null;
+  tournament_logo_url?: string | null;
+  auction_branding?: string | null;
+};
 export type Player = Tables<"players">;
 export type Ambassador = Tables<"ambassadors">;
 export type AuctionEvent = Tables<"auction_events">;

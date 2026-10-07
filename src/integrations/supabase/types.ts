@@ -56,6 +56,42 @@ export type Database = {
         }
         Relationships: []
       }
+      auction_deleted_identity: {
+        Row: {
+          ambassador_name: string | null
+          deleted_at: string
+          entity_id: string
+          entity_type: string
+          game_id: string | null
+          id: string
+          ingame_name: string | null
+          player_name: string | null
+          team_name: string | null
+        }
+        Insert: {
+          ambassador_name?: string | null
+          deleted_at?: string
+          entity_id: string
+          entity_type: string
+          game_id?: string | null
+          id?: string
+          ingame_name?: string | null
+          player_name?: string | null
+          team_name?: string | null
+        }
+        Update: {
+          ambassador_name?: string | null
+          deleted_at?: string
+          entity_id?: string
+          entity_type?: string
+          game_id?: string | null
+          id?: string
+          ingame_name?: string | null
+          player_name?: string | null
+          team_name?: string | null
+        }
+        Relationships: []
+      }
       auction_events: {
         Row: {
           ambassador_id: string | null
@@ -89,29 +125,44 @@ export type Database = {
       auction_results: {
         Row: {
           ambassador_id: string | null
+          ambassador_name_snapshot: string | null
           created_at: string
+          game_id_snapshot: string | null
           id: string
-          player_id: string
+          ingame_name_snapshot: string | null
+          player_id: string | null
+          player_name_snapshot: string | null
           sold_at: string
           status: string
+          team_name_snapshot: string | null
           winning_bid: number | null
         }
         Insert: {
           ambassador_id?: string | null
+          ambassador_name_snapshot?: string | null
           created_at?: string
+          game_id_snapshot?: string | null
           id?: string
-          player_id: string
+          ingame_name_snapshot?: string | null
+          player_id?: string | null
+          player_name_snapshot?: string | null
           sold_at?: string
           status: string
+          team_name_snapshot?: string | null
           winning_bid?: number | null
         }
         Update: {
           ambassador_id?: string | null
+          ambassador_name_snapshot?: string | null
           created_at?: string
+          game_id_snapshot?: string | null
           id?: string
-          player_id?: string
+          ingame_name_snapshot?: string | null
+          player_id?: string | null
+          player_name_snapshot?: string | null
           sold_at?: string
           status?: string
+          team_name_snapshot?: string | null
           winning_bid?: number | null
         }
         Relationships: [
@@ -134,14 +185,8 @@ export type Database = {
       auction_state: {
         Row: {
           base_price: number
-          bidding_deadline_at: string | null
           bidding_open: boolean
-          bidding_seconds_remaining: number | null
           caster_cam_live: boolean
-          caster_heartbeat_at: string | null
-          caster_lease_until: string | null
-          caster_owner_id: string | null
-          caster_session_id: string | null
           caster_stream_url: string | null
           current_bid: number | null
           current_bidder_id: string | null
@@ -157,21 +202,12 @@ export type Database = {
           retain_price: number
           status: Database["public"]["Enums"]["auction_status"]
           tournament_name: string
-          tournament_season: string | null
-          tournament_logo_url: string | null
-          auction_branding: string | null
           updated_at: string
         }
         Insert: {
           base_price?: number
-          bidding_deadline_at?: string | null
           bidding_open?: boolean
-          bidding_seconds_remaining?: number | null
           caster_cam_live?: boolean
-          caster_heartbeat_at?: string | null
-          caster_lease_until?: string | null
-          caster_owner_id?: string | null
-          caster_session_id?: string | null
           caster_stream_url?: string | null
           current_bid?: number | null
           current_bidder_id?: string | null
@@ -187,20 +223,11 @@ export type Database = {
           retain_price?: number
           status?: Database["public"]["Enums"]["auction_status"]
           tournament_name?: string
-          tournament_season?: string | null
-          tournament_logo_url?: string | null
-          auction_branding?: string | null
           updated_at?: string
         }
         Update: {
           base_price?: number
-          bidding_deadline_at?: string | null
           bidding_open?: boolean
-          bidding_seconds_remaining?: number | null
-          caster_heartbeat_at?: string | null
-          caster_lease_until?: string | null
-          caster_owner_id?: string | null
-          caster_session_id?: string | null
           caster_cam_live?: boolean
           caster_stream_url?: string | null
           current_bid?: number | null
@@ -217,9 +244,6 @@ export type Database = {
           retain_price?: number
           status?: Database["public"]["Enums"]["auction_status"]
           tournament_name?: string
-          tournament_season?: string | null
-          tournament_logo_url?: string | null
-          auction_branding?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -241,28 +265,40 @@ export type Database = {
       }
       bids: {
         Row: {
-          ambassador_id: string
+          ambassador_id: string | null
+          ambassador_name_snapshot: string | null
           amount: number
           created_at: string
           id: string
           idempotency_key: string | null
-          player_id: string
+          ingame_name_snapshot: string | null
+          player_id: string | null
+          player_name_snapshot: string | null
+          team_name_snapshot: string | null
         }
         Insert: {
-          ambassador_id: string
+          ambassador_id?: string | null
+          ambassador_name_snapshot?: string | null
           amount: number
           created_at?: string
           id?: string
           idempotency_key?: string | null
-          player_id: string
+          ingame_name_snapshot?: string | null
+          player_id?: string | null
+          player_name_snapshot?: string | null
+          team_name_snapshot?: string | null
         }
         Update: {
-          ambassador_id?: string
+          ambassador_id?: string | null
+          ambassador_name_snapshot?: string | null
           amount?: number
           created_at?: string
           id?: string
           idempotency_key?: string | null
-          player_id?: string
+          ingame_name_snapshot?: string | null
+          player_id?: string | null
+          player_name_snapshot?: string | null
+          team_name_snapshot?: string | null
         }
         Relationships: [
           {
@@ -476,28 +512,40 @@ export type Database = {
       }
       retain_records: {
         Row: {
-          ambassador_id: string
+          ambassador_id: string | null
+          ambassador_name_snapshot: string | null
           created_at: string
           id: string
+          ingame_name_snapshot: string | null
           is_locked: boolean
-          player_id: string
+          player_id: string | null
+          player_name_snapshot: string | null
           retain_price: number
+          team_name_snapshot: string | null
         }
         Insert: {
-          ambassador_id: string
+          ambassador_id?: string | null
+          ambassador_name_snapshot?: string | null
           created_at?: string
           id?: string
+          ingame_name_snapshot?: string | null
           is_locked?: boolean
-          player_id: string
+          player_id?: string | null
+          player_name_snapshot?: string | null
           retain_price: number
+          team_name_snapshot?: string | null
         }
         Update: {
-          ambassador_id?: string
+          ambassador_id?: string | null
+          ambassador_name_snapshot?: string | null
           created_at?: string
           id?: string
+          ingame_name_snapshot?: string | null
           is_locked?: boolean
-          player_id?: string
+          player_id?: string | null
+          player_name_snapshot?: string | null
           retain_price?: number
+          team_name_snapshot?: string | null
         }
         Relationships: [
           {
@@ -539,6 +587,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_reset_auction: { Args: { p_request_id: string }; Returns: Json }
+      admin_select_next_player_after_delete: {
+        Args: { p_request_id: string }
+        Returns: Json
+      }
       caster_end_bidding: { Args: never; Returns: Json }
       caster_mark_unsold: { Args: never; Returns: Json }
       caster_next_player: { Args: never; Returns: Json }
