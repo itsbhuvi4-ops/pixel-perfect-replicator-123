@@ -81,6 +81,7 @@ export const start = mutation({
     if (state.status !== "not_started" && state.status !== "paused") throw new Error("Auction cannot be started from its current state");
     await ctx.db.patch(state._id, { status: "live", updatedAt: Date.now() });
     await ctx.db.insert("auctionEvents", { eventType: "AUCTION_STARTED", message: "Auction started", actorUserId: user._id, createdAt: Date.now() });
+    await ctx.scheduler.runAfter(0, internal.auction.advanceRandom, { stateId: state._id });
     return null;
   },
 });
@@ -105,6 +106,7 @@ export const resume = mutation({
     if (state.status !== "paused") throw new Error("Auction is not paused");
     await ctx.db.patch(state._id, { status: "live", updatedAt: Date.now() });
     await ctx.db.insert("auctionEvents", { eventType: "AUCTION_RESUMED", message: "Auction resumed", actorUserId: user._id, createdAt: Date.now() });
+    if (!state.currentPlayerId) await ctx.scheduler.runAfter(0, internal.auction.advanceRandom, { stateId: state._id });
     return null;
   },
 });
