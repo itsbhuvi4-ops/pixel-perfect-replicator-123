@@ -1,163 +1,124 @@
-import { useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import type { Tables } from "@/integrations/supabase/types";
+import { useQuery } from "convex/react";
 import { useAuth } from "@/lib/auth";
+import { convexApi } from "@/lib/convex-api";
 
-export type AuctionState = Tables<"auction_state">;
-export type Player = Tables<"players">;
-export type Ambassador = Tables<"ambassadors">;
-export type AuctionEvent = Tables<"auction_events">;
+export type AuctionState = {
+  id: string;
+  status: "not_started" | "live" | "paused" | "completed" | "stopped";
+  current_player_id: string | null;
+  current_bid: number | null;
+  current_bidder_id: string | null;
+  base_price: number;
+  min_increment: number;
+  lot_counter: number;
+  max_players: number;
+  max_ambassadors: number;
+  max_casters: number;
+  tournament_name?: string | null;
+  tournament_season?: string | null;
+  default_starting_points: number;
+  retain_price: number;
+  max_retains: number;
+  caster_cam_live: boolean;
+  bidding_open: boolean;
+  bidding_deadline_at?: number | null;
+  updated_at: number;
+  caster_session_id?: string | null;
+};
+
+export type Player = {
+  id: string;
+  player_name: string;
+  ingame_name: string;
+  game_id: string;
+  primary_role: string;
+  secondary_role?: string | null;
+  info?: string | null;
+  experience?: string | null;
+  team_name?: string | null;
+  status: string;
+  sold_price?: number | null;
+  ambassador_id?: string | null;
+  sold_at?: number | null;
+  lot_number?: number | null;
+  created_at: number;
+  updated_at: number;
+  photo_url?: string | null;
+  video_url?: string | null;
+};
+
+export type Ambassador = {
+  id: string;
+  ambassador_name: string;
+  team_name: string;
+  starting_points: number;
+  remaining_points: number;
+  info?: string | null;
+};
+
+export type AuctionEvent = {
+  id: string;
+  event_type: string;
+  message: string;
+  player_id?: string | null;
+  ambassador_id?: string | null;
+  amount?: number | null;
+  created_at: number;
+};
+
+export type Bid = {
+  id: string;
+  player_id: string;
+  ambassador_id: string;
+  amount: number;
+  created_at: number;
+};
 
 export function useAuctionState() {
-  return useQuery({
-    queryKey: ["auction_state"],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("bidx_public_auction_state")
-        .select("id,status,current_player_id,current_bid,current_bidder_id,base_price,min_increment,lot_counter,max_players,max_ambassadors,max_casters,tournament_name,updated_at,default_starting_points,retain_price,max_retains,caster_cam_live,bidding_open,tournament_season,tournament_logo_url,auction_branding,caster_session_id")
-        .eq("id", 1)
-        .maybeSingle();
-      if (error) throw error;
-      return data as AuctionState | null;
-    },
-  });
+  const data = useQuery(convexApi.auction.publicState);
+  return { data: (data ?? null) as AuctionState | null, isLoading: data === undefined };
 }
 
 export function usePlayers() {
-  return useQuery({
-    queryKey: ["players"],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("bidx_public_players")
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as Player[];
-    },
-  });
+  const data = useQuery(convexApi.players.listPublic);
+  return { data: (data ?? []) as Player[], isLoading: data === undefined };
 }
 
 export function useAmbassadors() {
-  return useQuery({
-    queryKey: ["ambassadors"],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("bidx_public_ambassadors")
-        .order("remaining_points", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as Ambassador[];
-    },
-  });
+  const data = useQuery(convexApi.ambassadors.publicList);
+  return { data: (data ?? []) as Ambassador[], isLoading: data === undefined };
 }
 
 export function useAuctionEvents(limit = 25) {
-  return useQuery({
-    queryKey: ["auction_events", limit],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("bidx_public_auction_events")
-        .order("created_at", { ascending: false })
-        .limit(limit);
-      if (error) throw error;
-      return (data ?? []) as AuctionEvent[];
-    },
-  });
+  const data = useQuery(convexApi.auction.publicEvents, { limit });
+  return { data: (data ?? []) as AuctionEvent[], isLoading: data === undefined };
 }
 
 export function useBids(playerId: string | null | undefined) {
-  return useQuery({
-    queryKey: ["bids", playerId],
-    enabled: !!playerId,
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("bidx_public_bids")
-        .eq("player_id", playerId!)
-        .order("created_at", { ascending: false })
-        .limit(30);
-      if (error) throw error;
-      return (data ?? []) as Tables<"bids">[];
-    },
-  });
+  const data = useQuery(convexApi.auction.publicBids, playerId ? { playerId } : "skip");
+  return { data: (data ?? []) as Bid[], isLoading: data === undefined };
 }
 
-export function useMyPlayer(userId: string | null | undefined) {
-  return useQuery({
-    queryKey: ["my_player", userId],
-    enabled: !!userId,
-    queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("player_get_me");
-      if (error) throw error;
-      return ((data ?? [])[0] ?? null) as Player | null;
-    },
-  });
+export function useMyPlayer(_userId: string | null | undefined) {
+  const { session } = useAuth();
+  const data = useQuery(convexApi.players.mine, session ? {} : "skip");
+  return { data: (data ?? null) as Player | null, isLoading: data === undefined };
 }
 
-export function useMyAmbassador(userId: string | null | undefined) {
-  return useQuery({
-    queryKey: ["my_ambassador", userId],
-    enabled: !!userId,
-    queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)("ambassador_get_me");
-      if (error) throw error;
-      return ((data ?? [])[0] ?? null) as Ambassador | null;
-    },
-  });
+export function useMyAmbassador(_userId: string | null | undefined) {
+  const { session } = useAuth();
+  const data = useQuery(convexApi.ambassadors.mine, session ? {} : "skip");
+  const profile = data && "players" in data ? data : data;
+  return { data: (profile ?? null) as Ambassador | null, isLoading: data === undefined };
 }
 
 export function useMyRoster(ambassadorId: string | null | undefined) {
-  return useQuery({
-    queryKey: ["my_roster", ambassadorId],
-    enabled: !!ambassadorId,
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("bidx_public_players")
-        .select("*")
-        .eq("ambassador_id", ambassadorId!)
-        .order("sold_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as Player[];
-    },
-  });
+  const data = useQuery(convexApi.ambassadors.roster, ambassadorId ? { ambassadorId } : "skip");
+  return { data: (data ?? []) as Player[], isLoading: data === undefined };
 }
 
-/** Subscribe once per page to keep every auction query in sync with the server. */
 export function useRealtimeAuction() {
-  const qc = useQueryClient();
-  const { session } = useAuth();
-  const hasSession = Boolean(session?.user.id);
-
-  useEffect(() => {
-    const invalidate = () => {
-      qc.invalidateQueries({ queryKey: ["auction_state"] });
-      qc.invalidateQueries({ queryKey: ["players"] });
-      qc.invalidateQueries({ queryKey: ["ambassadors"] });
-      qc.invalidateQueries({ queryKey: ["auction_events"] });
-      qc.invalidateQueries({ queryKey: ["bids"] });
-    };
-
-    // Public audience polling deliberately avoids subscribing to private table
-    // rows over Postgres Changes. Authenticated roles keep the realtime channel.
-    if (!hasSession) {
-      const timer = window.setInterval(invalidate, 2000);
-      invalidate();
-      return () => window.clearInterval(timer);
-    }
-
-    const timer = window.setInterval(invalidate, 2000);
-    invalidate();
-
-    const onVisible = () => {
-      if (document.visibilityState === "visible") invalidate();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    window.addEventListener("online", invalidate);
-
-    return () => {
-      window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("online", invalidate);
-    };
-  }, [qc, hasSession]);
+  // Convex subscriptions are reactive over WebSocket; no polling/invalidation loop is needed.
 }
 
 export function minimumNextBid(state: AuctionState | null | undefined): number {
