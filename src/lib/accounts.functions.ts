@@ -571,8 +571,43 @@ export const adminDeleteAmbassador = createServerFn({ method: "POST" })
       throw new Error("This ambassador is the active bidder; finish or clear the current lot first");
     }
 
+    // The database BEFORE DELETE trigger snapshots the ambassador identity and
+    // history rows use ON DELETE SET NULL. Verify immutable history counts.
+    const [{ count: resultsBefore }, { count: bidsBefore }, { count: retainsBefore }] = await Promise.all([
+      sa.from("auction_results").select("id", { count: "exact", head: true }),
+      sa.from("bids").select("id", { count: "exact", head: true }),
+      sa.from("retain_records").select("id", { count: "exact", head: true }),
+    ]);
+
     const { error } = await sa.auth.admin.deleteUser(ambassador.user_id);
-    if (error) throw new Error(friendly(error.message));
+    if (error) {
+      console.error("[accounts] ambassador deletion failed", { ambassadorId: ambassador.id, message: error.message, code: error.code });
+      throw new Error(
+        /database error deleting user/i.test(error.message)
+          ? "Database still has a reference to this ambassador. No history was deleted; apply the history-safe deletion migration and try again."
+          : friendly(error.message),
+      );
+    }
+
+    const [{ data: remainingProfile }, { data: remainingRole }, { data: remainingAmbassador },
+      { count: resultsAfter }, { count: bidsAfter }, { count: retainsAfter }] = await Promise.all([
+      sa.from("profiles").select("id").eq("id", ambassador.user_id).maybeSingle(),
+      sa.from("user_roles").select("user_id").eq("user_id", ambassador.user_id).eq("role", "ambassador").maybeSingle(),
+      sa.from("ambassadors").select("id").eq("id", ambassador.id).maybeSingle(),
+      sa.from("auction_results").select("id", { count: "exact", head: true }),
+      sa.from("bids").select("id", { count: "exact", head: true }),
+      sa.from("retain_records").select("id", { count: "exact", head: true }),
+    ]);
+
+    if (remainingProfile || remainingRole || remainingAmbassador) {
+      throw new Error("Ambassador deletion did not fully complete. Please retry.");
+    }
+    if ((resultsAfter ?? 0) !== (resultsBefore ?? 0) ||
+        (bidsAfter ?? 0) !== (bidsBefore ?? 0) ||
+        (retainsAfter ?? 0) !== (retainsBefore ?? 0)) {
+      throw new Error("Ambassador deletion changed immutable auction history. Deletion was not accepted.");
+    }
+
     return { ok: true };
   });
 
@@ -615,8 +650,43 @@ export const adminDeletePlayer = createServerFn({ method: "POST" })
       if (error) throw new Error(friendly(error.message));
     }
 
+    // The database BEFORE DELETE trigger snapshots player identity and history
+    // rows use ON DELETE SET NULL. Verify immutable history counts.
+    const [{ count: resultsBefore }, { count: bidsBefore }, { count: retainsBefore }] = await Promise.all([
+      sa.from("auction_results").select("id", { count: "exact", head: true }),
+      sa.from("bids").select("id", { count: "exact", head: true }),
+      sa.from("retain_records").select("id", { count: "exact", head: true }),
+    ]);
+
     const { error: authError } = await sa.auth.admin.deleteUser(player.user_id);
-    if (authError) throw new Error(friendly(authError.message));
+    if (authError) {
+      console.error("[accounts] player deletion failed", { playerId: player.id, message: authError.message, code: authError.code });
+      throw new Error(
+        /database error deleting user/i.test(authError.message)
+          ? "Database still has a reference to this player. No history was deleted; apply the history-safe deletion migration and try again."
+          : friendly(authError.message),
+      );
+    }
+
+    const [{ data: remainingProfile }, { data: remainingRole }, { data: remainingPlayer },
+      { count: resultsAfter }, { count: bidsAfter }, { count: retainsAfter }] = await Promise.all([
+      sa.from("profiles").select("id").eq("id", player.user_id).maybeSingle(),
+      sa.from("user_roles").select("user_id").eq("user_id", player.user_id).eq("role", "player").maybeSingle(),
+      sa.from("players").select("id").eq("id", player.id).maybeSingle(),
+      sa.from("auction_results").select("id", { count: "exact", head: true }),
+      sa.from("bids").select("id", { count: "exact", head: true }),
+      sa.from("retain_records").select("id", { count: "exact", head: true }),
+    ]);
+
+    if (remainingProfile || remainingRole || remainingPlayer) {
+      throw new Error("Player deletion did not fully complete. Please retry.");
+    }
+    if ((resultsAfter ?? 0) !== (resultsBefore ?? 0) ||
+        (bidsAfter ?? 0) !== (bidsBefore ?? 0) ||
+        (retainsAfter ?? 0) !== (retainsBefore ?? 0)) {
+      throw new Error("Player deletion changed immutable auction history. Deletion was not accepted.");
+    }
+
     return { ok: true };
   });
 
