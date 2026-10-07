@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
+import { useMutation } from "convex/react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { RoleGate, Center, errText } from "@/components/Guard";
@@ -8,10 +7,9 @@ import { PlayerStage } from "@/components/PlayerStage";
 import { LiveTicker } from "@/components/LiveTicker";
 import { AICommentaryPanel } from "@/components/AICommentaryPanel";
 import { useAuctionEvents, useAuctionState, usePlayers, useRealtimeAuction, useAmbassadors, useBids } from "@/lib/auction";
-import { claimCasterCamera, heartbeatCasterCamera, releaseCasterCamera, setAuctionStatus } from "@/lib/accounts.functions";
+import { convexApi } from "@/lib/convex-api";
 import { startCasterBroadcast, type CamStatus } from "@/lib/caster-cam";
 import { money, statusLabel } from "@/lib/format";
-import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/caster")({
   head: () => ({
@@ -93,50 +91,37 @@ export function CasterConsole() {
   );
 }
 
-type RpcResult = { completed?: boolean; result?: string; next?: { completed?: boolean; player_id?: string } } | null;
-
 function AuctionControls() {
-  const qc = useQueryClient();
-  const setStatus = useServerFn(setAuctionStatus);
+  const startAuction = useMutation(convexApi.auction.start);
+  const pauseAuction = useMutation(convexApi.auction.pause);
+  const resumeAuction = useMutation(convexApi.auction.resume);
+  const stopAuction = useMutation(convexApi.auction.stop);
+  const finalizeAuction = useMutation(convexApi.auction.finalize);
+  const markUnsoldAuction = useMutation(convexApi.auction.markUnsold);
   const [busy, setBusy] = useState<string | null>(null);
   const finalizedDeadlineRef = useRef<string | null>(null);
   const { data: state } = useAuctionState();
   const status = state?.status;
   const hasCurrent = !!state?.current_player_id;
-  const canStart = status === "not_started" || status === "stopped";
+  const canStart = status === "not_started";
   const isLive = status === "live";
   const isPaused = status === "paused";
-
-  const refresh = async () => {
-    await Promise.all([
-      qc.invalidateQueries({ queryKey: ["auction_state"] }),
-      qc.invalidateQueries({ queryKey: ["players"] }),
-      qc.invalidateQueries({ queryKey: ["ambassadors"] }),
-      qc.invalidateQueries({ queryKey: ["auction_events"] }),
-      qc.invalidateQueries({ queryKey: ["bids"] }),
-    ]);
-  };
 
   const changeStatus = async (key: "start" | "pause" | "resume" | "stop", next: "live" | "paused" | "stopped") => {
     setBusy(key);
     try {
-      const result = await setStatus({ data: { status: next } });
-
       if (key === "start") {
-        if (result?.selection?.completed) {
-          toast.info("No eligible players remain — auction completed");
-        } else {
-          toast.success("Auction started — player selected automatically");
-        }
-      }
-
-      await refresh();
-      if (key !== "start") {
-        toast.success(
-          key === "pause" ? "Auction paused" :
-          key === "resume" ? "Auction resumed" :
-          "Auction stopped",
-        );
+        await startAuction();
+        toast.success("Auction started — player selected automatically");
+      } else if (key === "pause") {
+        await pauseAuction();
+        toast.success("Auction paused");
+      } else if (key === "resume") {
+        await resumeAuction();
+        toast.success("Auction resumed");
+      } else {
+        await stopAuction();
+        toast.success("Auction stopped");
       }
     } catch (err) {
       toast.error(errText(err));
@@ -148,82 +133,28 @@ function AuctionControls() {
   const finalizeCurrent = async () => {
     setBusy("final");
     try {
-      const { error, data } = await supabase.rpc("finalize_player_v3");
-      if (error) throw error;
-      const result = data as RpcResult;
-      await refresh();
-
-      if (result?.result === "sold") toast.success("SOLD — points deducted and roster updated");
-      else if (result?.result === "unsold") toast.info("UNSOLD — next player revealed automatically");
+      const result = await finalizeAuction();
+      if (result?.status === "sold") toast.success("SOLD — points deducted and roster updated");
+      else if (result?.status === "unsold") toast.info("UNSOLD — next player revealed automatically");
       else toast.success("Player finalized");
-
-      if (result?.next?.completed) toast.info("Auction completed — no eligible players remain");
-      else if (result?.next?.player_id) toast.success("Next player revealed automatically");
     } catch (err) {
       toast.error(errText(err));
     } finally {
       setBusy(null);
     }
   };
-
-  useEffect(() => {
-    const deadline = state?.bidding_deadline_at;
-    if (!isLive || !state?.bidding_open || !deadline || !hasCurrent) return;
-    if (finalizedDeadlineRef.current === deadline) return;
-
-    const delay = Math.max(0, new Date(deadline).getTime() - Date.now());
-    const timer = window.setTimeout(async () => {
-      if (finalizedDeadlineRef.current === deadline) return;
-      finalizedDeadlineRef.current = deadline;
-      try {
-        const { error } = await supabase.rpc("finalize_player_v3");
-        if (error) throw error;
-        await refresh();
-        toast.info("Bidding time expired — player finalized by the server");
-      } catch (err) {
-        toast.error(errText(err));
-      }
-    }, delay + 50);
-
-    return () => window.clearTimeout(timer);
-  }, [state?.bidding_deadline_at, state?.bidding_open, isLive, hasCurrent]);
 
   const markUnsold = async () => {
     setBusy("unsold");
     try {
-      const { error, data } = await supabase.rpc("caster_mark_unsold");
-      if (error) throw error;
-      const result = data as RpcResult;
-      await refresh();
-      if (result?.next?.completed) toast.info("Player unsold — auction completed");
-      else toast.info("Player UNSOLD — next player revealed automatically");
+      await markUnsoldAuction();
+      toast.info("Player UNSOLD — next player revealed automatically");
     } catch (err) {
       toast.error(errText(err));
     } finally {
       setBusy(null);
     }
   };
-
-  // The database remains the source of truth for the reveal -> bidding transition.
-  // Player selection is performed only inside the server-side auction transaction.
-  useEffect(() => {
-    if (!isLive || !hasCurrent || state?.bidding_open) return;
-    const timer = window.setTimeout(async () => {
-      try {
-        const { error } = await supabase.rpc("caster_open_bidding");
-        if (error) throw error;
-        await Promise.all([
-          qc.invalidateQueries({ queryKey: ["auction_state"] }),
-          qc.invalidateQueries({ queryKey: ["players"] }),
-          qc.invalidateQueries({ queryKey: ["auction_events"] }),
-          qc.invalidateQueries({ queryKey: ["bids"] }),
-        ]);
-      } catch (err) {
-        toast.error(errText(err));
-      }
-    }, 3500);
-    return () => window.clearTimeout(timer);
-  }, [isLive, hasCurrent, state?.bidding_open]);
 
   const disabled = (key: string) => busy !== null && busy !== key;
 
@@ -393,10 +324,9 @@ function AuctionResultFlash({ events }: { events: Awaited<ReturnType<typeof useA
 }
 
 function CasterCamCard() {
-  const qc = useQueryClient();
-  const claim = useServerFn(claimCasterCamera);
-  const heartbeat = useServerFn(heartbeatCasterCamera);
-  const release = useServerFn(releaseCasterCamera);
+  const claim = useMutation(convexApi.casterSessions.claim);
+  const heartbeat = useMutation(convexApi.casterSessions.heartbeat);
+  const release = useMutation(convexApi.casterSessions.release);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [videoId, setVideoId] = useState("default");
   const [audioId, setAudioId] = useState("default");
@@ -426,7 +356,7 @@ function CasterCamCard() {
       const sessionId = sessionRef.current;
       if (!sessionId) return;
       try {
-        await heartbeat({ data: { sessionId } });
+        await heartbeat({ sessionId });
       } catch (err) {
         toast.error("Caster lease expired. Live broadcast stopped.");
         stopRef.current?.();
@@ -435,7 +365,7 @@ function CasterCamCard() {
         setLive(false);
         setStatus("error");
         setViewers(0);
-        await qc.invalidateQueries({ queryKey: ["auction_state"] });
+
       }
     }, 5000);
     return () => window.clearInterval(timer);
@@ -465,8 +395,8 @@ function CasterCamCard() {
       return;
     }
     try {
-      const lease = await claim();
-      sessionRef.current = lease.session_id;
+      const lease = await claim({ sessionId: crypto.randomUUID() });
+      sessionRef.current = lease.sessionId;
       stopRef.current = await startCasterBroadcast(preview, (nextStatus, count) => {
         setStatus(nextStatus);
         if (count !== undefined) setViewers(count);
@@ -479,7 +409,7 @@ function CasterCamCard() {
       stopRef.current = null;
       const sessionId = sessionRef.current;
       sessionRef.current = null;
-      if (sessionId) await release({ data: { sessionId } }).catch(() => undefined);
+      if (sessionId) await release({ sessionId }).catch(() => undefined);
       setLive(false);
       toast.error(errText(err));
     }
@@ -490,7 +420,7 @@ function CasterCamCard() {
     stopRef.current = null;
     const sessionId = sessionRef.current;
     sessionRef.current = null;
-    if (sessionId) await release({ data: { sessionId } }).catch(() => undefined);
+    if (sessionId) await release({ sessionId }).catch(() => undefined);
     if (preview) preview.getTracks().forEach((track) => track.stop());
     setPreview(null);
     setLive(false);
