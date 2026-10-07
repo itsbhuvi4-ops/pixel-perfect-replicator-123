@@ -146,13 +146,13 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ConvexAuthBridge>
+      <ConvexAuthBridge>
+        <AuthProvider>
           <SiteHeader />
           <Outlet />
           <Toaster />
-        </ConvexAuthBridge>
-      </AuthProvider>
+        </AuthProvider>
+      </ConvexAuthBridge>
     </QueryClientProvider>
   );
 }
