@@ -15,6 +15,7 @@ jobs:
         with:
           bun-version: "latest"
       - run: bun install --no-save
-      - run: CONVEX_AGENT_MODE=anonymous bunx convex dev --once\n      - run: bunx tsc --noEmit
+      - run: CONVEX_AGENT_MODE=anonymous bunx convex dev --once
+      - run: bunx tsc --noEmit
       - run: bun run lint
       - run: bun run build
