@@ -60,13 +60,21 @@ export const update = mutation({
     ambassadorId: v.id("ambassadors"),
     ambassadorName: v.optional(v.string()), teamName: v.optional(v.string()),
     discord: v.optional(v.string()), info: v.optional(v.string()),
+    startingPoints: v.optional(v.number()),
+    resetRemainingPoints: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { user } = await requireAdmin(ctx);
-    const { ambassadorId, ...patch } = args;
+    const { ambassadorId, startingPoints, resetRemainingPoints, ...patch } = args;
     const profile = await ctx.db.get(ambassadorId);
     if (!profile) throw new Error("Ambassador not found");
-    await ctx.db.patch(ambassadorId, { ...patch, updatedAt: Date.now() });
+    const nextStartingPoints = startingPoints ?? profile.startingPoints;
+    const pointPatch = startingPoints !== undefined && resetRemainingPoints
+      ? { startingPoints: nextStartingPoints, remainingPoints: nextStartingPoints }
+      : startingPoints !== undefined
+        ? { startingPoints: nextStartingPoints }
+        : {};
+    await ctx.db.patch(ambassadorId, { ...patch, ...pointPatch, updatedAt: Date.now() });
     await ctx.db.insert("auditEvents", {
       actorUserId: user._id, action: "AMBASSADOR_UPDATED",
       targetType: "ambassador", targetId: ambassadorId, createdAt: Date.now(),
@@ -91,7 +99,11 @@ export const deleteAmbassador = mutation({
     }
     const bids = await ctx.db.query("bids").withIndex("by_ambassador_id", q => q.eq("ambassadorId", args.ambassadorId)).collect();
     for (const bid of bids) await ctx.db.delete(bid._id);
+    const roleRows = await ctx.db.query("userRoles").withIndex("by_user_id", q => q.eq("userId", profile.userId)).collect();
+    for (const role of roleRows) await ctx.db.delete(role._id);
     await ctx.db.delete(args.ambassadorId);
+    const ownedUser = await ctx.db.get(profile.userId);
+    if (ownedUser) await ctx.db.delete(ownedUser._id);
     await ctx.db.insert("auditEvents", {
       actorUserId: user._id, action: "AMBASSADOR_DELETED",
       targetType: "ambassador", targetId: args.ambassadorId, createdAt: Date.now(),
