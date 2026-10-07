@@ -98,3 +98,17 @@ export const deleteAmbassador = mutation({
     return null;
   },
 });
+
+export const roster = query({
+  args: { ambassadorId: v.id("ambassadors") },
+  handler: async ctx => {
+    const rows = await ctx.db.query("players").withIndex("by_ambassador_id", q => q.eq("ambassadorId", args.ambassadorId)).collect();
+    return rows.map(p => ({
+      id: p._id, player_name: p.playerName, ingame_name: p.ingameName,
+      game_id: p.gameId, primary_role: p.primaryRole,
+      secondary_role: p.secondaryRole ?? null, status: p.status,
+      sold_price: p.soldPrice ?? null, sold_at: p.soldAt ?? null,
+      ambassador_id: p.ambassadorId ?? null,
+    }));
+  },
+});
