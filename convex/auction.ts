@@ -106,7 +106,14 @@ export const resume = mutation({
     if (state.status !== "paused") throw new Error("Auction is not paused");
     await ctx.db.patch(state._id, { status: "live", updatedAt: Date.now() });
     await ctx.db.insert("auctionEvents", { eventType: "AUCTION_RESUMED", message: "Auction resumed", actorUserId: user._id, createdAt: Date.now() });
-    if (!state.currentPlayerId) await ctx.scheduler.runAfter(0, internal.auction.advanceRandom, { stateId: state._id });
+    if (!state.currentPlayerId) {
+      await ctx.scheduler.runAfter(0, internal.auction.advanceRandom, { stateId: state._id });
+    } else if (!state.biddingOpen) {
+      await ctx.scheduler.runAfter(0, internal.auction.openBiddingScheduled, {
+        stateId: state._id,
+        playerId: state.currentPlayerId,
+      });
+    }
     return null;
   },
 });
@@ -150,6 +157,24 @@ export const revealNextRandom = mutation({
       actorUserId: user._id, createdAt: now,
     });
     return player._id;
+  },
+});
+
+export const markUnsold = mutation({
+  args: {},
+  handler: async ctx => {
+    const { user } = await requireCaster(ctx);
+    const state = await getState(ctx);
+    if (state.status !== "live" || !state.currentPlayerId || state.biddingOpen) throw new Error("Player cannot be marked unsold right now");
+    const player = await ctx.db.get(state.currentPlayerId);
+    if (!player) throw new Error("Current player not found");
+    const now = Date.now();
+    await ctx.db.patch(player._id, { status: "unsold", updatedAt: now });
+    await ctx.db.insert("auctionResults", { playerId: player._id, ambassadorId: null, winningBid: null, status: "unsold", soldAt: now, createdAt: now });
+    await ctx.db.insert("auctionEvents", { eventType: "PLAYER_UNSOLD", message: "Player unsold", playerId: player._id, actorUserId: user._id, createdAt: now });
+    await ctx.db.patch(state._id, { currentPlayerId: null, currentBid: null, currentBidderId: null, biddingOpen: false, biddingDeadlineAt: null, biddingSecondsRemaining: null, updatedAt: now });
+    await ctx.scheduler.runAfter(0, internal.auction.advanceRandom, { stateId: state._id });
+    return { status: "unsold" as const, playerId: player._id };
   },
 });
 
@@ -247,6 +272,7 @@ export const finalize = mutation({
         biddingOpen: false, biddingDeadlineAt: null,
         biddingSecondsRemaining: null, updatedAt: now,
       });
+      await ctx.scheduler.runAfter(0, internal.auction.advanceRandom, { stateId: state._id });
       return { status: "sold" as const, playerId: player._id };
     }
 
@@ -264,6 +290,7 @@ export const finalize = mutation({
       biddingOpen: false, biddingDeadlineAt: null,
       biddingSecondsRemaining: null, updatedAt: now,
     });
+    await ctx.scheduler.runAfter(0, internal.auction.advanceRandom, { stateId: state._id });
     return { status: "unsold" as const, playerId: player._id };
   },
 });
