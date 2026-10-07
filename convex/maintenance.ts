@@ -1,4 +1,5 @@
 import { internalMutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 
 export const cleanupCasterLeases = internalMutation({
@@ -32,7 +33,7 @@ export const repairAuctionDeadline = internalMutation({
   handler: async ctx => {
     const state = await ctx.db.query("auctionState").withIndex("by_key", q => q.eq("key", "primary")).unique();
     if (!state?.biddingOpen || !state.biddingDeadlineAt || state.biddingDeadlineAt > Date.now()) return null;
-    await ctx.scheduler.runAfter(0, { __path: "auction:finalizeExpired" } as never, { stateId: state._id });
+    await ctx.scheduler.runAfter(0, internal.auction.finalizeExpired, { stateId: state._id });
     return null;
   },
 });
