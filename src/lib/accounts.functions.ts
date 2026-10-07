@@ -71,7 +71,7 @@ export const getWebRtcIceServers = createServerFn({ method: "GET" })
     if (credentialUrl) {
       const headers: Record<string, string> = { accept: "application/json" };
       const apiKey = process.env["TURN_CREDENTIAL_API_KEY"];
-      if (apiKey) headers.authorization = `Bearer ${apiKey}`;
+      if (apiKey) headers["authorization"] = `Bearer ${apiKey}`;
       const response = await fetch(credentialUrl, { headers, cache: "no-store" });
       if (!response.ok) throw new Error("TURN credential service unavailable");
       const body = (await response.json()) as { urls?: string | string[]; username?: string; credential?: string };
