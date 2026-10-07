@@ -467,7 +467,7 @@ function CasterCamCard() {
     try {
       const lease = await claim();
       sessionRef.current = lease.session_id;
-      stopRef.current = startCasterBroadcast(preview, (nextStatus, count) => {
+      stopRef.current = await startCasterBroadcast(preview, (nextStatus, count) => {
         setStatus(nextStatus);
         if (count !== undefined) setViewers(count);
       }, lease.session_id);
