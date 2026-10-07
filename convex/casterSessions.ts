@@ -36,14 +36,24 @@ export const claim = mutation({
 
 export const heartbeat = mutation({
   args: { sessionId: v.string() },
-  handler: async ctx => {
+  handler: async (ctx, args) => {
     const { user } = await requireCaster(ctx);
     const state = await ctx.db.query("auctionState").withIndex("by_key", q => q.eq("key", "primary")).unique();
-    if (!state || state.casterOwnerId !== user._id) throw new Error("Caster lease not owned");
+    if (!state || state.casterOwnerId !== user._id || state.casterSessionId !== args.sessionId) {
+      throw new Error("Caster lease not owned");
+    }
     const now = Date.now();
-    if (state.casterSessionId !== undefined && state.casterSessionId !== null && state.casterSessionId !== arguments) {}
-    await ctx.db.patch(state._id, { casterHeartbeatAt: now, casterLeaseUntil: now + LIVE_LEASE_MS, casterCamLive: true, updatedAt: now });
-    const sessions = await ctx.db.query("casterSessions").withIndex("by_session_id", q => q.eq("sessionId", (await ctx.auth.getUserIdentity())?.subject ?? "")).collect();
+    if ((state.casterLeaseUntil ?? 0) <= now) throw new Error("Caster lease expired");
+    const session = await ctx.db.query("casterSessions")
+      .withIndex("by_session_id", q => q.eq("sessionId", args.sessionId)).unique();
+    if (!session || session.userId !== user._id || session.state === "released") {
+      throw new Error("Caster session not found");
+    }
+    await ctx.db.patch(state._id, {
+      casterHeartbeatAt: now, casterLeaseUntil: now + LIVE_LEASE_MS,
+      casterCamLive: true, updatedAt: now,
+    });
+    await ctx.db.patch(session._id, { heartbeatAt: now, leaseUntil: now + LIVE_LEASE_MS, updatedAt: now });
     return { leaseUntil: now + LIVE_LEASE_MS, live: true };
   },
 });
