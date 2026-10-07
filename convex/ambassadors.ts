@@ -2,6 +2,21 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requireAdmin, requireAmbassador, requireUser } from "./authz";
 
+export const publicList = query({
+  args: {},
+  handler: async ctx => {
+    const rows = await ctx.db.query("ambassadors").collect();
+    return rows.map(a => ({
+      id: a._id,
+      ambassador_name: a.ambassadorName,
+      team_name: a.teamName,
+      starting_points: a.startingPoints,
+      remaining_points: a.remainingPoints,
+      info: a.info ?? null,
+    }));
+  },
+});
+
 export const mine = query({
   args: {},
   handler: async ctx => {
