@@ -184,7 +184,24 @@ export const verifyLogin = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const roles = await rolesOf(context);
     if (!roles.includes(data.role)) return { ok: false, error: "This account doesn't have that role." };
-    return { ok: true, error: null };
+    const { data: profile, error } = await context.supabase
+      .from("profiles")
+      .select("must_change_password")
+      .eq("id", context.userId)
+      .maybeSingle();
+    if (error) throw new Error(friendly(error.message));
+    return { ok: true, error: null, mustChangePassword: Boolean(profile?.must_change_password) };
+  });
+
+export const completePasswordChange = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { error } = await context.supabase
+      .from("profiles")
+      .update({ must_change_password: false, updated_at: new Date().toISOString() })
+      .eq("id", context.userId);
+    if (error) throw new Error(friendly(error.message));
+    return { ok: true };
   });
 
 export const changeUsername = createServerFn({ method: "POST" })
