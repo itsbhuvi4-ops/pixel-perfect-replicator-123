@@ -122,11 +122,11 @@ export const revealNextRandom = mutation({
 
 export const openBidding = mutation({
   args: { durationSeconds: v.number() },
-  handler: async ctx => {
+  handler: async (ctx, args) => {
     await requireCaster(ctx);
     const state = await getState(ctx);
     if (!state.currentPlayerId || state.status !== "live") throw new Error("No active player");
-    const duration = 30;
+    const duration = Math.max(5, Math.min(300, Math.floor(args.durationSeconds)));
     const deadline = Date.now() + duration * 1000;
     await ctx.db.patch(state._id, {
       biddingOpen: true, biddingDeadlineAt: deadline,
