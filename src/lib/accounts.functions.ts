@@ -61,6 +61,42 @@ async function requireRole(ctx: { supabase: any; userId: string }, allowed: Role
   if (!roles.some((r) => allowed.includes(r as Role))) throw new Error("Not allowed");
 }
 
+/* ---------- WebRTC ICE configuration ---------- */
+
+export const getWebRtcIceServers = createServerFn({ method: "GET" })
+  .handler(async () => {
+    const urls = (process.env["TURN_URLS"] ?? "").split(",").map((v) => v.trim()).filter(Boolean);
+    const credentialUrl = process.env["TURN_CREDENTIAL_URL"]?.trim();
+
+    if (credentialUrl) {
+      const headers: Record<string, string> = { accept: "application/json" };
+      const apiKey = process.env["TURN_CREDENTIAL_API_KEY"];
+      if (apiKey) headers.authorization = `Bearer ${apiKey}`;
+      const response = await fetch(credentialUrl, { headers, cache: "no-store" });
+      if (!response.ok) throw new Error("TURN credential service unavailable");
+      const body = (await response.json()) as { urls?: string | string[]; username?: string; credential?: string };
+      const dynamicUrls = Array.isArray(body.urls) ? body.urls : body.urls ? [body.urls] : urls;
+      if (!dynamicUrls.length || !body.username || !body.credential) {
+        throw new Error("TURN credential service returned an invalid response");
+      }
+      return {
+        iceServers: [
+          { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
+          { urls: dynamicUrls, username: body.username, credential: body.credential },
+        ],
+      };
+    }
+
+    const username = process.env["TURN_USERNAME"];
+    const credential = process.env["TURN_CREDENTIAL"];
+    return {
+      iceServers: [
+        { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
+        ...(urls.length && username && credential ? [{ urls, username, credential }] : []),
+      ],
+    };
+  });
+
 /* ---------- First-admin setup ---------- */
 
 export const getFirstAdminSetupStatus = createServerFn({ method: "GET" })
