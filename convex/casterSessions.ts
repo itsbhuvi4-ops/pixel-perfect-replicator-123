@@ -65,8 +65,8 @@ export const release = mutation({
     const state = await ctx.db.query("auctionState").withIndex("by_key", q => q.eq("key", "primary")).unique();
     if (!state || state.casterOwnerId !== user._id || state.casterSessionId !== args.sessionId) return null;
     await ctx.db.patch(state._id, {
-      casterOwnerId: undefined, casterSessionId: undefined, casterHeartbeatAt: undefined,
-      casterLeaseUntil: undefined, casterCamLive: false, updatedAt: Date.now(),
+      casterOwnerId: null, casterSessionId: null, casterHeartbeatAt: null,
+      casterLeaseUntil: null, casterCamLive: false, updatedAt: Date.now(),
     });
     const session = await ctx.db.query("casterSessions").withIndex("by_session_id", q => q.eq("sessionId", args.sessionId)).unique();
     if (session) await ctx.db.patch(session._id, { state: "released", updatedAt: Date.now() });
