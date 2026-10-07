@@ -23,17 +23,17 @@ export const list = query({
 
 export const create = mutation({
   args: {
-    ambassadorName: v.string(), teamName: v.string(),
+    userId: v.id("users"),\n    ambassadorName: v.string(), teamName: v.string(),
     discord: v.optional(v.string()), info: v.optional(v.string()),
     startingPoints: v.number(),
   },
   handler: async (ctx, args) => {
     const { user } = await requireAdmin(ctx);
-    const existing = await ctx.db.query("ambassadors").withIndex("by_user_id", q => q.eq("userId", user._id)).unique();
+    const existing = await ctx.db.query("ambassadors").withIndex("by_user_id", q => q.eq("userId", args.userId)).unique();
     if (existing) throw new Error("Ambassador profile already exists");
     const now = Date.now();
     return ctx.db.insert("ambassadors", {
-      userId: user._id, ...args, remainingPoints: args.startingPoints,
+      userId: args.userId, ambassadorName: args.ambassadorName, teamName: args.teamName, discord: args.discord, info: args.info, remainingPoints: args.startingPoints, startingPoints: args.startingPoints,
       createdAt: now, updatedAt: now,
     });
   },
