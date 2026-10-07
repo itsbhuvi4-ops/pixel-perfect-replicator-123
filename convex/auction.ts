@@ -270,7 +270,7 @@ export const finalize = mutation({
 
 export const openBiddingScheduled = internalMutation({
   args: { stateId: v.id("auctionState"), playerId: v.id("players") },
-  handler: async ctx => {
+  handler: async (ctx, args) => {
     const state = await ctx.db.get(args.stateId);
     if (!state || state.status !== "live" || state.currentPlayerId !== args.playerId || state.biddingOpen) return null;
     const duration = 30;
@@ -288,7 +288,7 @@ export const openBiddingScheduled = internalMutation({
 
 export const advanceRandom = internalMutation({
   args: { stateId: v.id("auctionState") },
-  handler: async ctx => {
+  handler: async (ctx, args) => {
     const state = await ctx.db.get(args.stateId);
     if (!state || state.status !== "live" || state.currentPlayerId) return null;
     const pool = await ctx.db.query("players").withIndex("by_status", q => q.eq("status", "pool")).collect();
@@ -368,13 +368,14 @@ export const finalizeExpired = internalMutation({
       biddingOpen: false, biddingDeadlineAt: null,
       biddingSecondsRemaining: null, updatedAt: now,
     });
+    await ctx.scheduler.runAfter(0, internal.auction.advanceRandom, { stateId: state._id });
     return null;
   },
 });
 
 export const publicBids = query({
   args: { playerId: v.optional(v.id("players")) },
-  handler: async ctx => {
+  handler: async (ctx, args) => {
     if (!args.playerId) return [];
     const rows = await ctx.db.query("bids")
       .withIndex("by_player_and_created_at", q => q.eq("playerId", args.playerId))
@@ -391,7 +392,7 @@ export const publicBids = query({
 
 export const publicEvents = query({
   args: { limit: v.optional(v.number()) },
-  handler: async ctx => {
+  handler: async (ctx, args) => {
     const rows = await ctx.db.query("auctionEvents").withIndex("by_created_at")
       .order("desc").take(Math.min(100, Math.max(1, Math.floor(args.limit ?? 25))));
     return rows.map(e => ({
