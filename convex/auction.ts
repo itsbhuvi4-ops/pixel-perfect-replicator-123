@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { requireAdmin, requireAmbassador, requireCaster } from "./authz";
 
 async function getState(ctx: any) {
@@ -232,5 +233,61 @@ export const finalize = mutation({
       biddingSecondsRemaining: undefined, updatedAt: now,
     });
     return { status: "unsold" as const, playerId: player._id };
+  },
+});
+
+
+export const finalizeExpired = internalMutation({
+  args: { stateId: v.id("auctionState") },
+  handler: async (ctx, args) => {
+    const state = await ctx.db.get(args.stateId);
+    if (!state || !state.currentPlayerId || !state.biddingDeadlineAt) return null;
+    if (!state.biddingOpen || Date.now() < state.biddingDeadlineAt) return null;
+
+    const player = await ctx.db.get(state.currentPlayerId);
+    if (!player) return null;
+    const now = Date.now();
+    const winner = state.currentBidderId && state.currentBid
+      ? await ctx.db.get(state.currentBidderId)
+      : null;
+
+    if (winner && state.currentBid) {
+      if (state.currentBid > winner.remainingPoints) {
+        await ctx.db.patch(player._id, { status: "unsold", updatedAt: now });
+        await ctx.db.insert("auctionResults", {
+          playerId: player._id, ambassadorId: null, winningBid: null,
+          status: "unsold", soldAt: now, createdAt: now,
+        });
+      } else {
+        await ctx.db.patch(winner._id, {
+          remainingPoints: winner.remainingPoints - state.currentBid, updatedAt: now,
+        });
+        await ctx.db.patch(player._id, {
+          status: "sold", ambassadorId: winner._id,
+          soldPrice: state.currentBid, soldAt: now, updatedAt: now,
+        });
+        await ctx.db.insert("auctionResults", {
+          playerId: player._id, ambassadorId: winner._id,
+          winningBid: state.currentBid, status: "sold", soldAt: now, createdAt: now,
+        });
+        await ctx.db.insert("notifications", {
+          userId: winner.userId, title: "Player purchased",
+          message: "Your team won the current player.", type: "auction", createdAt: now,
+        });
+      }
+    } else {
+      await ctx.db.patch(player._id, { status: "unsold", updatedAt: now });
+      await ctx.db.insert("auctionResults", {
+        playerId: player._id, ambassadorId: null, winningBid: null,
+        status: "unsold", soldAt: now, createdAt: now,
+      });
+    }
+
+    await ctx.db.patch(state._id, {
+      currentPlayerId: null, currentBid: null, currentBidderId: null,
+      biddingOpen: false, biddingDeadlineAt: undefined,
+      biddingSecondsRemaining: undefined, updatedAt: now,
+    });
+    return null;
   },
 });
