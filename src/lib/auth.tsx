@@ -1,4 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useMutation } from "convex/react";
+import { convexApi } from "@/lib/convex-api";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -30,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [username, setUsername] = useState<string | null>(null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
   const [loading, setLoading] = useState(true);
+  const syncConvexUser = useMutation(convexApi.users.syncCurrentUser);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
@@ -46,6 +49,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!session) return;
+    const nextUsername = session.user.user_metadata?.username || session.user.email?.split("@")[0] || session.user.id;
+    void syncConvexUser({ username: nextUsername, displayName: session.user.user_metadata?.display_name });
+  }, [session, syncConvexUser]);
 
   useEffect(() => {
     const uid = session?.user.id;
