@@ -236,9 +236,13 @@ export async function preparePlayerFile(
   onProgress?: (progress: UploadProgress) => void,
 ): Promise<File> {
   if (bucket === "player-photos") {
+    if (file.size <= PHOTO_COMPRESS_THRESHOLD) return file;
     onProgress?.({ stage: "compressing", kind: "photo", percent: 0 });
     return compressPhoto(file, (percent) => onProgress?.({ stage: "compressing", kind: "photo", percent }));
   }
+
+  // Videos at or below 100 MB upload directly. No fake 0% compression step.
+  if (file.size <= VIDEO_COMPRESS_THRESHOLD) return file;
 
   onProgress?.({ stage: "compressing", kind: "video", percent: 0 });
   return compressVideo(file, (percent) => onProgress?.({ stage: "compressing", kind: "video", percent }));
