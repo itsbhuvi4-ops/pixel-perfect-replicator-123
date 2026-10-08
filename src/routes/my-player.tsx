@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { RoleGate, Center, errText } from "@/components/Guard";
 import { useAuth } from "@/lib/auth";
@@ -272,6 +272,8 @@ function UploadsSection({
   const [video, setVideo] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState("");
+  const progressStartedAt = useRef<number | null>(null);
+  const progressStage = useRef<"compressing" | "uploading" | null>(null);
   const count = Number((player as any).information_change_count ?? 0);
   const locked = count >= 3;
 
@@ -293,12 +295,42 @@ function UploadsSection({
     setBusy(true);
     const created: { bucket: "player-photos" | "player-videos"; path: string }[] = [];
     try {
-      const reportUploadProgress = ({ stage, kind, percent }: { stage: "compressing" | "uploading"; kind: "photo" | "video"; percent?: number }) => {
-        if (stage === "compressing") {
-          setProgress(`Compressing ${kind}… ${percent ?? 0}%`);
-        } else {
-          setProgress(`Uploading ${kind}…`);
+      const formatEta = (seconds?: number) => {
+        if (seconds == null || !Number.isFinite(seconds)) return "";
+        if (seconds < 60) return ` • ~${Math.max(1, seconds)}s left`;
+        const minutes = Math.floor(seconds / 60);
+        const remainder = seconds % 60;
+        return ` • ~${minutes}m ${remainder}s left`;
+      };
+
+      const reportUploadProgress = ({
+        stage,
+        kind,
+        percent,
+        etaSeconds,
+      }: {
+        stage: "compressing" | "uploading";
+        kind: "photo" | "video";
+        percent?: number;
+        etaSeconds?: number;
+      }) => {
+        if (progressStage.current !== stage || progressStartedAt.current == null) {
+          progressStage.current = stage;
+          progressStartedAt.current = performance.now();
         }
+
+        let estimatedSeconds = etaSeconds;
+        if (stage === "compressing" && percent && percent > 0 && percent < 100 && progressStartedAt.current) {
+          const elapsed = Math.max(0.1, (performance.now() - progressStartedAt.current) / 1000);
+          estimatedSeconds = Math.max(0, Math.round((elapsed * (100 - percent)) / percent));
+        }
+
+        const suffix = formatEta(estimatedSeconds);
+        setProgress(
+          stage === "compressing"
+            ? `Compressing ${kind}… ${percent ?? 0}%${suffix}`
+            : `Uploading ${kind}… ${percent ?? 0}%${suffix}`,
+        );
       };
 
       const photoResult = photo ? await uploadPlayerFile("player-photos", userId, photo, reportUploadProgress) : null;
@@ -338,6 +370,8 @@ function UploadsSection({
     } finally {
       setBusy(false);
       setProgress("");
+      progressStartedAt.current = null;
+      progressStage.current = null;
     }
   };
 
