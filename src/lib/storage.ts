@@ -234,8 +234,8 @@ export async function uploadPlayerFile(
   if (!rule.mime.has(file.type as never)) {
     throw new Error(`Unsupported file type: ${file.type || "unknown"}`);
   }
-  if (file.size > rule.maxBytes) {
-    throw new Error(`${bucket === "player-photos" ? "Photo" : "Video"} is too large`);
+  if (file.size > rule.sourceMaxBytes) {
+    throw new Error(`${bucket === "player-photos" ? "Photo" : "Video"} is too large to process in the browser`);
   }
 
   const optimized = await preparePlayerFile(bucket, file, onProgress);
