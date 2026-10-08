@@ -294,7 +294,7 @@ function UploadsSection({
     const created: { bucket: "player-photos" | "player-videos"; path: string }[] = [];
     try {
       setProgress("Uploading photo…");
-      const photoResult = photo ? await uploadPlayerFile("player-photos", userId, photo) : null;
+      const photoResult = photo ? await uploadPlayerFile("player-photos", userId, photo, ({ stage, kind, percent }) => {\n        if (stage === "compressing") setProgress(`Compressing ${kind}… ${percent ?? 0}%`);\n        else setProgress(`Uploading ${kind}…`);\n      }) : null;
       if (photoResult) created.push({ bucket: "player-photos", path: photoResult.path });
       const photoUrl = photoResult?.url ?? player.photo_url;
       setProgress("Uploading video…");
