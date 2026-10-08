@@ -3,10 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 const RULES = {
   "player-photos": {
     maxBytes: 10 * 1024 * 1024,
+    sourceMaxBytes: 50 * 1024 * 1024,
     mime: new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]),
   },
   "player-videos": {
     maxBytes: 100 * 1024 * 1024,
+    sourceMaxBytes: 500 * 1024 * 1024,
     mime: new Set(["video/mp4", "video/webm", "video/quicktime"]),
   },
 } as const;
