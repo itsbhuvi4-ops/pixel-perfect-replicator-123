@@ -470,7 +470,8 @@ function UploadsSection({
               </div>
             )}
           </div>
-        </div>      </div>
+        </div>
+      </div>
 
       <form onSubmit={submit} className="mt-4 grid gap-3 sm:grid-cols-2">
         {progress && <div className="font-mono text-[11px] text-mut sm:col-span-2">{progress}</div>}
@@ -478,7 +479,8 @@ function UploadsSection({
           {locked ? "Editing Locked" : busy ? "Saving…" : "Save Media Update"}
         </button>
         {!locked && <p className="text-[11px] text-mut sm:col-span-2">Each successful profile or media update uses 1 of your 3 updates.</p>}
-      </form>section>
+      </form>
+    </section>
   );
 }
 
