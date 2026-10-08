@@ -8,7 +8,7 @@ import { PlayerStage } from "@/components/PlayerStage";
 import { LiveTicker } from "@/components/LiveTicker";
 import { AICommentaryPanel } from "@/components/AICommentaryPanel";
 import { useAuctionEvents, useAuctionState, usePlayers, useRealtimeAuction, useAmbassadors, useBids } from "@/lib/auction";
-import { claimCasterCamera, heartbeatCasterCamera, releaseCasterCamera, setAuctionStatus } from "@/lib/accounts.functions";
+import { claimCasterCamera, heartbeatCasterCamera, releaseCasterCamera, getCasterHostStatus, setAuctionStatus } from "@/lib/accounts.functions";
 import { startCasterBroadcast, type CamStatus } from "@/lib/caster-cam";
 import { money, statusLabel } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
@@ -397,7 +397,11 @@ function CasterCamCard() {
   const claim = useServerFn(claimCasterCamera);
   const heartbeat = useServerFn(heartbeatCasterCamera);
   const release = useServerFn(releaseCasterCamera);
+  const hostStatus = useServerFn(getCasterHostStatus);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [hostActive, setHostActive] = useState(false);
+  const [isCurrentHost, setIsCurrentHost] = useState(false);
+  const [hostName, setHostName] = useState<string | null>(null);
   const [videoId, setVideoId] = useState("default");
   const [audioId, setAudioId] = useState("default");
   const [preview, setPreview] = useState<MediaStream | null>(null);
@@ -414,6 +418,28 @@ function CasterCamCard() {
       .catch(() => {});
     return () => stopRef.current?.();
   }, []);
+
+  useEffect(() => {
+    let stopped = false;
+    const refreshHost = async () => {
+      try {
+        const next = await hostStatus();
+        if (stopped) return;
+        setHostActive(Boolean(next.host_active));
+        setIsCurrentHost(Boolean(next.is_current_user_host));
+        setHostName(next.host_name ?? null);
+      } catch {
+        // Camera start remains server-authoritative; a failed status read must
+        // not grant host control.
+      }
+    };
+    void refreshHost();
+    const timer = window.setInterval(() => void refreshHost(), 5000);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+  }, [hostStatus]);
 
   useEffect(() => {
     if (!previewRef.current) return;
@@ -462,6 +488,10 @@ function CasterCamCard() {
   const startLive = async () => {
     if (!preview) {
       await startCamera();
+      return;
+    }
+    if (hostActive && !isCurrentHost) {
+      toast.error(hostName ? `${hostName} is currently hosting. You are on standby.` : "Another caster is currently hosting. You are on standby.");
       return;
     }
     try {
@@ -531,11 +561,16 @@ function CasterCamCard() {
         <div className="grid grid-cols-2 gap-2">
           {!preview ? <button onClick={() => void startCamera()} className="label-cond bg-panel2 py-2 text-[12px] text-foreground">Start Camera</button> :
             <button onClick={toggleMic} disabled={live} className="label-cond border border-line py-2 text-[12px] text-mut">{micEnabled ? "Mute Microphone" : "Unmute Microphone"}</button>}
-          {!live ? <button onClick={() => void startLive()} disabled={!preview} className="label-cond bg-alert py-2 text-[12px] text-white disabled:opacity-40">Start Live</button> :
+          {!live ? <button onClick={() => void startLive()} disabled={!preview || (hostActive && !isCurrentHost)} className="label-cond bg-alert py-2 text-[12px] text-white disabled:opacity-40">Start Live</button> :
             <button onClick={() => void stopLive()} className="label-cond border border-alert/50 bg-alert/10 py-2 text-[12px] text-alert">Stop Live</button>}
         </div>
         {preview && !live && <button onClick={() => void stopLive()} className="label-cond border border-line py-2 text-[12px] text-mut">Stop Camera</button>}
         <p className="font-mono text-[11px] text-mut">Status: {status} · {viewers} viewer{viewers === 1 ? "" : "s"} · WebRTC peer-to-peer</p>
+        {hostActive && !isCurrentHost && !live && (
+          <p className="rounded-md border border-alert/30 bg-alert/10 px-3 py-2 font-mono text-[10px] text-alert">
+            STANDBY — {hostName ? `${hostName} is currently hosting` : "another caster is currently hosting"}
+          </p>
+        )}
       </div>
     </div>
   );
