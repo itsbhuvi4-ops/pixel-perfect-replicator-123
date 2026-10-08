@@ -74,8 +74,13 @@ function LoginPage() {
     setBusy(false);
     if (!res.ok) { await supabase.auth.signOut(); setErr(res.error); return; }
     if (res.mustChangePassword) { window.location.href = "/change-password"; return; }
-    if (next) { window.location.href = next; return; }
-    window.location.href = homeForRoles([role]);
+    // Keep the existing Supabase session in the SPA instead of forcing a full
+    // browser reload. This makes successful login feel immediate.
+    if (next) {
+      await navigate({ to: next });
+      return;
+    }
+    await navigate({ to: homeForRoles([role]) });
   };
 
   return (
