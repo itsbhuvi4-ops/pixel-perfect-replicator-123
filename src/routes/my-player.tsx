@@ -401,8 +401,11 @@ function UploadsSection({
         </label>
         <label className="text-xs text-mut">Upload / replace video
           <input type="file" accept="video/*" className="mt-2 block w-full" disabled={locked || busy} onChange={(e) => setVideo(e.target.files?.[0] ?? null)} />
-        </label>
-        {progress && <div className="font-mono text-[11px] text-mut sm:col-span-2">{progress}</div>}
+          {video && <div className="mt-2 rounded-lg bg-panel2 p-3 text-[11px] ring-1 ring-line">
+            <div className="flex flex-wrap justify-between gap-2"><span className="text-foreground">{video.name}</span><span className={video.size <= 100 * 1024 * 1024 ? "text-green" : "text-alert"}>{(video.size / (1024 * 1024)).toFixed(1)} MB / 100 MB</span></div>
+            <div className="mt-1 text-[10px] text-mut">{video.size <= 100 * 1024 * 1024 ? "Under 100 MB — uploads directly without compression." : "Over 100 MB — will be compressed before upload."}</div>
+          </div>}
+        </label>      {progress && <div className="font-mono text-[11px] text-mut sm:col-span-2">{progress}</div>}
         <button disabled={busy || locked || (!photo && !video)} className="label-cond w-fit bg-gold px-4 py-2 text-[12px] text-arena disabled:opacity-40 sm:col-span-2">
           {locked ? "Editing Locked" : busy ? "Saving…" : "Save Media Update"}
         </button>
