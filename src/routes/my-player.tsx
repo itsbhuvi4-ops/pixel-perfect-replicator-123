@@ -269,6 +269,7 @@ function UploadsSection({
   onPromptComplete: () => void;
 }) {
   const [photo, setPhoto] = useState<File | null>(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
   const [video, setVideo] = useState<File | null>(null);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -277,6 +278,16 @@ function UploadsSection({
   const progressStage = useRef<"compressing" | "uploading" | null>(null);
   const count = Number((player as any).information_change_count ?? 0);
   const locked = count >= 3;
+
+  useEffect(() => {
+    if (!photo) {
+      setPhotoPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(photo);
+    setPhotoPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [photo]);
 
   useEffect(() => {
     if (!video) {
@@ -395,35 +406,77 @@ function UploadsSection({
         <div className="mt-3 grid gap-4 md:grid-cols-2">
           <div className="rounded-lg bg-panel2 p-3 ring-1 ring-line">
             <div className="label-cond text-[11px] text-mut">Photo</div>
-            {player.photo_url ? <img src={player.photo_url} alt={player.ingame_name} className="mt-2 aspect-video w-full rounded-lg object-cover" /> : <div className="mt-2 grid aspect-video place-items-center rounded-lg bg-panel2 text-xs text-mut">No photo uploaded</div>}
-            <div className="mt-2 text-xs text-mut">{player.photo_url ? "Uploaded" : "Required"}</div>
+            <div className="relative mt-2 overflow-hidden rounded-lg bg-panel2">
+              {photoPreviewUrl ? (
+                <img src={photoPreviewUrl} alt="Selected photo preview" className="aspect-video w-full rounded-lg object-cover" />
+              ) : player.photo_url ? (
+                <img src={player.photo_url} alt={player.ingame_name} className="aspect-video w-full rounded-lg object-cover" />
+              ) : (
+                <div className="grid aspect-video place-items-center text-xs text-mut">No photo uploaded</div>
+              )}
+              {!locked && (
+                <label className="absolute bottom-3 left-1/2 -translate-x-1/2 cursor-pointer rounded-md bg-gold px-4 py-2 font-cond text-[11px] font-semibold text-arena shadow-lg">
+                  {photoPreviewUrl || player.photo_url ? "Replace Photo" : "Upload Photo"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    disabled={busy}
+                    onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+              )}
+            </div>
+            <div className="mt-2 text-xs text-mut">{photo ? "New photo selected" : player.photo_url ? "Uploaded" : "Required"}</div>
           </div>
+
           <div className="rounded-lg bg-panel2 p-3 ring-1 ring-line">
             <div className="label-cond text-[11px] text-mut">Video</div>
-            {player.video_url ? <video src={player.video_url} controls className="mt-2 aspect-video w-full rounded-lg object-cover" /> : <div className="mt-2 grid aspect-video place-items-center rounded-lg bg-panel2 text-xs text-mut">No video uploaded</div>}
-            <div className="mt-2 text-xs text-mut">{player.video_url ? "Uploaded" : "Required"}</div>
+            <div className="relative mt-2 overflow-hidden rounded-lg bg-panel2">
+              {videoPreviewUrl ? (
+                <video src={videoPreviewUrl} controls playsInline className="aspect-video w-full rounded-lg object-cover" />
+              ) : player.video_url ? (
+                <video src={player.video_url} controls playsInline className="aspect-video w-full rounded-lg object-cover" />
+              ) : (
+                <div className="grid aspect-video place-items-center text-xs text-mut">No video uploaded</div>
+              )}
+              {!locked && (
+                <label className="absolute bottom-3 left-1/2 -translate-x-1/2 cursor-pointer rounded-md bg-gold px-4 py-2 font-cond text-[11px] font-semibold text-arena shadow-lg">
+                  {videoPreviewUrl || player.video_url ? "Replace Video" : "Upload Video"}
+                  <input
+                    type="file"
+                    accept="video/*"
+                    className="sr-only"
+                    disabled={busy}
+                    onChange={(e) => setVideo(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+              )}
+            </div>
+            <div className="mt-2 text-xs text-mut">{video ? "New video selected" : player.video_url ? "Uploaded" : "Required"}</div>
+            {video && (
+              <div className="mt-2 rounded-lg bg-panel2 p-2 text-[10px] ring-1 ring-line">
+                <div className="flex justify-between gap-2">
+                  <span className="truncate">{video.name}</span>
+                  <span className={video.size <= 100 * 1024 * 1024 ? "text-green" : "text-alert"}>
+                    {(video.size / (1024 * 1024)).toFixed(1)} MB / 100 MB
+                  </span>
+                </div>
+                <div className="mt-1 text-mut">
+                  {video.size <= 100 * 1024 * 1024 ? "Under 100 MB — direct upload." : "Over 100 MB — compression required."}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      </div>
+        </div>      </div>
 
       <form onSubmit={submit} className="mt-4 grid gap-3 sm:grid-cols-2">
-        <label className="text-xs text-mut">Upload / replace photo
-          <input type="file" accept="image/*" className="mt-2 block w-full" disabled={locked || busy} onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
-        </label>
-        <label className="text-xs text-mut">Upload / replace video
-          <input type="file" accept="video/*" className="mt-2 block w-full" disabled={locked || busy} onChange={(e) => setVideo(e.target.files?.[0] ?? null)} />
-          {video && <video src={videoPreviewUrl ?? undefined} controls playsInline className="mt-3 aspect-video w-full rounded-lg object-cover" />}
-          {video && <div className="mt-2 rounded-lg bg-panel2 p-3 text-[11px] ring-1 ring-line">
-            <div className="flex flex-wrap justify-between gap-2"><span className="text-foreground">{video.name}</span><span className={video.size <= 100 * 1024 * 1024 ? "text-green" : "text-alert"}>{(video.size / (1024 * 1024)).toFixed(1)} MB / 100 MB</span></div>
-            <div className="mt-1 text-[10px] text-mut">{video.size <= 100 * 1024 * 1024 ? "Under 100 MB — uploads directly without compression." : "Over 100 MB — will be compressed before upload."}</div>
-          </div>}
-        </label>      {progress && <div className="font-mono text-[11px] text-mut sm:col-span-2">{progress}</div>}
+        {progress && <div className="font-mono text-[11px] text-mut sm:col-span-2">{progress}</div>}
         <button disabled={busy || locked || (!photo && !video)} className="label-cond w-fit bg-gold px-4 py-2 text-[12px] text-arena disabled:opacity-40 sm:col-span-2">
           {locked ? "Editing Locked" : busy ? "Saving…" : "Save Media Update"}
         </button>
         {!locked && <p className="text-[11px] text-mut sm:col-span-2">Each successful profile or media update uses 1 of your 3 updates.</p>}
-      </form>
-    </section>
+      </form>section>
   );
 }
 
