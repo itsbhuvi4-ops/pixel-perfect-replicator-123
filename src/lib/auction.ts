@@ -93,8 +93,20 @@ export function useMyPlayer(userId: string | null | undefined) {
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await (supabase.rpc as any)("player_get_me");
-      if (error) throw error;
-      return ((data ?? [])[0] ?? null) as Player | null;
+      if (!error) {
+        return ((data ?? [])[0] ?? null) as Player | null;
+      }
+
+      // Fallback for deployments where the RPC migration has not reached the
+      // live database yet. The query is scoped to the authenticated user.
+      const { data: player, error: fallbackError } = await (supabase as any)
+        .from("players")
+        .select("*")
+        .eq("user_id", userId!)
+        .maybeSingle();
+
+      if (fallbackError) throw error;
+      return (player ?? null) as Player | null;
     },
   });
 }
