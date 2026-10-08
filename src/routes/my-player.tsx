@@ -303,12 +303,15 @@ function UploadsSection({
         return ` • ~${minutes}m ${remainder}s left`;
       };
 
-      const reportUploadProgress = ({
-        stage,
-        kind,
-        percent,
-        etaSeconds,
-      }: {
+      const formatEta = (seconds?: number) => {
+        if (seconds == null || !Number.isFinite(seconds)) return "";
+        if (seconds < 60) return " • ~" + Math.max(1, seconds) + "s left";
+        const minutes = Math.floor(seconds / 60);
+        const remainder = seconds % 60;
+        return " • ~" + minutes + "m " + remainder + "s left";
+      };
+
+      const reportUploadProgress = ({ stage, kind, percent, etaSeconds }: {
         stage: "compressing" | "uploading";
         kind: "photo" | "video";
         percent?: number;
@@ -328,11 +331,10 @@ function UploadsSection({
         const suffix = formatEta(estimatedSeconds);
         setProgress(
           stage === "compressing"
-            ? `Compressing ${kind}… ${percent ?? 0}%${suffix}`
-            : `Uploading ${kind}… ${percent ?? 0}%${suffix}`,
+            ? "Compressing " + kind + "… " + (percent ?? 0) + "%" + suffix
+            : "Uploading " + kind + "… " + (percent ?? 0) + "%" + suffix,
         );
       };
-
       const photoResult = photo ? await uploadPlayerFile("player-photos", userId, photo, reportUploadProgress) : null;
       if (photoResult) created.push({ bucket: "player-photos", path: photoResult.path });
       const photoUrl = photoResult?.url ?? player.photo_url;
