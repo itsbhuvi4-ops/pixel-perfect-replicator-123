@@ -272,6 +272,8 @@ function UploadsSection({
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
   const [video, setVideo] = useState<File | null>(null);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const videoInputRef = useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState("");
   const progressStartedAt = useRef<number | null>(null);
