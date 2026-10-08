@@ -116,12 +116,29 @@ async function compressVideo(file: File, onProgress?: (percent: number) => void)
   video.muted = true;
   video.playsInline = true;
   video.preload = "metadata";
-  video.src = objectUrl;
 
   try {
+    // Register media events BEFORE assigning src. On fast/mobile storage,
+    // metadata can arrive immediately and otherwise the event can be missed,
+    // leaving the UI stuck at "Compressing video… 0%".
     await new Promise<void>((resolve, reject) => {
-      video.onloadedmetadata = () => resolve();
-      video.onerror = () => reject(new Error("The selected video could not be decoded"));
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+      const fail = () => {
+        if (settled) return;
+        settled = true;
+        reject(new Error("The selected video could not be decoded"));
+      };
+
+      video.onloadedmetadata = finish;
+      video.onloadeddata = finish;
+      video.onerror = fail;
+      video.src = objectUrl;
+      video.load();
     });
 
     const sourceWidth = video.videoWidth;
