@@ -38,15 +38,16 @@ async function createAccount(u: string, p: string, role: Role) {
   const { data, error } = await sa.auth.admin.createUser({ email: usernameToEmail(uname), password: p, email_confirm: true });
   if (error || !data.user) throw new Error(friendly(error?.message));
   const id = data.user.id;
-  const { error: pe } = await sa.from("profiles").insert({ id, username: uname, display_name: uname });
-  if (pe) {
+  // These are independent rows for the newly-created auth user, so insert them
+  // concurrently. This removes one full database round-trip from registration.
+  const [{ error: pe }, { error: roleError }] = await Promise.all([
+    sa.from("profiles").insert({ id, username: uname, display_name: uname }),
+    sa.from("user_roles").insert({ user_id: id, role }),
+  ]);
+  if (pe || roleError) {
     await sa.auth.admin.deleteUser(id);
-    throw new Error("Already Registered");
-  }
-  const { error: roleError } = await sa.from("user_roles").insert({ user_id: id, role });
-  if (roleError) {
-    await sa.auth.admin.deleteUser(id);
-    throw new Error(friendly(roleError.message));
+    if (pe) throw new Error("Already Registered");
+    throw new Error(friendly(roleError?.message));
   }
   return id;
 }
@@ -241,14 +242,15 @@ export const verifyLogin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ role: z.enum(["admin", "caster", "ambassador", "player"]) }).parse(d))
   .handler(async ({ data, context }) => {
-    const roles = await rolesOf(context);
-    if (!roles.includes(data.role)) return { ok: false, error: "This account doesn't have that role." };
-    const { data: profile, error } = await context.supabase
-      .from("profiles")
-      .select("must_change_password")
-      .eq("id", context.userId)
-      .maybeSingle();
+    // Role and profile are independent reads. Run them concurrently so login
+    // does not wait for two sequential database round-trips.
+    const [{ data: roleRows }, { data: profile, error }] = await Promise.all([
+      context.supabase.from("user_roles").select("role").eq("user_id", context.userId),
+      context.supabase.from("profiles").select("must_change_password").eq("id", context.userId).maybeSingle(),
+    ]);
     if (error) throw new Error(friendly(error.message));
+    const roles = (roleRows ?? []).map((r: { role: string }) => r.role);
+    if (!roles.includes(data.role)) return { ok: false, error: "This account doesn't have that role." };
     return { ok: true, error: null, mustChangePassword: Boolean(profile?.must_change_password) };
   });
 
