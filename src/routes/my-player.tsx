@@ -293,12 +293,18 @@ function UploadsSection({
     setBusy(true);
     const created: { bucket: "player-photos" | "player-videos"; path: string }[] = [];
     try {
-      setProgress("Uploading photo…");
-      const photoResult = photo ? await uploadPlayerFile("player-photos", userId, photo, ({ stage, kind, percent }) => {\n        if (stage === "compressing") setProgress(`Compressing ${kind}… ${percent ?? 0}%`);\n        else setProgress(`Uploading ${kind}…`);\n      }) : null;
+      const reportUploadProgress = ({ stage, kind, percent }: { stage: "compressing" | "uploading"; kind: "photo" | "video"; percent?: number }) => {
+        if (stage === "compressing") {
+          setProgress(`Compressing ${kind}… ${percent ?? 0}%`);
+        } else {
+          setProgress(`Uploading ${kind}…`);
+        }
+      };
+
+      const photoResult = photo ? await uploadPlayerFile("player-photos", userId, photo, reportUploadProgress) : null;
       if (photoResult) created.push({ bucket: "player-photos", path: photoResult.path });
       const photoUrl = photoResult?.url ?? player.photo_url;
-      setProgress("Uploading video…");
-      const videoResult = video ? await uploadPlayerFile("player-videos", userId, video) : null;
+      const videoResult = video ? await uploadPlayerFile("player-videos", userId, video, reportUploadProgress) : null;
       if (videoResult) created.push({ bucket: "player-videos", path: videoResult.path });
       const videoUrl = videoResult?.url ?? player.video_url;
       setProgress("Saving profile…");
