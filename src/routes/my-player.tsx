@@ -401,6 +401,7 @@ function UploadsSection({
         </label>
         <label className="text-xs text-mut">Upload / replace video
           <input type="file" accept="video/*" className="mt-2 block w-full" disabled={locked || busy} onChange={(e) => setVideo(e.target.files?.[0] ?? null)} />
+          {video && <video src={URL.createObjectURL(video)} controls playsInline className="mt-3 aspect-video w-full rounded-lg object-cover" />}
           {video && <div className="mt-2 rounded-lg bg-panel2 p-3 text-[11px] ring-1 ring-line">
             <div className="flex flex-wrap justify-between gap-2"><span className="text-foreground">{video.name}</span><span className={video.size <= 100 * 1024 * 1024 ? "text-green" : "text-alert"}>{(video.size / (1024 * 1024)).toFixed(1)} MB / 100 MB</span></div>
             <div className="mt-1 text-[10px] text-mut">{video.size <= 100 * 1024 * 1024 ? "Under 100 MB — uploads directly without compression." : "Over 100 MB — will be compressed before upload."}</div>
