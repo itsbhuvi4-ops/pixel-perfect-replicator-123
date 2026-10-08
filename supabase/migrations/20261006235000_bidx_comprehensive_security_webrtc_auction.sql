@@ -327,3 +327,72 @@ REVOKE ALL ON FUNCTION public.admin_release_caster_host() FROM PUBLIC,anon,authe
 GRANT EXECUTE ON FUNCTION public.caster_host_status() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_release_caster_host() TO authenticated;
 NOTIFY pgrst,'reload schema';
+
+
+-- Ensure the live schema has the caster lease columns before the host RPCs/views use them.
+ALTER TABLE public.auction_state
+  ADD COLUMN IF NOT EXISTS caster_owner_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS caster_session_id uuid,
+  ADD COLUMN IF NOT EXISTS caster_heartbeat_at timestamptz,
+  ADD COLUMN IF NOT EXISTS caster_lease_until timestamptz;
+
+CREATE INDEX IF NOT EXISTS auction_state_caster_lease_idx
+  ON public.auction_state(caster_lease_until);
+
+CREATE OR REPLACE FUNCTION public.caster_claim_camera()
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
+AS $$
+DECLARE
+  uid uuid := auth.uid(); session_id uuid := gen_random_uuid();
+  lease_until timestamptz := now()+interval '20 seconds';
+  st public.auction_state;
+BEGIN
+  IF NOT public.is_staff(uid) THEN RAISE EXCEPTION 'Not authorized'; END IF;
+  SELECT * INTO st FROM public.auction_state WHERE id=1 FOR UPDATE;
+  IF st.id IS NULL THEN RAISE EXCEPTION 'Auction state is not configured'; END IF;
+  IF st.caster_owner_id IS NOT NULL AND st.caster_lease_until > now()
+     AND st.caster_owner_id <> uid
+  THEN RAISE EXCEPTION 'Another caster is already hosting the auction'; END IF;
+  UPDATE public.auction_state
+  SET caster_owner_id=uid,caster_session_id=session_id,caster_heartbeat_at=now(),
+      caster_lease_until=lease_until,caster_cam_live=true,updated_at=now()
+  WHERE id=1;
+  RETURN jsonb_build_object('ok',true,'session_id',session_id,'host',true,'lease_until',lease_until);
+END $$;
+
+CREATE OR REPLACE FUNCTION public.caster_heartbeat_camera(p_session_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
+AS $$
+DECLARE uid uuid:=auth.uid(); lease_until timestamptz:=now()+interval '20 seconds';
+BEGIN
+  IF NOT public.is_staff(uid) THEN RAISE EXCEPTION 'Not authorized'; END IF;
+  UPDATE public.auction_state
+  SET caster_heartbeat_at=now(),caster_lease_until=lease_until,caster_cam_live=true,updated_at=now()
+  WHERE id=1 AND caster_owner_id=uid AND caster_session_id=p_session_id AND caster_lease_until>now();
+  IF NOT FOUND THEN RAISE EXCEPTION 'Caster session expired or another caster is hosting'; END IF;
+  RETURN jsonb_build_object('ok',true,'lease_until',lease_until);
+END $$;
+
+CREATE OR REPLACE FUNCTION public.caster_release_camera(p_session_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
+AS $$
+DECLARE uid uuid:=auth.uid();
+BEGIN
+  IF NOT public.is_staff(uid) THEN RAISE EXCEPTION 'Not authorized'; END IF;
+  UPDATE public.auction_state
+  SET caster_owner_id=NULL,caster_session_id=NULL,caster_heartbeat_at=NULL,
+      caster_lease_until=NULL,caster_cam_live=false,updated_at=now()
+  WHERE id=1 AND caster_owner_id=uid AND caster_session_id=p_session_id;
+  RETURN jsonb_build_object('ok',true);
+END $$;
+
+REVOKE ALL ON FUNCTION public.caster_claim_camera() FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.caster_heartbeat_camera(uuid) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.caster_release_camera(uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.caster_claim_camera() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.caster_heartbeat_camera(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.caster_release_camera(uuid) TO authenticated;
+NOTIFY pgrst,'reload schema';
