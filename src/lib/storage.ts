@@ -15,7 +15,9 @@ const RULES = {
 
 const PHOTO_COMPRESS_THRESHOLD = 2 * 1024 * 1024;
 const PHOTO_MAX_DIMENSION = 1920;
-const VIDEO_COMPRESS_THRESHOLD = 30 * 1024 * 1024;
+// Videos up to the storage limit are uploaded directly. This avoids forcing
+// mobile devices to re-encode every normal-sized video before upload.
+const VIDEO_COMPRESS_THRESHOLD = 100 * 1024 * 1024;
 const VIDEO_MAX_WIDTH = 1280;
 const VIDEO_MAX_HEIGHT = 720;
 const VIDEO_BITRATE = 2_200_000;
@@ -27,6 +29,7 @@ export type UploadProgress = {
   stage: "compressing" | "uploading";
   kind: "photo" | "video";
   percent?: number;
+  etaSeconds?: number;
 };
 
 function replaceExtension(name: string, extension: string) {
@@ -241,6 +244,70 @@ export async function preparePlayerFile(
   return compressVideo(file, (percent) => onProgress?.({ stage: "compressing", kind: "video", percent }));
 }
 
+
+async function uploadWithProgress(
+  bucket: "player-photos" | "player-videos",
+  path: string,
+  file: File,
+  onProgress?: (percent: number, etaSeconds?: number) => void,
+): Promise<void> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) throw new Error("Your login session expired. Please sign in again.");
+
+  const supabaseUrl = import.meta.env["VITE_SUPABASE_URL"] as string | undefined;
+  const publishableKey = import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] as string | undefined;
+  if (!supabaseUrl || !publishableKey) throw new Error("Missing Supabase browser configuration");
+
+  const base = new URL(supabaseUrl);
+  const storageHost = base.hostname.endsWith(".supabase.co")
+    ? base.hostname.replace(/\.supabase\.co$/, ".storage.supabase.co")
+    : base.hostname;
+  const origin = base.hostname.endsWith(".supabase.co")
+    ? base.protocol + "//" + storageHost
+    : base.origin;
+  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+  const endpoint = origin + "/storage/v1/object/" + encodeURIComponent(bucket) + "/" + encodedPath;
+
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const startedAt = performance.now();
+    let lastPercent = -1;
+    xhr.open("POST", endpoint);
+    xhr.setRequestHeader("Authorization", "Bearer " + accessToken);
+    xhr.setRequestHeader("apikey", publishableKey);
+    xhr.setRequestHeader("Cache-Control", "3600");
+    xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+    xhr.setRequestHeader("x-upsert", "false");
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return;
+      const percent = Math.min(99, Math.round((event.loaded / event.total) * 100));
+      if (percent === lastPercent) return;
+      lastPercent = percent;
+      const elapsed = Math.max(0.1, (performance.now() - startedAt) / 1000);
+      const rate = event.loaded / elapsed;
+      const etaSeconds = rate > 0 ? Math.max(0, Math.round((event.total - event.loaded) / rate)) : undefined;
+      onProgress?.(percent, etaSeconds);
+    };
+    xhr.onerror = () => reject(new Error("Network error while uploading the file"));
+    xhr.onabort = () => reject(new Error("Upload was cancelled"));
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        onProgress?.(100, 0);
+        resolve();
+        return;
+      }
+      let message = "Upload failed (" + xhr.status + ")";
+      try {
+        const body = JSON.parse(xhr.responseText);
+        message = body.message || body.error || message;
+      } catch { /* keep fallback */ }
+      reject(new Error(message));
+    };
+    xhr.send(file);
+  });
+}
+
 export async function uploadPlayerFile(
   bucket: "player-photos" | "player-videos",
   uid: string,
@@ -265,14 +332,17 @@ export async function uploadPlayerFile(
   const safeName = optimized.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120);
   const path = `${uid}/${crypto.randomUUID()}-${safeName}`;
 
-  const { error } = await supabase.storage.from(bucket).upload(path, optimized, {
-    cacheControl: "3600",
-    upsert: false,
-    contentType: optimized.type,
-  });
-  if (error) throw error;
-
-  onProgress?.({ stage: "uploading", kind: bucket === "player-photos" ? "photo" : "video", percent: 100 });
+  await uploadWithProgress(
+    bucket,
+    path,
+    optimized,
+    (percent, etaSeconds) => onProgress?.({
+      stage: "uploading",
+      kind: bucket === "player-photos" ? "photo" : "video",
+      percent,
+      etaSeconds,
+    }),
+  );
 
   const { data } = supabase.storage.from(bucket).getPublicUrl(path);
   return { path, url: data.publicUrl };
