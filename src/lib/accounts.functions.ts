@@ -317,23 +317,37 @@ export const adminDeleteAccount = createServerFn({ method: "POST" })
       if (eventError) throw new Error(friendly(eventError.message));
     }
 
-    // Delete owned player media before auth.users deletion. Auth cascades then
-    // removes profiles, roles, role records and the player/ambassador/caster row
-    // through the verified ON DELETE CASCADE relationships.
-    async function removeUserFolder(bucket: string, uid: string) {
-      const { data: objects, error: listError } = await sa.storage.from(bucket).list(uid, { limit: 1000 });
-      if (listError) throw new Error(friendly(listError.message));
-      const names = (objects ?? []).map((o) => o.name).filter(Boolean).map((name) => `${uid}/${name}`);
-      if (names.length) {
-        const { error } = await sa.storage.from(bucket).remove(names);
-        if (error) throw new Error(friendly(error.message));
+    // Supabase Auth refuses to delete a user who still owns Storage objects.
+    // Do not assume uploads live only in the current player buckets or under a
+    // particular folder: older uploads can exist elsewhere. Discover every
+    // object owned by this account, then remove the physical files through the
+    // Storage API before deleting auth.users.
+    async function removeAllOwnedStorageObjects(uid: string) {
+      const { data: objects, error } = await (sa.from("storage.objects") as any)
+        .select("bucket_id,name,owner_id,owner")
+        .or(`owner_id.eq.${uid},owner.eq.${uid}`)
+        .limit(10000);
+
+      if (error) throw new Error(friendly(error.message));
+
+      const byBucket = new Map<string, string[]>();
+      for (const object of objects ?? []) {
+        if (!object.bucket_id || !object.name) continue;
+        const paths = byBucket.get(object.bucket_id) ?? [];
+        paths.push(object.name);
+        byBucket.set(object.bucket_id, paths);
+      }
+
+      for (const [bucket, paths] of byBucket) {
+        for (let i = 0; i < paths.length; i += 1000) {
+          const batch = paths.slice(i, i + 1000);
+          const { error: removeError } = await sa.storage.from(bucket).remove(batch);
+          if (removeError) throw new Error(friendly(removeError.message));
+        }
       }
     }
 
-    if (player?.id) {
-      await removeUserFolder("player-photos", data.userId);
-      await removeUserFolder("player-videos", data.userId);
-    }
+    await removeAllOwnedStorageObjects(data.userId);
 
     // IMPORTANT: do not manually delete public role/profile rows before this call.
     // Doing so can leave a half-deleted account if Auth rejects the final delete.
@@ -635,19 +649,28 @@ export const adminDeletePlayer = createServerFn({ method: "POST" })
     // Use the Auth delete as the single destructive operation. Public player,
     // profile, role and contact rows are ON DELETE CASCADE/SET NULL from auth.users,
     // while the database trigger snapshots the player's auction identity first.
-    const { data: objects, error: listError } = await sa.storage.from("player-photos").list(player.user_id, { limit: 1000 });
-    if (listError) throw new Error(friendly(listError.message));
-    const photoNames = (objects ?? []).map((o) => o.name).filter(Boolean).map((name) => `${player.user_id}/${name}`);
-    if (photoNames.length) {
-      const { error } = await sa.storage.from("player-photos").remove(photoNames);
-      if (error) throw new Error(friendly(error.message));
+    // Remove every Storage object owned by the player, not only the two
+    // current upload buckets. Supabase Auth blocks deletion while owned
+    // Storage objects remain.
+    const { data: ownedObjects, error: ownedObjectsError } = await (sa.from("storage.objects") as any)
+      .select("bucket_id,name,owner_id,owner")
+      .or(`owner_id.eq.${player.user_id},owner.eq.${player.user_id}`)
+      .limit(10000);
+    if (ownedObjectsError) throw new Error(friendly(ownedObjectsError.message));
+
+    const byBucket = new Map<string, string[]>();
+    for (const object of ownedObjects ?? []) {
+      if (!object.bucket_id || !object.name) continue;
+      const paths = byBucket.get(object.bucket_id) ?? [];
+      paths.push(object.name);
+      byBucket.set(object.bucket_id, paths);
     }
-    const { data: videos, error: videoListError } = await sa.storage.from("player-videos").list(player.user_id, { limit: 1000 });
-    if (videoListError) throw new Error(friendly(videoListError.message));
-    const videoNames = (videos ?? []).map((o) => o.name).filter(Boolean).map((name) => `${player.user_id}/${name}`);
-    if (videoNames.length) {
-      const { error } = await sa.storage.from("player-videos").remove(videoNames);
-      if (error) throw new Error(friendly(error.message));
+
+    for (const [bucket, paths] of byBucket) {
+      for (let i = 0; i < paths.length; i += 1000) {
+        const { error } = await sa.storage.from(bucket).remove(paths.slice(i, i + 1000));
+        if (error) throw new Error(friendly(error.message));
+      }
     }
 
     // The database BEFORE DELETE trigger snapshots player identity and history
