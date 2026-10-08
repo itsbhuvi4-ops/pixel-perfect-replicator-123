@@ -297,14 +297,6 @@ function UploadsSection({
     try {
       const formatEta = (seconds?: number) => {
         if (seconds == null || !Number.isFinite(seconds)) return "";
-        if (seconds < 60) return ` • ~${Math.max(1, seconds)}s left`;
-        const minutes = Math.floor(seconds / 60);
-        const remainder = seconds % 60;
-        return ` • ~${minutes}m ${remainder}s left`;
-      };
-
-      const formatEta = (seconds?: number) => {
-        if (seconds == null || !Number.isFinite(seconds)) return "";
         if (seconds < 60) return " • ~" + Math.max(1, seconds) + "s left";
         const minutes = Math.floor(seconds / 60);
         const remainder = seconds % 60;
