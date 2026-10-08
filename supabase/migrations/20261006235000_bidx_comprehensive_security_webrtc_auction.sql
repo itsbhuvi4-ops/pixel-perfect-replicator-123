@@ -276,3 +276,54 @@ update storage.buckets set public=true,file_size_limit=104857600,
   allowed_mime_types=array['video/mp4','video/webm','video/quicktime'] where id='player-videos';
 
 revoke execute on function public.rls_auto_enable() from public,anon,authenticated;
+
+
+-- Single active caster host / standby failover support.
+CREATE OR REPLACE FUNCTION public.caster_host_status()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  st public.auction_state;
+  uid uuid := auth.uid();
+  active boolean;
+  host_name text;
+BEGIN
+  IF NOT public.is_staff(uid) THEN RAISE EXCEPTION 'Not authorized'; END IF;
+  SELECT * INTO st FROM public.auction_state WHERE id=1;
+  active := st.caster_owner_id IS NOT NULL
+    AND st.caster_lease_until IS NOT NULL
+    AND st.caster_lease_until > now();
+  SELECT caster_name INTO host_name FROM public.casters WHERE user_id=st.caster_owner_id;
+  RETURN jsonb_build_object(
+    'host_active', active,
+    'is_current_user_host', active AND st.caster_owner_id=uid,
+    'host_name', CASE WHEN active THEN host_name ELSE NULL END,
+    'lease_until', CASE WHEN active THEN st.caster_lease_until ELSE NULL END
+  );
+END $$;
+
+CREATE OR REPLACE FUNCTION public.admin_release_caster_host()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NOT public.has_role(auth.uid(),'admin'::public.app_role) THEN
+    RAISE EXCEPTION 'Not authorized';
+  END IF;
+  UPDATE public.auction_state
+  SET caster_owner_id=NULL,caster_session_id=NULL,caster_heartbeat_at=NULL,
+      caster_lease_until=NULL,caster_cam_live=false,updated_at=now()
+  WHERE id=1;
+  RETURN jsonb_build_object('ok',true);
+END $$;
+
+REVOKE ALL ON FUNCTION public.caster_host_status() FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.admin_release_caster_host() FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.caster_host_status() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_release_caster_host() TO authenticated;
+NOTIFY pgrst,'reload schema';
