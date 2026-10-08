@@ -157,6 +157,29 @@ export const heartbeatCasterCamera = createServerFn({ method: "POST" })
     return result as { ok: boolean; lease_until: string };
   });
 
+export const getCasterHostStatus = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await requireRole(context, ["caster", "admin"]);
+    const { data, error } = await (context.supabase as any).rpc("caster_host_status");
+    if (error) throw new Error(friendly(error.message));
+    return data as {
+      host_active: boolean;
+      is_current_user_host: boolean;
+      host_name: string | null;
+      lease_until: string | null;
+    };
+  });
+
+export const adminReleaseCasterHost = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await requireRole(context, ["admin"]);
+    const { data, error } = await (context.supabase as any).rpc("admin_release_caster_host");
+    if (error) throw new Error(friendly(error.message));
+    return data as { ok: boolean };
+  });
+
 export const releaseCasterCamera = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ sessionId: z.string().uuid() }).parse(d))
