@@ -270,12 +270,23 @@ function UploadsSection({
 }) {
   const [photo, setPhoto] = useState<File | null>(null);
   const [video, setVideo] = useState<File | null>(null);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState("");
   const progressStartedAt = useRef<number | null>(null);
   const progressStage = useRef<"compressing" | "uploading" | null>(null);
   const count = Number((player as any).information_change_count ?? 0);
   const locked = count >= 3;
+
+  useEffect(() => {
+    if (!video) {
+      setVideoPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(video);
+    setVideoPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [video]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -401,7 +412,7 @@ function UploadsSection({
         </label>
         <label className="text-xs text-mut">Upload / replace video
           <input type="file" accept="video/*" className="mt-2 block w-full" disabled={locked || busy} onChange={(e) => setVideo(e.target.files?.[0] ?? null)} />
-          {video && <video src={URL.createObjectURL(video)} controls playsInline className="mt-3 aspect-video w-full rounded-lg object-cover" />}
+          {video && <video src={videoPreviewUrl ?? undefined} controls playsInline className="mt-3 aspect-video w-full rounded-lg object-cover" />}
           {video && <div className="mt-2 rounded-lg bg-panel2 p-3 text-[11px] ring-1 ring-line">
             <div className="flex flex-wrap justify-between gap-2"><span className="text-foreground">{video.name}</span><span className={video.size <= 100 * 1024 * 1024 ? "text-green" : "text-alert"}>{(video.size / (1024 * 1024)).toFixed(1)} MB / 100 MB</span></div>
             <div className="mt-1 text-[10px] text-mut">{video.size <= 100 * 1024 * 1024 ? "Under 100 MB — uploads directly without compression." : "Over 100 MB — will be compressed before upload."}</div>
