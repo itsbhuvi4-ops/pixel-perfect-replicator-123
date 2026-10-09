@@ -21,62 +21,55 @@ export const Route = createFileRoute("/")({
 function LandingPage() {
   return (
     <main className="bidx-world relative overflow-x-clip bg-[#030208] text-white">
-      <section className="bidx-hero relative min-h-[100svh] overflow-hidden">
-        <div className="bidx-scene pointer-events-none fixed inset-0 z-0" aria-hidden="true">
-          <ClientOnly fallback={null}>
-            <Suspense fallback={null}><ArenaScene /></Suspense>
-          </ClientOnly>
+      <section className="bidx-hero relative min-h-[min(920px,100svh)] overflow-hidden bg-[#fffef0] text-[#191916]">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_46%,rgba(255,255,255,.9),transparent_58%)]" aria-hidden="true" />
+        <div className="relative z-20 bg-[#07584e] px-4 py-2 text-center text-[11px] font-medium tracking-wide text-[#fffef0] sm:text-xs">
+          BIDXAUCTION — The live player auction experience is here. <span className="ml-1" aria-hidden="true">↗</span>
         </div>
-        <div className="bidx-vignette absolute inset-0" aria-hidden="true" />
-        <div className="bidx-grid absolute inset-0" aria-hidden="true" />
 
-        <header className="relative z-20 flex items-center justify-between px-5 py-5 sm:px-8 lg:px-12">
-          <Link to="/" className="font-display text-xl tracking-[0.08em] sm:text-2xl">
-            BIDX<span className="text-violet-400">AUCTION</span>
+        <header className="relative z-20 mx-auto mt-4 flex max-w-[1440px] items-center justify-between gap-3 px-4 sm:mt-5 sm:px-8 lg:px-12">
+          <Link to="/" className="flex shrink-0 items-center gap-2 rounded-full border border-[#1a1a16]/10 bg-white/65 px-4 py-2.5 text-lg font-semibold tracking-[-0.04em] sm:text-xl">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-[#171714] text-[10px] font-bold text-[#fffef0]">BX</span>
+            BIDX<span className="-ml-2 text-[#087c6b]">AUCTION</span>
           </Link>
-          <nav className="hidden items-center gap-8 text-[11px] uppercase tracking-[0.22em] text-white/65 md:flex">
-            <a href="#arena" className="transition hover:text-white">Arena</a>
-            <a href="#players" className="transition hover:text-white">Players</a>
-            <a href="#teams" className="transition hover:text-white">Teams</a>
-            <Link to="/auction" className="transition hover:text-white">Live Auction</Link>
+          <nav className="hidden items-center gap-1 rounded-full border border-[#1a1a16]/10 bg-[#efeee0] p-1 text-sm md:flex">
+            <a href="#arena" className="rounded-full px-4 py-2 transition hover:bg-white">The Arena</a>
+            <a href="#players" className="rounded-full px-4 py-2 transition hover:bg-white">Players</a>
+            <a href="#teams" className="rounded-full px-4 py-2 transition hover:bg-white">Teams</a>
           </nav>
-          <Link to="/auction" className="rounded-full border border-violet-300/35 bg-black/25 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] backdrop-blur-md transition hover:border-violet-300/70 hover:bg-violet-500/15">
-            Enter Arena
+          <Link to="/auction" className="rounded-xl border border-[#191916] bg-[#ead7ff] px-3 py-2.5 text-[11px] font-semibold transition hover:bg-[#ddc0ff] sm:px-5 sm:text-sm">
+            Watch live <span aria-hidden="true">↗</span>
           </Link>
         </header>
 
-        <div className="relative z-20 mx-auto flex min-h-[calc(100svh-80px)] max-w-[1500px] items-center px-5 pb-20 sm:px-8 lg:px-14">
-          <div className="bidx-hero-copy max-w-4xl">
-            <div className="mb-7 flex items-center gap-3 text-[10px] uppercase tracking-[0.3em] text-violet-200/75">
-              <span className="h-px w-12 bg-violet-400" /> Live Player Auction Experience
-            </div>
-            <h1 className="bidx-title font-display uppercase leading-[0.72] tracking-[-0.035em]">
-              BIDX<span>AUCTION</span>
-            </h1>
-            <p className="mt-8 max-w-xl text-sm leading-7 text-white/60 sm:text-base">
-              Enter a live esports auction where players become the prize, teams become rivals, and every bid changes the arena.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link to="/auction" className="bidx-primary-action">Watch Live Auction <span>↗</span></Link>
-              <Link to="/player/register" className="bidx-secondary-action">Register Player</Link>
-            </div>
+        <div className="relative z-10 mx-auto flex min-h-[650px] max-w-[1200px] flex-col items-center justify-center px-5 pb-24 pt-20 text-center sm:min-h-[690px] sm:px-8 sm:pt-24">
+          <p className="mb-6 text-[10px] font-medium uppercase tracking-[0.28em] text-[#5b5b50] sm:text-xs">A NEW ERA OF ESPORTS AUCTIONS</p>
+          <h1 className="max-w-5xl font-display text-[clamp(3.6rem,10vw,8.8rem)] leading-[.83] tracking-[-0.075em] text-[#191916]">
+            Build your<br />
+            <span className="italic font-normal">dream roster.</span>
+          </h1>
+          <p className="mt-8 max-w-lg text-sm leading-6 text-[#45453d] sm:text-base sm:leading-7">
+            Every player has a moment. Every bid changes the game. Step into BIDXAUCTION and watch your next winning lineup come together live.
+          </p>
+          <div className="mt-7 flex w-full flex-col items-center justify-center gap-3 sm:w-auto sm:flex-row">
+            <Link to="/auction" className="inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border border-[#191916] bg-[#e8d4ff] px-6 py-3 text-sm font-semibold transition hover:-translate-y-0.5 hover:bg-[#dcc0ff] sm:w-auto">
+              Enter live auction <span aria-hidden="true">↗</span>
+            </Link>
+            <Link to="/player/register" className="inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-[#191916]/15 bg-white/65 px-6 py-3 text-sm font-medium transition hover:bg-white sm:w-auto">
+              Register as a player
+            </Link>
           </div>
 
-          <div className="pointer-events-none absolute bottom-12 right-6 hidden w-64 rounded-2xl border border-white/10 bg-black/30 p-4 backdrop-blur-md lg:block">
-            <div className="flex items-center justify-between text-[9px] uppercase tracking-[0.2em] text-white/45">
-              <span>Next auction</span><span className="text-violet-300">LIVE SYSTEM</span>
-            </div>
-            <div className="mt-4 text-3xl font-mono tracking-widest">00:18:32</div>
-            <div className="mt-2 text-[9px] uppercase tracking-[0.18em] text-white/35">Prepare for the next player reveal</div>
+          <div className="pointer-events-none absolute bottom-10 left-1/2 hidden -translate-x-1/2 items-center gap-3 whitespace-nowrap text-[10px] uppercase tracking-[0.22em] text-[#6c6c5f]/70 sm:flex">
+            <span className="h-px w-10 bg-[#6c6c5f]/40" />
+            REAL PLAYERS · LIVE BIDS · BIG MOMENTS
+            <span className="h-px w-10 bg-[#6c6c5f]/40" />
           </div>
-        </div>
-
-        <div className="absolute bottom-6 left-1/2 z-20 -translate-x-1/2 text-center">
-          <div className="mb-2 text-[9px] uppercase tracking-[0.3em] text-white/40">Scroll to enter</div>
-          <div className="mx-auto h-9 w-px overflow-hidden bg-white/20"><div className="bidx-scroll-line h-1/2 w-full bg-violet-400" /></div>
+          <div className="absolute bottom-6 right-4 hidden rotate-[-8deg] rounded-full border border-[#171714]/15 bg-white/50 px-4 py-2 text-xs text-[#6c6c5f] md:block">
+            Your next pick is out there ✳
+          </div>
         </div>
       </section>
-
       <section id="arena" className="bidx-panel relative min-h-[95svh] overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(124,58,237,.2),transparent_40%)]" />
         <div className="relative mx-auto flex min-h-[95svh] max-w-6xl items-center px-5 py-24 sm:px-8">
