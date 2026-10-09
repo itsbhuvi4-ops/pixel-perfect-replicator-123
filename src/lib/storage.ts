@@ -2,12 +2,12 @@ import { supabase } from "@/integrations/supabase/client";
 
 const RULES = {
   "player-photos": {
-    maxBytes: 10 * 1024 * 1024,
+    maxBytes: 50 * 1024 * 1024,
     sourceMaxBytes: 50 * 1024 * 1024,
     mime: new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]),
   },
   "player-videos": {
-    maxBytes: 100 * 1024 * 1024,
+    maxBytes: 500 * 1024 * 1024,
     sourceMaxBytes: 500 * 1024 * 1024,
     mime: new Set(["video/mp4", "video/webm", "video/quicktime"]),
   },
@@ -233,21 +233,13 @@ async function compressVideo(file: File, onProgress?: (percent: number) => void)
 export async function preparePlayerFile(
   bucket: "player-photos" | "player-videos",
   file: File,
-  onProgress?: (progress: UploadProgress) => void,
+  _onProgress?: (progress: UploadProgress) => void,
 ): Promise<File> {
-  if (bucket === "player-photos") {
-    if (file.size <= PHOTO_COMPRESS_THRESHOLD) return file;
-    onProgress?.({ stage: "compressing", kind: "photo", percent: 0 });
-    return compressPhoto(file, (percent) => onProgress?.({ stage: "compressing", kind: "photo", percent }));
-  }
-
-  // Videos at or below 100 MB upload directly. No fake 0% compression step.
-  if (file.size <= VIDEO_COMPRESS_THRESHOLD) return file;
-
-  onProgress?.({ stage: "compressing", kind: "video", percent: 0 });
-  return compressVideo(file, (percent) => onProgress?.({ stage: "compressing", kind: "video", percent }));
+  // Upload the original file as-is. No client-side image or video compression.
+  // This keeps mobile uploads responsive and avoids the stuck-at-0% encoder path.
+  void bucket;
+  return file;
 }
-
 
 async function uploadWithProgress(
   bucket: "player-photos" | "player-videos",
@@ -323,12 +315,12 @@ export async function uploadPlayerFile(
     throw new Error(`Unsupported file type: ${file.type || "unknown"}`);
   }
   if (file.size > rule.sourceMaxBytes) {
-    throw new Error(`${bucket === "player-photos" ? "Photo" : "Video"} is too large to process in the browser`);
+    throw new Error(`${bucket === "player-photos" ? "Photo" : "Video"} exceeds the maximum allowed size of ${bucket === "player-photos" ? "50 MB" : "500 MB"}`);
   }
 
   const optimized = await preparePlayerFile(bucket, file, onProgress);
   if (optimized.size > rule.maxBytes) {
-    throw new Error(`${bucket === "player-photos" ? "Photo" : "Video"} is still too large after compression`);
+    throw new Error(`${bucket === "player-photos" ? "Photo" : "Video"} exceeds the maximum allowed size of ${bucket === "player-photos" ? "50 MB" : "500 MB"}`);
   }
 
   onProgress?.({ stage: "uploading", kind: bucket === "player-photos" ? "photo" : "video", percent: 0 });
