@@ -62,7 +62,7 @@ export function SiteHeader() {
           BID<span className="text-blue">X</span>
         </Link>
 
-        <nav aria-label="Main navigation" className={`hidden min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto py-2 md:flex ${["/admin", "/ambassador", "/caster", "/my-player"].some((p) => location.pathname === p || location.pathname.startsWith(p + "/")) ? "!hidden" : ""}`}>
+        <nav aria-label="Main navigation" className="hidden min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto py-2 md:flex">
           {links.map((item) => {
             const Icon = item.icon ?? Gavel;
             const isActive = location.pathname === item.to.split("#")[0] &&
