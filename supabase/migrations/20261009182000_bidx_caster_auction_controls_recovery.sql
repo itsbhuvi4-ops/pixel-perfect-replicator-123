@@ -1,4 +1,8 @@
 -- Keep caster auction controls aligned with the live Lovable database.
+alter table public.auction_state
+  add column if not exists bidding_deadline_at timestamptz,
+  add column if not exists bidding_seconds_remaining integer;
+
 -- Start can recover a stopped auction and selects the first eligible pool player atomically.
 create or replace function public.caster_set_status(p_status public.auction_status)
 returns jsonb
