@@ -28,9 +28,9 @@ export function SiteHeader() {
   let links: NavItem[] = publicLinks;
   if (roles.includes("admin") && !location.pathname.startsWith("/auction")) {
     links = [
-      { to: "/admin", label: "Auction", icon: Gavel },
+      { to: "/admin#overview", label: "Auction", icon: Gavel },
       { to: "/admin#profile", label: "Profile", icon: UserRound },
-      { to: "/admin#database", label: "Database", icon: Database },
+      { to: "/admin#accounts", label: "Database", icon: Database },
       { to: "/admin#settings", label: "Settings", icon: Settings },
     ];
   } else if (roles.includes("caster") && !location.pathname.startsWith("/auction")) {
@@ -42,7 +42,7 @@ export function SiteHeader() {
   } else if (roles.includes("ambassador") && !location.pathname.startsWith("/auction")) {
     links = [
       { to: "/ambassador#profile", label: "Profile", icon: UserRound },
-      { to: "/ambassador#auction", label: "Auction", icon: Gavel },
+      { to: "/auction", label: "Auction", icon: Gavel },
       { to: "/ambassador#team", label: "Team Information", icon: ShieldCheck },
     ];
   } else if (roles.includes("player") && !location.pathname.startsWith("/auction")) {
