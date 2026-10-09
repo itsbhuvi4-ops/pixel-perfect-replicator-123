@@ -52,8 +52,8 @@ export function LiveAuction({ audience = false }: { audience?: boolean }) {
   };
 
   return (
-    <main className="auction-canvas role-canvas min-h-screen bg-[#030208] text-white">
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#030208]/92 px-3 py-3 backdrop-blur-md sm:px-5">
+    <main className="auction-canvas role-canvas min-h-screen bg-[#fffef0] text-[#191916]">
+      <header className="sticky top-0 z-40 border-b border-[#191916]/10 bg-[#fffef0]/95 px-3 py-3 backdrop-blur-md sm:px-5">
         <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <span className="live-dot size-2 shrink-0 rounded-full bg-alert" />
@@ -203,15 +203,15 @@ function PublicPanelModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 p-3 backdrop-blur-sm" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[#173b35]/45 p-3 backdrop-blur-sm" role="dialog" aria-modal="true">
       <button aria-label="Close panel" className="absolute inset-0 cursor-default" onClick={onClose} />
-      <div className="relative z-10 flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#08070e] shadow-2xl">
-        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+      <div className="relative z-10 flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-[#191916]/10 bg-[#fffdf2] shadow-2xl">
+        <div className="flex items-center justify-between border-b border-[#191916]/10 px-5 py-4">
           <div>
             <div className="label-cond text-[9px] tracking-[.2em] text-gold">BIDXAUCTION</div>
             <h2 className="font-display text-2xl">{titles[panel]}</h2>
           </div>
-          <button type="button" onClick={onClose} className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-white/60 hover:text-white">CLOSE ×</button>
+          <button type="button" onClick={onClose} className="rounded-full border border-[#191916]/15 px-3 py-1.5 text-xs text-[#6f6e63] hover:text-[#07584e]">CLOSE ×</button>
         </div>
         <div className="overflow-y-auto p-5">
           {panel === "top-sales" && (
@@ -230,10 +230,10 @@ function PublicPanelModal({
             <div className="text-center py-10"><div className="font-display text-8xl text-gold">{players.length}</div><div className="mt-2 label-cond text-xs text-mut">REGISTERED PLAYERS</div></div>
           )}
           {panel === "about" && (
-            <div className="space-y-3 text-sm leading-7 text-white/65"><p>BIDXAUCTION is a live player auction experience built for competitive esports communities.</p><p>Watch the player reveal, follow every bid, and see teams compete for their next roster addition in real time.</p><p className="text-white">Created by Bhuvi.</p></div>
+            <div className="space-y-3 text-sm leading-7 text-[#555449]"><p>BIDXAUCTION is a live player auction experience built for competitive esports communities.</p><p>Watch the player reveal, follow every bid, and see teams compete for their next roster addition in real time.</p><p className="text-[#191916]">Created by Bhuvi.</p></div>
           )}
           {panel === "support" && (
-            <div className="space-y-3 text-sm text-white/70"><p>Need help during the auction?</p><p>Contact the auction support team through the configured support channel.</p><button type="button" className="rounded-full border border-violet-300/30 bg-violet-500/10 px-4 py-2 text-xs uppercase tracking-[.15em] text-violet-200">Contact Support</button></div>
+            <div className="space-y-3 text-sm text-[#555449]"><p>Need help during the auction?</p><p>Contact the auction support team through the configured support channel.</p><button type="button" className="rounded-full border border-[#07584e]/20 bg-[#07584e]/5 px-4 py-2 text-xs uppercase tracking-[.15em] text-[#07584e]">Contact Support</button></div>
           )}
         </div>
       </div>
