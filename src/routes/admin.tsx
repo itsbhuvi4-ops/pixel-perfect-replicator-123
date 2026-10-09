@@ -75,22 +75,6 @@ function AdminDashboard() {
         </div>
       </div>
 
-      <nav className="label-cond mt-5 flex flex-wrap gap-1 border-b border-line pb-px text-[13px]">
-        {TABS.map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={
-              tab === t
-                ? "-mb-px border border-line border-b-panel bg-panel px-3.5 py-2 text-foreground"
-                : "px-3.5 py-2 text-mut transition-colors hover:text-foreground"
-            }
-          >
-            {TAB_LABELS[t]}
-          </button>
-        ))}
-      </nav>
-
       <div className="mt-5">
         {tab === "overview" && <OverviewTab />}
         {tab === "accounts" && <AccountsTab />}
