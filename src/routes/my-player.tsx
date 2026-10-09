@@ -460,12 +460,12 @@ function UploadsSection({
               <div className="mt-2 rounded-lg bg-panel2 p-2 text-[10px] ring-1 ring-line">
                 <div className="flex justify-between gap-2">
                   <span className="truncate">{video.name}</span>
-                  <span className={video.size <= 100 * 1024 * 1024 ? "text-green" : "text-alert"}>
-                    {(video.size / (1024 * 1024)).toFixed(1)} MB / 100 MB
+                  <span className={video.size <= 500 * 1024 * 1024 ? "text-green" : "text-alert"}>
+                    {(video.size / (1024 * 1024)).toFixed(1)} MB / 500 MB
                   </span>
                 </div>
                 <div className="mt-1 text-mut">
-                  {video.size <= 100 * 1024 * 1024 ? "Under 100 MB — direct upload." : "Over 100 MB — compression required."}
+                  {video.size <= 500 * 1024 * 1024 ? "Direct upload — no compression." : "Video exceeds the 500 MB limit."}
                 </div>
               </div>
             )}
