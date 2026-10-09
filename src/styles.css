@@ -235,3 +235,78 @@ body, html { background: #fffef0; color: #191916; }
 .bidx-marquee { color: rgba(25,25,22,.055); }
 .brand-opening { background: var(--opening-background); color: var(--opening-ink); }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+
+
+/* Consistent, clearly visible form controls across every page and role dashboard. */
+:root {
+  --form-surface: #fffef8;
+  --form-border: #b9b8a8;
+  --form-border-strong: #07584e;
+  --form-placeholder: #77766c;
+}
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]),
+select,
+textarea {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 3.1rem;
+  padding: .78rem .95rem;
+  border: 1.5px solid var(--form-border) !important;
+  border-radius: .7rem !important;
+  background: var(--form-surface) !important;
+  color: #191916 !important;
+  font: inherit;
+  line-height: 1.45;
+  box-shadow: inset 0 1px 2px rgba(25,25,22,.035);
+  outline: none;
+  transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+  color-scheme: light;
+}
+textarea { min-height: 7rem; resize: vertical; }
+input::placeholder, textarea::placeholder {
+  color: var(--form-placeholder) !important;
+  opacity: 1;
+}
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]):focus,
+select:focus,
+textarea:focus {
+  border-color: var(--form-border-strong) !important;
+  box-shadow: 0 0 0 3px rgba(7,88,78,.14) !important;
+  background: #ffffff !important;
+}
+input:disabled, select:disabled, textarea:disabled {
+  opacity: .65;
+  cursor: not-allowed;
+  background: #eeede3 !important;
+}
+input[type="checkbox"], input[type="radio"] {
+  accent-color: #07584e;
+}
+input[type="file"] {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: .65rem;
+  border: 1.5px dashed #9b9a89 !important;
+  border-radius: .7rem !important;
+  background: #fffef8 !important;
+  color: #191916 !important;
+  font: inherit;
+}
+input[type="file"]::file-selector-button {
+  margin-right: .75rem;
+  padding: .55rem .8rem;
+  border: 1px solid rgba(25,25,22,.18);
+  border-radius: .45rem;
+  background: #07584e;
+  color: #fffef0;
+  font: inherit;
+  cursor: pointer;
+}
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #191916 !important;
+  box-shadow: 0 0 0 1000px #fffef8 inset !important;
+}
