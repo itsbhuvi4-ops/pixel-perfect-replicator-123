@@ -1,20 +1,20 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Menu, X, LogOut } from "lucide-react";
+import { Menu, X, LogOut, Gavel, Trophy, CircleSlash, Users, Coins, UsersRound, Info, LifeBuoy, UserRound, Database, Settings, ClipboardCheck, ShieldCheck, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useAuctionState } from "@/lib/auction";
 
-type NavItem = { to: string; label: string };
+type NavItem = { to: string; label: string; icon?: LucideIcon };
 
 const publicLinks: NavItem[] = [
-  { to: "/auction", label: "Auction" },
-  { to: "/auction#top-sales", label: "Top Sales" },
-  { to: "/auction#unsold", label: "Unsold" },
-  { to: "/auction#teams", label: "Teams" },
-  { to: "/auction#points", label: "Points" },
-  { to: "/auction#total-players", label: "Total Players" },
-  { to: "/auction#about", label: "About" },
-  { to: "/auction#support", label: "Support" },
+  { to: "/auction", label: "Auction", icon: Gavel },
+  { to: "/auction#top-sales", label: "Top Sales", icon: Trophy },
+  { to: "/auction#unsold", label: "Unsold", icon: CircleSlash },
+  { to: "/auction#teams", label: "Teams", icon: Users },
+  { to: "/auction#points", label: "Points", icon: Coins },
+  { to: "/auction#total-players", label: "Total Players", icon: UsersRound },
+  { to: "/auction#about", label: "About", icon: Info },
+  { to: "/auction#support", label: "Support", icon: LifeBuoy },
 ];
 
 export function SiteHeader() {
@@ -28,28 +28,28 @@ export function SiteHeader() {
   let links: NavItem[] = publicLinks;
   if (roles.includes("admin") && !location.pathname.startsWith("/auction")) {
     links = [
-      { to: "/admin", label: "Auction" },
-      { to: "/admin#profile", label: "Profile" },
-      { to: "/admin#database", label: "Database" },
-      { to: "/admin#settings", label: "Settings" },
+      { to: "/admin", label: "Auction", icon: Gavel },
+      { to: "/admin#profile", label: "Profile", icon: UserRound },
+      { to: "/admin#database", label: "Database", icon: Database },
+      { to: "/admin#settings", label: "Settings", icon: Settings },
     ];
   } else if (roles.includes("caster") && !location.pathname.startsWith("/auction")) {
     links = [
-      { to: "/caster#profile", label: "Profile" },
-      { to: "/caster/check", label: "Check" },
-      { to: "/caster", label: "Auction" },
+      { to: "/caster#profile", label: "Profile", icon: UserRound },
+      { to: "/caster/check", label: "Check", icon: ClipboardCheck },
+      { to: "/caster", label: "Auction", icon: Gavel },
     ];
   } else if (roles.includes("ambassador") && !location.pathname.startsWith("/auction")) {
     links = [
-      { to: "/ambassador#profile", label: "Profile" },
-      { to: "/ambassador#auction", label: "Auction" },
-      { to: "/ambassador#team", label: "Team Information" },
+      { to: "/ambassador#profile", label: "Profile", icon: UserRound },
+      { to: "/ambassador#auction", label: "Auction", icon: Gavel },
+      { to: "/ambassador#team", label: "Team Information", icon: ShieldCheck },
     ];
   } else if (roles.includes("player") && !location.pathname.startsWith("/auction")) {
     links = [
-      { to: "/my-player#profile", label: "Profile" },
-      { to: "/my-player#auction", label: "Auction" },
-      { to: "/my-player#information", label: "Information" },
+      { to: "/my-player#profile", label: "Profile", icon: UserRound },
+      { to: "/my-player#auction", label: "Auction", icon: Gavel },
+      { to: "/my-player#information", label: "Information", icon: Info },
     ];
   }
 
@@ -62,17 +62,26 @@ export function SiteHeader() {
           BID<span className="text-blue">X</span>
         </Link>
 
-        <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 md:flex">
-          {links.map((item) => (
-            <Link
-              key={item.label}
-              to={item.to}
-              className="border-2 border-transparent px-3 py-2 font-cond text-[12px] uppercase text-mut transition-colors hover:border-line hover:bg-panel2 hover:text-foreground"
-              activeProps={{ className: "border-2 border-line bg-blue px-3 py-2 font-cond text-[12px] uppercase text-foreground shadow-hard-sm" }}
-            >
-              {item.label}
-            </Link>
-          ))}
+        <nav aria-label="Main navigation" className="hidden min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto py-2 md:flex">
+          {links.map((item) => {
+            const Icon = item.icon ?? Gavel;
+            const isActive = location.pathname === item.to.split("#")[0] &&
+              (item.to.includes("#") ? location.hash === item.to.slice(item.to.indexOf("#")) : !location.hash || location.pathname !== "/auction");
+            return (
+              <Link
+                key={item.label}
+                to={item.to}
+                aria-current={isActive ? "page" : undefined}
+                title={item.label}
+                className={`group inline-flex h-11 shrink-0 items-center justify-center gap-0 overflow-hidden rounded-full border transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#07584e]/40 ${isActive ? "gap-2 border-[#07584e]/15 bg-[#e7f2e9] px-3.5 text-[#07584e] shadow-sm" : "border-transparent px-3 text-[#6d6d62] hover:border-[#d9ddcf] hover:bg-white/80 hover:text-[#191916]"}`}
+              >
+                <Icon size={18} strokeWidth={1.8} className={`shrink-0 transition-colors ${isActive ? "text-[#07584e]" : "text-current"}`} />
+                <span className={`overflow-hidden whitespace-nowrap text-[11px] font-semibold uppercase tracking-[.055em] transition-all duration-300 ${isActive ? "max-w-40 translate-x-0 opacity-100" : "max-w-0 -translate-x-1 opacity-0 group-hover:max-w-40 group-hover:translate-x-0 group-hover:opacity-100"}`}>
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
