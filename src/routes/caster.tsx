@@ -103,7 +103,7 @@ function AuctionControls() {
   const { data: state } = useAuctionState();
   const status = state?.status;
   const hasCurrent = !!state?.current_player_id;
-  const canStart = status === "not_started" || status === "stopped";
+  const canStart = status === "idle" || status === "not_started" || status === "stopped";
   const isLive = status === "live";
   const isPaused = status === "paused";
 
