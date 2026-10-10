@@ -15,9 +15,10 @@ export const Route = createFileRoute("/login")({
     { property: "og:description", content: "One secure login for every auction role." },
     { property: "og:type", content: "website" },
   ] }),
-  validateSearch: (s: Record<string, unknown>): { next?: string } => ({
-    next: typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//") ? s.next : undefined,
-  }),
+  validateSearch: (s: Record<string, unknown>): { next?: string } => {
+    const next = s["next"];
+    return typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? { next } : {};
+  },
   component: LoginPage,
 });
 
