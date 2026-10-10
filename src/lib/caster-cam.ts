@@ -116,8 +116,28 @@ export async function startCasterBroadcast(
       if (payload.kind === "hello") {
         const existing = peers.get(payload.from);
         if (existing) {
-          if (["connected", "connecting", "new"].includes(existing.connectionState)) return;
-          drop(payload.from);
+          if (existing.connectionState === "connected") return;
+          // A broadcast offer can be missed during reconnects. Re-send the
+          // pending offer when this viewer says hello again instead of leaving
+          // the viewer stuck forever on an unconnected peer.
+          if (
+            existing.localDescription?.type === "offer" &&
+            !existing.remoteDescription &&
+            existing.signalingState !== "closed"
+          ) {
+            await send(channel, {
+              kind: "offer",
+              from: casterId,
+              to: payload.from,
+              sdp: existing.localDescription.sdp ?? "",
+            });
+            return;
+          }
+          if (existing.connectionState === "failed" || existing.connectionState === "closed") {
+            drop(payload.from);
+          } else {
+            return;
+          }
         }
         await connect(payload.from);
         return;
