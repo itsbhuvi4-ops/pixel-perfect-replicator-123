@@ -229,15 +229,18 @@ export function watchCasterCam(
     const remoteStream = new MediaStream();
 
     next.ontrack = (event) => {
+      if (stopped || pc !== next) return;
       if (!remoteStream.getTracks().some((track) => track.id === event.track.id)) remoteStream.addTrack(event.track);
       onStream(remoteStream);
     };
     next.onicecandidate = (event) => {
-      if (event.candidate && channel) {
-        void send(channel, { kind: "ice", from: viewerId, to: offer.from, candidate: event.candidate.toJSON() });
-      }
+      if (stopped || pc !== next || !event.candidate || !channel) return;
+      void send(channel, { kind: "ice", from: viewerId, to: offer.from, candidate: event.candidate.toJSON() }).catch(() => {
+        if (!stopped && pc === next) onStatus("error");
+      });
     };
     next.oniceconnectionstatechange = () => {
+      if (stopped || pc !== next) return;
       if (next.iceConnectionState === "failed") {
         onStream(null);
         onStatus("connecting");
@@ -246,6 +249,7 @@ export function watchCasterCam(
       }
     };
     next.onconnectionstatechange = () => {
+      if (stopped || pc !== next) return;
       if (next.connectionState === "connected") {
         if (retryTimer) clearTimeout(retryTimer);
         onStatus("live");
