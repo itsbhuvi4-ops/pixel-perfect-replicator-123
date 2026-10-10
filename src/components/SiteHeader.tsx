@@ -29,8 +29,9 @@ export function SiteHeader() {
   if (roles.includes("admin") && !location.pathname.startsWith("/auction")) {
     links = [
       { to: "/admin#overview", label: "Auction", icon: Gavel },
-      { to: "/admin#profile", label: "Profile", icon: UserRound },
-      { to: "/admin#accounts", label: "Database", icon: Database },
+      { to: "/admin#accounts", label: "Accounts", icon: Database },
+      { to: "/admin#teams", label: "Teams", icon: Users },
+      { to: "/admin#players", label: "Players", icon: UsersRound },
       { to: "/admin#settings", label: "Settings", icon: Settings },
     ];
   } else if (roles.includes("caster") && !location.pathname.startsWith("/auction")) {
