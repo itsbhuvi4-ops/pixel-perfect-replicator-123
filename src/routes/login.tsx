@@ -69,6 +69,24 @@ function LoginPage() {
 
   return (
     <main className="bidx-login min-h-[calc(100vh-4rem)] overflow-hidden px-4 py-8 sm:px-6 lg:py-12">
+      <style>{`
+        .bidx-login{position:relative;background:radial-gradient(ellipse at 75% 10%,#164e8b 0%,#07172e 38%,#02040b 78%);color:#fff}
+        .bidx-login-glow{position:absolute;width:24rem;height:24rem;border-radius:9999px;filter:blur(90px);pointer-events:none;opacity:.28}
+        .bidx-login-glow-one{top:0;left:5%;background:#2563eb}
+        .bidx-login-glow-two{right:0;bottom:0;background:#06b6d4}
+        .bidx-login-art{background:radial-gradient(ellipse at 45% 20%,rgba(96,165,250,.65),transparent 42%),linear-gradient(160deg,#123d76 0%,#071a3b 48%,#030711 100%)}
+        .bidx-login-art:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,transparent 20%,rgba(34,211,238,.08) 50%,transparent 75%);background-size:200% 100%;animation:bidx-login-shimmer 8s ease-in-out infinite}
+        .bidx-login-gradient-text{background:linear-gradient(100deg,#fff 0%,#8bdcff 42%,#22d3ee 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+        .bidx-login-input{width:100%;height:3.35rem;border:1px solid rgba(148,163,184,.18);border-radius:9999px;background:rgba(255,255,255,.075);padding:0 1.2rem;color:#f8fafc;outline:none;transition:border-color .2s,box-shadow .2s,background .2s}
+        .bidx-login-input::placeholder{color:#94a3b8}
+        .bidx-login-input:focus{border-color:rgba(103,232,249,.8);background:rgba(255,255,255,.1);box-shadow:0 0 0 3px rgba(34,211,238,.1)}
+        .bidx-login-input option{background:#071326;color:#fff}
+        .bidx-login-submit{display:flex;align-items:center;justify-content:space-between;gap:1rem;width:100%;min-height:3.5rem;border-radius:9999px;padding:.75rem 1.25rem;background:linear-gradient(100deg,#668cff,#7ce7f4);color:#061323;font-size:.75rem;font-weight:800;letter-spacing:.1em;transition:transform .2s,filter .2s}
+        .bidx-login-submit:hover{transform:translateY(-2px);filter:brightness(1.08)}
+        .bidx-login-submit:disabled{opacity:.6;cursor:wait;transform:none}
+        @keyframes bidx-login-shimmer{0%,100%{background-position:100% 0}50%{background-position:0 0}}
+        @media(prefers-reduced-motion:reduce){.bidx-login-art:after{animation:none}.bidx-login-submit{transition:none}}
+      `}</style>
       <div className="bidx-login-glow bidx-login-glow-one" aria-hidden="true" />
       <div className="bidx-login-glow bidx-login-glow-two" aria-hidden="true" />
       <div className="relative mx-auto grid min-h-[min(760px,calc(100vh-6rem))] max-w-6xl overflow-hidden rounded-[2rem] border border-white/15 bg-[#050916]/90 shadow-[0_30px_120px_rgba(0,0,0,.5)] backdrop-blur-xl lg:grid-cols-[1.05fr_.95fr]">
