@@ -336,7 +336,7 @@ export async function uploadPlayerFile(
       stage: "uploading",
       kind: bucket === "player-photos" ? "photo" : "video",
       percent,
-      etaSeconds,
+      ...(etaSeconds !== undefined ? { etaSeconds } : {}),
     }),
   );
 
