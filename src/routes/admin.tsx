@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { RoleGate, errText } from "@/components/Guard";
 import { useAuth } from "@/lib/auth";
@@ -62,6 +62,17 @@ function AdminDashboard() {
   useRealtimeAuction();
   const [tab, setTab] = useState<Tab>("overview");
   const { username } = useAuth();
+
+  useEffect(() => {
+    const syncTabFromHash = () => {
+      const requested = window.location.hash.slice(1);
+      const nextTab = TABS.find((item) => item === requested);
+      setTab(nextTab ?? "overview");
+    };
+    syncTabFromHash();
+    window.addEventListener("hashchange", syncTabFromHash);
+    return () => window.removeEventListener("hashchange", syncTabFromHash);
+  }, []);
 
   return (
     <main className="role-canvas mx-auto max-w-6xl px-4 py-6 sm:px-5">
