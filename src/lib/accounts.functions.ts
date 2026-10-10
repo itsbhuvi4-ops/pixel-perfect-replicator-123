@@ -348,7 +348,7 @@ export const adminDeleteAccount = createServerFn({ method: "POST" })
     // object owned by this account, then remove the physical files through the
     // Storage API before deleting auth.users.
     async function removeAllOwnedStorageObjects(uid: string) {
-      const { data: objects, error } = await (sa.from("storage.objects") as any)
+      const { data: objects, error } = await (sa as any).from("storage.objects")
         .select("bucket_id,name,owner_id,owner")
         .or(`owner_id.eq.${uid},owner.eq.${uid}`)
         .limit(10000);
