@@ -23,12 +23,12 @@ function LandingPage() {
     <main className="bidx-world relative overflow-x-clip bg-[#030208] text-white">
       <section className="bidx-hero relative min-h-[min(920px,100svh)] overflow-hidden bg-[#fffef0] text-[#191916]">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_46%,rgba(255,255,255,.9),transparent_58%)]" aria-hidden="true" />
-        <div className="relative z-20 bg-[#07584e] px-4 py-2 text-center text-[11px] font-medium tracking-wide text-[#fffef0] sm:text-xs">
+        <div className="relative z-20 bg-[#07584e] px-3 py-1.5 text-center text-[10px] font-medium leading-4 tracking-wide text-[#fffef0] sm:px-4 sm:py-2 sm:text-xs">
           BIDXAUCTION — The live player auction experience is here. <span className="ml-1" aria-hidden="true">↗</span>
         </div>
 
-        <header className="relative z-20 mx-auto mt-4 flex max-w-[1440px] items-center justify-between gap-3 px-4 sm:mt-5 sm:px-8 lg:px-12">
-          <Link to="/" className="flex shrink-0 items-center gap-2 rounded-full border border-[#1a1a16]/10 bg-white/65 px-4 py-2.5 text-lg font-semibold tracking-[-0.04em] sm:text-xl">
+        <header className="relative z-20 mx-auto mt-3 flex max-w-[1440px] items-center justify-between gap-2 px-4 sm:mt-5 sm:gap-3 sm:px-8 lg:px-12">
+          <Link to="/" className="flex shrink-0 items-center gap-2 rounded-full border border-[#1a1a16]/10 bg-white/65 px-3 py-2 text-base font-semibold tracking-[-0.04em] sm:px-4 sm:py-2.5 sm:text-xl">
             <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-[#171714] text-[10px] font-bold text-[#fffef0]">BX</span>
             BIDX<span className="-ml-2 text-[#087c6b]">AUCTION</span>
           </Link>
@@ -37,25 +37,25 @@ function LandingPage() {
             <a href="#players" className="rounded-full px-4 py-2 transition hover:bg-white">Players</a>
             <a href="#teams" className="rounded-full px-4 py-2 transition hover:bg-white">Teams</a>
           </nav>
-          <Link to="/login" className="rounded-xl border border-[#191916] bg-[#ead7ff] px-4 py-2.5 text-xs font-semibold transition hover:bg-[#ddc0ff] sm:px-6 sm:text-sm">
+          <Link to="/login" className="shrink-0 rounded-xl border border-[#191916] bg-[#ead7ff] px-3.5 py-2 text-xs font-semibold transition hover:bg-[#ddc0ff] sm:px-6 sm:py-2.5 sm:text-sm">
             Login <span aria-hidden="true">↗</span>
           </Link>
         </header>
 
-        <div className="relative z-10 mx-auto flex min-h-[650px] max-w-[1200px] flex-col items-center justify-center px-5 pb-24 pt-20 text-center sm:min-h-[690px] sm:px-8 sm:pt-24">
-          <p className="mb-6 text-[10px] font-medium uppercase tracking-[0.28em] text-[#5b5b50] sm:text-xs">A NEW ERA OF ESPORTS AUCTIONS</p>
-          <h1 className="max-w-5xl font-display text-[clamp(3.6rem,10vw,8.8rem)] leading-[.83] tracking-[-0.075em] text-[#191916]">
+        <div className="relative z-10 mx-auto flex min-h-0 max-w-[1200px] flex-col items-center justify-center px-5 pb-14 pt-16 text-center sm:min-h-[620px] sm:px-8 sm:pb-24 sm:pt-20 lg:min-h-[690px] lg:pt-24">
+          <p className="mb-5 text-[9px] font-medium uppercase tracking-[0.22em] text-[#5b5b50] sm:mb-6 sm:text-xs sm:tracking-[0.28em]">A NEW ERA OF ESPORTS AUCTIONS</p>
+          <h1 className="max-w-5xl font-display text-[clamp(3.05rem,10vw,8.8rem)] leading-[.9] tracking-[-0.065em] text-[#191916] sm:leading-[.84] sm:tracking-[-0.075em]">
             Build your<br />
             <span className="italic font-normal">dream roster.</span>
           </h1>
-          <p className="mt-8 max-w-lg text-sm leading-6 text-[#45453d] sm:text-base sm:leading-7">
+          <p className="mt-6 max-w-lg text-[13px] leading-[1.65] text-[#45453d] sm:mt-8 sm:text-base sm:leading-7">
             Every player has a moment. Every bid changes the game. Step into BIDXAUCTION and watch your next winning lineup come together live.
           </p>
-          <div className="mt-7 flex w-full flex-col items-center justify-center gap-3 sm:w-auto sm:flex-row">
-            <Link to="/auction" className="inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border border-[#191916] bg-[#e8d4ff] px-6 py-3 text-sm font-semibold transition hover:-translate-y-0.5 hover:bg-[#dcc0ff] sm:w-auto">
+          <div className="mt-6 flex w-full max-w-md flex-col items-center justify-center gap-2.5 sm:mt-7 sm:w-auto sm:flex-row sm:gap-3">
+            <Link to="/auction" className="inline-flex min-h-11 w-full items-center justify-center gap-3 rounded-xl border border-[#191916] bg-[#e8d4ff] px-5 py-2.5 text-[13px] font-semibold transition hover:-translate-y-0.5 hover:bg-[#dcc0ff] sm:min-h-12 sm:w-auto sm:px-6 sm:py-3 sm:text-sm">
               Enter live auction <span aria-hidden="true">↗</span>
             </Link>
-            <Link to="/player/register" className="inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-[#191916]/15 bg-white/65 px-6 py-3 text-sm font-medium transition hover:bg-white sm:w-auto">
+            <Link to="/player/register" className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-[#191916]/15 bg-white/65 px-5 py-2.5 text-[13px] font-medium transition hover:bg-white sm:min-h-12 sm:w-auto sm:px-6 sm:py-3 sm:text-sm">
               Register as a player
             </Link>
           </div>
