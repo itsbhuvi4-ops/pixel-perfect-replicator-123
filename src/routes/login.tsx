@@ -1,24 +1,22 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
+import { Eye, EyeOff, ShieldCheck, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { homeForRoles, type AppRole } from "@/lib/auth";
 import { usernameToEmail } from "@/lib/format";
 import { getFirstAdminSetupStatus, setupFirstAdmin, verifyLogin } from "@/lib/accounts.functions";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({
-    meta: [
-      { title: "Login — BidX Auction" },
-      { name: "description", content: "Sign in as admin, caster, ambassador or player." },
-      { property: "og:title", content: "Login — BidX Auction" },
-      { property: "og:description", content: "One login for every auction role." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
-  validateSearch: (s: Record<string, unknown>): { next?: string | undefined } => ({
-    next: typeof s['next'] === "string" && s['next'].startsWith("/") && !s['next'].startsWith("//") ? s['next'] : undefined,
+  head: () => ({ meta: [
+    { title: "Login — BIDXAUCTION" },
+    { name: "description", content: "Secure BIDXAUCTION access for players, ambassadors, casters and admins." },
+    { property: "og:title", content: "Login — BIDXAUCTION" },
+    { property: "og:description", content: "One secure login for every auction role." },
+    { property: "og:type", content: "website" },
+  ] }),
+  validateSearch: (s: Record<string, unknown>): { next?: string } => ({
+    next: typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//") ? s.next : undefined,
   }),
   component: LoginPage,
 });
@@ -29,6 +27,7 @@ function LoginPage() {
   const { next } = Route.useSearch();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<AppRole>("player");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -39,93 +38,94 @@ function LoginPage() {
 
   useEffect(() => {
     let cancelled = false;
-    getFirstAdminSetupStatus()
-      .then((res) => { if (!cancelled) setSetupAvailable(res.available); })
+    getFirstAdminSetupStatus().then((res) => { if (!cancelled) setSetupAvailable(res.available); })
       .catch(() => { if (!cancelled) setSetupAvailable(false); });
     return () => { cancelled = true; };
   }, []);
 
   const submitFirstAdmin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSetupBusy(true);
-    setErr(null);
+    e.preventDefault(); setSetupBusy(true); setErr(null);
     try {
       await setupFirstAdmin({ data: setup });
-      const { error } = await supabase.auth.signInWithPassword({
-        email: usernameToEmail(setup.username),
-        password: setup.password,
-      });
+      const { error } = await supabase.auth.signInWithPassword({ email: usernameToEmail(setup.username), password: setup.password });
       if (error) throw error;
       window.location.href = "/admin";
     } catch (error) {
       setErr(error instanceof Error ? error.message : "First-admin setup failed");
-    } finally {
-      setSetupBusy(false);
-    }
+    } finally { setSetupBusy(false); }
   };
 
   const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setErr(null);
-    const { error } = await supabase.auth.signInWithPassword({ email: usernameToEmail(username), password });
-    if (error) { setBusy(false); setErr("Wrong username or password"); return; }
+    e.preventDefault(); setBusy(true); setErr(null);
+    const { error } = await supabase.auth.signInWithPassword({ email: usernameToEmail(username.trim()), password });
+    if (error) { setBusy(false); setErr("Incorrect username or password. Please try again."); return; }
     const res = await verify({ data: { role } });
     setBusy(false);
     if (!res.ok) { await supabase.auth.signOut(); setErr(res.error); return; }
     if (res.mustChangePassword) { window.location.href = "/change-password"; return; }
-    // Keep the existing Supabase session in the SPA instead of forcing a full
-    // browser reload. This makes successful login feel immediate.
-    if (next) {
-      await navigate({ to: next });
-      return;
-    }
+    if (next) { await navigate({ to: next }); return; }
     await navigate({ to: homeForRoles([role]) });
   };
 
   return (
-    <main className="auth-canvas mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-8 px-4 py-10 lg:grid-cols-[1.1fr_0.9fr]">
-      <section className="auth-poster hidden min-h-[32rem] overflow-hidden p-8 lg:flex lg:flex-col lg:justify-between">
-        <div className="selection-label w-fit bg-blue px-4 py-2">ONE ARENA · FOUR ROLES</div>
-        <div>
-          <p className="label-cond text-sm">BIDX ACCESS</p>
-          <h1 className="mt-3 font-display text-8xl leading-[0.82]">YOUR ROLE.<br />YOUR MOVE.</h1>
-        </div>
-        <div className="route-line" aria-hidden="true"><span /><span /><span /></div>
-      </section>
-      <section className="neo-panel bg-panel p-5 sm:p-8">
-      <p className="label-cond text-xs text-blue">SECURE ACCESS</p>
-      <h1 className="mt-2 font-display text-5xl">Login</h1>
-      <form onSubmit={submit} className="mt-6 flex flex-col gap-3">
-        <input className="field" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} required />
-        <input className="field" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        <select className="field" value={role} onChange={(e) => setRole(e.target.value as AppRole)}>
-          <option value="admin">Admin</option><option value="ambassador">Ambassador</option>
-          <option value="caster">Caster</option><option value="player">Player</option>
-        </select>
-        {err && <p className="text-sm text-alert">{err}</p>}
-        <button disabled={busy} className="neo-action label-cond bg-gold py-3 text-[13px] text-arena disabled:opacity-50">{busy ? "Signing in…" : "Sign in"}</button>
-      </form>
+    <main className="bidx-login min-h-[calc(100vh-4rem)] overflow-hidden px-4 py-8 sm:px-6 lg:py-12">
+      <div className="bidx-login-glow bidx-login-glow-one" aria-hidden="true" />
+      <div className="bidx-login-glow bidx-login-glow-two" aria-hidden="true" />
+      <div className="relative mx-auto grid min-h-[min(760px,calc(100vh-6rem))] max-w-6xl overflow-hidden rounded-[2rem] border border-white/15 bg-[#050916]/90 shadow-[0_30px_120px_rgba(0,0,0,.5)] backdrop-blur-xl lg:grid-cols-[1.05fr_.95fr]">
+        <section className="bidx-login-art relative flex min-h-[15rem] flex-col justify-between overflow-hidden px-7 py-7 sm:px-10 sm:py-9 lg:min-h-[42rem] lg:px-12 lg:py-12">
+          <div className="relative z-10 flex items-center gap-3">
+            <div className="grid size-11 place-items-center rounded-2xl border border-cyan-100/40 bg-white/10 text-cyan-100 shadow-[0_0_30px_rgba(34,211,238,.25)]"><Zap className="size-6" /></div>
+            <div><p className="text-sm font-black tracking-[.22em] text-white">BIDXAUCTION</p><p className="mt-1 text-[10px] tracking-[.16em] text-blue-100/65">THE ULTIMATE LIVE PLAYER AUCTION</p></div>
+          </div>
+          <div className="relative z-10 mt-10 max-w-lg lg:mt-0">
+            <p className="mb-4 text-xs font-bold tracking-[.3em] text-cyan-200">YOUR ARENA. YOUR MOMENT.</p>
+            <h1 className="text-5xl font-black leading-[.98] tracking-[-.045em] text-white sm:text-6xl lg:text-7xl">THE NEXT<br /><span className="bidx-login-gradient-text">BIG MOVE</span><br />STARTS HERE.</h1>
+            <p className="mt-5 max-w-sm text-sm leading-6 text-blue-100/70">Enter the arena and get ready for the live player auction experience.</p>
+          </div>
+          <div className="relative z-10 mt-9 flex items-center gap-2 text-xs text-blue-100/60 lg:mt-0"><ShieldCheck className="size-4 text-cyan-200" /> Secure access for every auction role</div>
+        </section>
 
-      {setupAvailable && (
-        <div className="mt-6 border-t border-line pt-5">
-          <button type="button" onClick={() => setSetupOpen((v) => !v)} className="label-cond text-[11px] text-gold hover:text-foreground">
-            {setupOpen ? "Hide first-admin setup" : "First admin? Secure setup"}
-          </button>
-          {setupOpen && (
-            <form onSubmit={submitFirstAdmin} className="mt-3 grid gap-2">
-              <p className="text-[11px] leading-5 text-mut">Available only while no admin account exists. The setup code is verified on the server and is never stored in browser code.</p>
-              <input className="field" placeholder="Admin username" value={setup.username} onChange={(e) => setSetup({ ...setup, username: e.target.value })} required minLength={3} />
-              <input className="field" type="password" placeholder="Admin password (8+)" value={setup.password} onChange={(e) => setSetup({ ...setup, password: e.target.value })} required minLength={8} />
-              <input className="field" type="password" placeholder="Private setup code" value={setup.setupCode} onChange={(e) => setSetup({ ...setup, setupCode: e.target.value })} required minLength={12} autoComplete="off" />
-              <button disabled={setupBusy} className="label-cond border border-gold/50 bg-gold/10 py-2.5 text-[12px] text-gold disabled:opacity-40">
-                {setupBusy ? "Creating admin…" : "Create first admin"}
-              </button>
+        <section className="relative flex flex-col justify-center px-6 py-9 sm:px-10 lg:px-12">
+          <div className="pointer-events-none absolute right-0 top-0 size-64 rounded-full bg-blue-500/10 blur-3xl" />
+          <div className="relative">
+            <p className="text-[11px] font-bold tracking-[.28em] text-cyan-200">WELCOME BACK</p>
+            <h2 className="mt-3 text-4xl font-bold tracking-tight text-white sm:text-5xl">Sign in<span className="text-cyan-300">.</span></h2>
+            <p className="mt-3 text-sm leading-6 text-slate-400">Use your registered username and password to continue.</p>
+
+            <form onSubmit={submit} className="mt-8 flex flex-col gap-4">
+              <label className="flex flex-col gap-2 text-xs font-medium text-slate-300">Username
+                <input autoComplete="username" className="bidx-login-input" placeholder="Enter your username" value={username} onChange={(e) => setUsername(e.target.value)} required />
+              </label>
+              <label className="flex flex-col gap-2 text-xs font-medium text-slate-300">Password
+                <span className="relative block">
+                  <input autoComplete="current-password" className="bidx-login-input pr-12" type={showPassword ? "text" : "password"} placeholder="Enter your password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                  <button type="button" aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword((v) => !v)} className="absolute inset-y-0 right-3 grid place-items-center text-slate-400 transition hover:text-cyan-200">{showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}</button>
+                </span>
+              </label>
+              <label className="flex flex-col gap-2 text-xs font-medium text-slate-300">Sign in as
+                <select className="bidx-login-input" value={role} onChange={(e) => setRole(e.target.value as AppRole)}>
+                  <option value="player">Player</option><option value="ambassador">Ambassador</option><option value="caster">Caster</option><option value="admin">Admin</option>
+                </select>
+              </label>
+              {err && <p role="alert" className="rounded-xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">{err}</p>}
+              <button disabled={busy} className="bidx-login-submit mt-1">{busy ? "Signing in…" : "LOGIN TO BIDXAUCTION"}<span aria-hidden="true">→</span></button>
             </form>
-          )}
-        </div>
-      )}
-      </section>
+            <p className="mt-5 text-center text-xs leading-5 text-slate-500">Having trouble signing in? Contact your BIDXAUCTION administrator.</p>
+
+            {setupAvailable && <div className="mt-7 border-t border-white/10 pt-5">
+              <button type="button" onClick={() => setSetupOpen((v) => !v)} className="text-xs font-semibold text-cyan-200 hover:text-white">{setupOpen ? "Hide first-admin setup" : "First admin? Secure setup"}</button>
+              {setupOpen && <form onSubmit={submitFirstAdmin} className="mt-4 grid gap-3">
+                <p className="text-xs leading-5 text-slate-400">Available only while no admin account exists. The setup code is verified on the server.</p>
+                <input className="bidx-login-input" placeholder="Admin username" value={setup.username} onChange={(e) => setSetup({ ...setup, username: e.target.value })} required minLength={3} />
+                <input className="bidx-login-input" type="password" placeholder="Admin password (8+)" value={setup.password} onChange={(e) => setSetup({ ...setup, password: e.target.value })} required minLength={8} />
+                <input className="bidx-login-input" type="password" placeholder="Private setup code" value={setup.setupCode} onChange={(e) => setSetup({ ...setup, setupCode: e.target.value })} required minLength={12} autoComplete="off" />
+                <button disabled={setupBusy} className="bidx-login-submit">{setupBusy ? "Creating admin…" : "Create first admin"}<span>→</span></button>
+              </form>}
+            </div>}
+          </div>
+          <p className="relative mt-8 text-center text-[10px] tracking-[.12em] text-slate-600">BIDXAUCTION · BUILT FOR THE LIVE ARENA</p>
+        </section>
+      </div>
     </main>
   );
 }
