@@ -677,7 +677,7 @@ export const adminDeletePlayer = createServerFn({ method: "POST" })
     // Remove every Storage object owned by the player, not only the two
     // current upload buckets. Supabase Auth blocks deletion while owned
     // Storage objects remain.
-    const { data: ownedObjects, error: ownedObjectsError } = await (sa.from("storage.objects") as any)
+    const { data: ownedObjects, error: ownedObjectsError } = await (sa as any).from("storage.objects")
       .select("bucket_id,name,owner_id,owner")
       .or(`owner_id.eq.${player.user_id},owner.eq.${player.user_id}`)
       .limit(10000);
