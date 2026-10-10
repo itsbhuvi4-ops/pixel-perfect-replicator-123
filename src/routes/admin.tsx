@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
@@ -63,16 +63,15 @@ function AdminDashboard() {
   const [tab, setTab] = useState<Tab>("overview");
   const { username } = useAuth();
 
+  // TanStack Router changes hashes through history.pushState, which does not
+  // reliably emit the browser's native hashchange event. Subscribe to router
+  // location instead so Admin menu links always switch the visible tab.
+  const location = useLocation();
   useEffect(() => {
-    const syncTabFromHash = () => {
-      const requested = window.location.hash.slice(1);
-      const nextTab = TABS.find((item) => item === requested);
-      setTab(nextTab ?? "overview");
-    };
-    syncTabFromHash();
-    window.addEventListener("hashchange", syncTabFromHash);
-    return () => window.removeEventListener("hashchange", syncTabFromHash);
-  }, []);
+    const requested = location.hash.replace(/^#/, "");
+    const nextTab = TABS.find((item) => item === requested);
+    setTab(nextTab ?? "overview");
+  }, [location.hash]);
 
   return (
     <main className="role-canvas mx-auto max-w-6xl px-4 py-6 sm:px-5">
