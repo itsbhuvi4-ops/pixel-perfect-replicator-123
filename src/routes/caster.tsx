@@ -101,11 +101,14 @@ function AuctionControls() {
   const [busy, setBusy] = useState<string | null>(null);
   const finalizedDeadlineRef = useRef<string | null>(null);
   const { data: state } = useAuctionState();
+  // Database/status labels may arrive in uppercase (for example, "IDLE").
+  // Normalize before checking allowed transitions so IDLE doesn't leave Start disabled.
   const status = state?.status;
+  const normalizedStatus = typeof status === "string" ? status.toLowerCase() : status;
   const hasCurrent = !!state?.current_player_id;
-  const canStart = status === "idle" || status === "not_started" || status === "stopped";
-  const isLive = status === "live";
-  const isPaused = status === "paused";
+  const canStart = normalizedStatus === "idle" || normalizedStatus === "not_started" || normalizedStatus === "stopped";
+  const isLive = normalizedStatus === "live";
+  const isPaused = normalizedStatus === "paused";
 
   const refresh = async () => {
     await Promise.all([
