@@ -267,6 +267,7 @@ drop policy if exists "ambassadors public read" on public.ambassadors;
 create policy "ambassadors self or admin read" on public.ambassadors for select to authenticated
 using(user_id=auth.uid() or public.has_role(auth.uid(),'admin'::public.app_role));
 drop policy if exists "profiles authenticated read" on public.profiles;
+drop policy if exists "profiles self or admin read" on public.profiles;
 create policy "profiles self or admin read" on public.profiles for select to authenticated
 using(id=auth.uid() or public.has_role(auth.uid(),'admin'::public.app_role));
 
