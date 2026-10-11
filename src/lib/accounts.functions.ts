@@ -62,17 +62,31 @@ async function requireRole(ctx: { supabase: any; userId: string }, allowed: Role
 
 /* ---------- WebRTC ICE configuration ---------- */
 
-export const getWebRtcIceServers = createServerFn({ method: "GET" })
+export const getWebRtcIceServers = createServerFn({ method: "POST" })
   .handler(async () => {
     const stun = { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] };
     const credentialUrl = process.env["TURN_CREDENTIAL_URL"]?.trim();
 
     // This endpoint is used by audience viewers before WebRTC connects, so it
-    // intentionally remains public. It MUST only return short-lived TURN
-    // credentials minted by a trusted server-side provider. Never return
-    // TURN_USERNAME/TURN_CREDENTIAL or a static TURN_URLS credential pair here:
-    // browser-delivered credentials are public and can be copied/reused.
-    if (!credentialUrl) return { iceServers: [stun] };
+    // intentionally remains public. Prefer short-lived credentials minted by a
+    // trusted provider. Static credentials are disabled unless the operator
+    // explicitly opts in after confirming they are temporary/low-privilege.
+    if (!credentialUrl) {
+      const allowStatic = process.env["TURN_ALLOW_STATIC_PUBLIC_CREDENTIALS"] === "true";
+      const urls = (process.env["TURN_URLS"] ?? "").split(",").map((v) => v.trim()).filter(Boolean);
+      const username = process.env["TURN_USERNAME"];
+      const credential = process.env["TURN_CREDENTIAL"];
+      if (
+        allowStatic &&
+        urls.length > 0 &&
+        urls.every((url) => /^(turn|turns):/i.test(url)) &&
+        username &&
+        credential
+      ) {
+        return { iceServers: [stun, { urls, username, credential }] };
+      }
+      return { iceServers: [stun] };
+    }
 
     let parsedCredentialUrl: URL;
     try {
