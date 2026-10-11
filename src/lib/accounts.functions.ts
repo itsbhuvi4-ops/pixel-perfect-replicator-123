@@ -121,10 +121,14 @@ export const getWebRtcIceServers = createServerFn({ method: "POST" })
       throw new Error("TURN credential service returned an invalid response");
     }
     const dynamicUrls = Array.isArray(body.urls) ? body.urls : body.urls ? [body.urls] : [];
+    // Providers may return both STUN and TURN endpoints in one list.
+    // Accept only WebRTC ICE URL schemes and require at least one TURN endpoint
+    // so a malformed response cannot silently disable relay connectivity.
     const validUrls = dynamicUrls.filter(
-      (url): url is string => typeof url === "string" && /^(turn|turns):/i.test(url),
+      (url): url is string => typeof url === "string" && /^(turn|turns|stun|stuns):/i.test(url),
     );
-    if (!validUrls.length || validUrls.length !== dynamicUrls.length ||
+    const hasTurnUrl = validUrls.some((url) => /^(turn|turns):/i.test(url));
+    if (!validUrls.length || validUrls.length !== dynamicUrls.length || !hasTurnUrl ||
         typeof body.username !== "string" || !body.username ||
         typeof body.credential !== "string" || !body.credential) {
       throw new Error("TURN credential service returned an invalid response");
