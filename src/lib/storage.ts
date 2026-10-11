@@ -293,11 +293,22 @@ async function uploadWithProgress(
         resolve();
         return;
       }
-      let message = "Upload failed (" + xhr.status + ")";
-      try {
-        const body = JSON.parse(xhr.responseText);
-        message = body.message || body.error || message;
-      } catch { /* keep fallback */ }
+      // Do not surface raw Storage API responses: they may include bucket,
+      // policy, object-path, or infrastructure details.
+      const message =
+        xhr.status === 401
+          ? "Your login session expired. Please sign in again."
+          : xhr.status === 403
+            ? "You don't have permission to upload this file."
+            : xhr.status === 409
+              ? "A file with this name already exists. Please try again."
+              : xhr.status === 413
+                ? "This file is too large to upload."
+                : xhr.status === 429
+                  ? "Too many uploads. Please wait a moment and try again."
+                  : xhr.status >= 500
+                    ? "The upload service is temporarily unavailable. Please try again."
+                    : "Upload failed. Check the file and your connection, then try again.";
       reject(new Error(message));
     };
     xhr.send(file);
