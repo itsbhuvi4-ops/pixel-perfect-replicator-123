@@ -19,9 +19,11 @@ grant select(id,event_type,message,player_id,ambassador_id,amount,created_at,pla
 
 drop policy if exists "players public read" on public.players;
 drop policy if exists "players self or admin read" on public.players;
+drop policy if exists "players safe read" on public.players;
 create policy "players safe read" on public.players for select to anon,authenticated using (true);
 drop policy if exists "ambassadors public read" on public.ambassadors;
 drop policy if exists "ambassadors self or admin read" on public.ambassadors;
+drop policy if exists "ambassadors safe read" on public.ambassadors;
 create policy "ambassadors safe read" on public.ambassadors for select to anon,authenticated using (true);
 
 create or replace function public.player_get_me()
