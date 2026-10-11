@@ -35,6 +35,18 @@ export function Center({ children }: { children: ReactNode }) {
 }
 
 export function errText(e: unknown): string {
-  if (e && typeof e === "object" && "message" in e) return String((e as { message: string }).message);
-  return "Something went wrong";
+  const raw = e && typeof e === "object" && "message" in e
+    ? String((e as { message: unknown }).message ?? "").trim()
+    : "";
+  if (!raw) return "Something went wrong. Please try again.";
+
+  // Supabase/Postgres and server exceptions can contain schema names, SQL,
+  // constraint details, request metadata, or stack traces. Do not display
+  // those internals in a toast or page. Keep concise application messages
+  // (for example, validation and auction-state errors) usable for the user.
+  const internalError =
+    raw.length > 220 ||
+    /\\n|\\r|\\bat\\s+[^\\s]+\\s*\\(|stack trace|sqlstate|postgres|postgrest|pgrst\\d*|supabase|database error|relation .* does not exist|column .* does not exist|duplicate key value|violates .* constraint|permission denied for table|schema cache|invalid api key|jwt expired|authorization header/i.test(raw);
+  if (internalError) return "Something went wrong. Please try again.";
+  return raw;
 }
