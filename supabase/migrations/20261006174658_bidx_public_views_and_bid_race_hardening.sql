@@ -1,0 +1,2 @@
+-- Historical Supabase migration ledger compatibility.
+-- The implementation for this historical version is consolidated into the later tracked comprehensive security and public-view migrations. This compatibility file preserves the version recorded in the production Supabase migration ledger; intentionally no-op.
