@@ -14,15 +14,13 @@ const username = z
 const password = z.string().min(8, "Password must be at least 8 characters").max(72);
 const roleEnum = z.enum(["primary_rusher", "secondary_rusher", "sniper", "nader", "supporter"]);
 
-/** Turn database/raw errors into short, safe messages. */
+/** Never send raw database/auth provider errors back to browsers. */
 function friendly(msg: string | undefined): string {
-  if (!msg) return "Something went wrong";
-  if (/duplicate|already|23505/i.test(msg)) return "Already Registered";
-  if (msg.length > 120 || /relation|column|syntax|violates/i.test(msg)) {
-    console.error("[accounts]", msg);
-    return "Something went wrong. Please try again.";
-  }
-  return msg;
+  if (msg && /duplicate|already exists|23505/i.test(msg)) return "Already Registered";
+  // Keep implementation details in server logs only. These strings can contain
+  // schema names, SQL details, provider diagnostics, or other internal metadata.
+  if (msg) console.error("[accounts] Internal provider/database error", { message: msg.slice(0, 500) });
+  return "Something went wrong. Please try again.";
 }
 
 async function admin() {
@@ -66,34 +64,62 @@ async function requireRole(ctx: { supabase: any; userId: string }, allowed: Role
 
 export const getWebRtcIceServers = createServerFn({ method: "GET" })
   .handler(async () => {
-    const urls = (process.env["TURN_URLS"] ?? "").split(",").map((v) => v.trim()).filter(Boolean);
+    const stun = { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] };
     const credentialUrl = process.env["TURN_CREDENTIAL_URL"]?.trim();
 
-    if (credentialUrl) {
-      const headers: Record<string, string> = { accept: "application/json" };
-      const apiKey = process.env["TURN_CREDENTIAL_API_KEY"];
-      if (apiKey) headers["authorization"] = `Bearer ${apiKey}`;
-      const response = await fetch(credentialUrl, { headers, cache: "no-store" });
-      if (!response.ok) throw new Error("TURN credential service unavailable");
-      const body = (await response.json()) as { urls?: string | string[]; username?: string; credential?: string };
-      const dynamicUrls = Array.isArray(body.urls) ? body.urls : body.urls ? [body.urls] : urls;
-      if (!dynamicUrls.length || !body.username || !body.credential) {
-        throw new Error("TURN credential service returned an invalid response");
-      }
-      return {
-        iceServers: [
-          { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
-          { urls: dynamicUrls, username: body.username, credential: body.credential },
-        ],
-      };
+    // This endpoint is used by audience viewers before WebRTC connects, so it
+    // intentionally remains public. It MUST only return short-lived TURN
+    // credentials minted by a trusted server-side provider. Never return
+    // TURN_USERNAME/TURN_CREDENTIAL or a static TURN_URLS credential pair here:
+    // browser-delivered credentials are public and can be copied/reused.
+    if (!credentialUrl) return { iceServers: [stun] };
+
+    let parsedCredentialUrl: URL;
+    try {
+      parsedCredentialUrl = new URL(credentialUrl);
+    } catch {
+      throw new Error("TURN credential service is not configured correctly");
+    }
+    if (parsedCredentialUrl.protocol !== "https:") {
+      throw new Error("TURN credential service must use HTTPS");
     }
 
-    const username = process.env["TURN_USERNAME"];
-    const credential = process.env["TURN_CREDENTIAL"];
+    const headers: Record<string, string> = { accept: "application/json" };
+    const apiKey = process.env["TURN_CREDENTIAL_API_KEY"];
+    if (apiKey) headers["authorization"] = `Bearer ${apiKey}`;
+
+    let response: Response;
+    try {
+      response = await fetch(parsedCredentialUrl, {
+        headers,
+        cache: "no-store",
+        signal: AbortSignal.timeout(5000),
+      });
+    } catch {
+      throw new Error("TURN credential service unavailable");
+    }
+    if (!response.ok) throw new Error("TURN credential service unavailable");
+
+    let body: { urls?: string | string[]; username?: string; credential?: string };
+    try {
+      body = (await response.json()) as typeof body;
+    } catch {
+      throw new Error("TURN credential service returned an invalid response");
+    }
+    const dynamicUrls = Array.isArray(body.urls) ? body.urls : body.urls ? [body.urls] : [];
+    const validUrls = dynamicUrls.filter(
+      (url): url is string => typeof url === "string" && /^(turn|turns):/i.test(url),
+    );
+    if (!validUrls.length || validUrls.length !== dynamicUrls.length ||
+        typeof body.username !== "string" || !body.username ||
+        typeof body.credential !== "string" || !body.credential) {
+      throw new Error("TURN credential service returned an invalid response");
+    }
+
     return {
       iceServers: [
-        { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
-        ...(urls.length && username && credential ? [{ urls, username, credential }] : []),
+        stun,
+        { urls: validUrls, username: body.username, credential: body.credential },
       ],
     };
   });
