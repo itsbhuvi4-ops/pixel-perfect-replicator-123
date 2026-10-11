@@ -46,7 +46,7 @@ export function errText(e: unknown): string {
   // (for example, validation and auction-state errors) usable for the user.
   const internalError =
     raw.length > 220 ||
-    /\\n|\\r|\\bat\\s+[^\\s]+\\s*\\(|stack trace|sqlstate|postgres|postgrest|pgrst\\d*|supabase|database error|relation .* does not exist|column .* does not exist|duplicate key value|violates .* constraint|permission denied for table|schema cache|invalid api key|jwt expired|authorization header/i.test(raw);
+    /\n|\r|\bat\s+[^\s]+\s*\(|stack trace|sqlstate|postgres|postgrest|pgrst\d*|supabase|database error|relation .* does not exist|column .* does not exist|duplicate key value|violates .* constraint|permission denied for table|schema cache|invalid api key|jwt expired|authorization header/i.test(raw);
   if (internalError) return "Something went wrong. Please try again.";
   return raw;
 }
