@@ -23,6 +23,7 @@ import { Route as AmbassadorLiveAuctionRouteImport } from './routes/ambassador_.
 import { Route as CasterAuctionControlRouteImport } from './routes/caster_.auction-control'
 import { Route as CasterCheckRouteImport } from './routes/caster_.check'
 import { Route as PlayerRegisterRouteImport } from './routes/player/register'
+import { Route as SetupRouteImport } from './routes/setup'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -94,6 +95,11 @@ const PlayerRegisterRoute = PlayerRegisterRouteImport.update({
   path: '/player/register',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -110,6 +116,7 @@ export interface FileRoutesByFullPath {
   '/caster/auction-control': typeof CasterAuctionControlRoute
   '/caster/check': typeof CasterCheckRoute
   '/player/register': typeof PlayerRegisterRoute
+  '/setup': typeof SetupRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -126,6 +133,7 @@ export interface FileRoutesByTo {
   '/caster/auction-control': typeof CasterAuctionControlRoute
   '/caster/check': typeof CasterCheckRoute
   '/player/register': typeof PlayerRegisterRoute
+  '/setup': typeof SetupRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -143,6 +151,7 @@ export interface FileRoutesById {
   '/caster_/auction-control': typeof CasterAuctionControlRoute
   '/caster_/check': typeof CasterCheckRoute
   '/player/register': typeof PlayerRegisterRoute
+  '/setup': typeof SetupRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/caster/auction-control'
     | '/caster/check'
     | '/player/register'
+    | '/setup'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -177,6 +187,7 @@ export interface FileRouteTypes {
     | '/caster/auction-control'
     | '/caster/check'
     | '/player/register'
+    | '/setup'
   id:
     | '__root__'
     | '/'
@@ -193,6 +204,7 @@ export interface FileRouteTypes {
     | '/caster_/auction-control'
     | '/caster_/check'
     | '/player/register'
+    | '/setup'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -210,6 +222,7 @@ export interface RootRouteChildren {
   CasterAuctionControlRoute: typeof CasterAuctionControlRoute
   CasterCheckRoute: typeof CasterCheckRoute
   PlayerRegisterRoute: typeof PlayerRegisterRoute
+  SetupRoute: typeof SetupRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -312,6 +325,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlayerRegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -330,6 +350,7 @@ const rootRouteChildren: RootRouteChildren = {
   CasterAuctionControlRoute: CasterAuctionControlRoute,
   CasterCheckRoute: CasterCheckRoute,
   PlayerRegisterRoute: PlayerRegisterRoute,
+  SetupRoute: SetupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
