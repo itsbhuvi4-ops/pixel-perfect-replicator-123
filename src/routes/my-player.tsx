@@ -465,7 +465,7 @@ function UploadsSection({
                   </span>
                 </div>
                 <div className="mt-1 text-mut">
-                  {video.size <= 500 * 1024 * 1024 ? "Direct upload — no compression." : "Video exceeds the 500 MB limit."}
+                  {video.size > 500 * 1024 * 1024 ? "Video exceeds the 500 MB limit." : video.size > 100 * 1024 * 1024 ? "Large video — optimization may reduce upload time; processing depends on your device." : "Direct upload for faster start."}
                 </div>
               </div>
             )}

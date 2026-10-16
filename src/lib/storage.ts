@@ -233,12 +233,18 @@ async function compressVideo(file: File, onProgress?: (percent: number) => void)
 export async function preparePlayerFile(
   bucket: "player-photos" | "player-videos",
   file: File,
-  _onProgress?: (progress: UploadProgress) => void,
+  onProgress?: (progress: UploadProgress) => void,
 ): Promise<File> {
-  // Upload the original file as-is. No client-side image or video compression.
-  // This keeps mobile uploads responsive and avoids the stuck-at-0% encoder path.
-  void bucket;
-  return file;
+  // Keep normal-sized videos on the fast direct-upload path. Very large videos
+  // can take a long time to transfer on mobile networks, so try browser-side
+  // compression above 100 MB to reduce bytes sent. Compression is skipped for
+  // photos and never replaces the original unless the result is smaller.
+  if (bucket !== "player-videos" || file.size <= VIDEO_COMPRESS_THRESHOLD) return file;
+
+  const optimized = await compressVideo(file, (percent) => {
+    onProgress?.({ stage: "compressing", kind: "video", percent });
+  });
+  return optimized.size < file.size ? optimized : file;
 }
 
 async function uploadWithProgress(
