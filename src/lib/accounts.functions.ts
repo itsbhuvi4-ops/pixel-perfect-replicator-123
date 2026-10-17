@@ -590,6 +590,8 @@ export const updateSettings = createServerFn({ method: "POST" })
       min_increment: z.number().int().min(1),
       default_starting_points: z.number().int().min(0).max(10_000_000),
       retain_price: z.number().int().min(0),
+      max_retains: z.number().int().min(0).max(100),
+      apply_points_to_all: z.boolean().optional().default(false),
       max_players: z.number().int().min(1).max(1000),
       max_ambassadors: z.number().int().min(1).max(100),
       max_casters: z.number().int().min(1).max(20),
@@ -608,17 +610,19 @@ export const updateSettings = createServerFn({ method: "POST" })
       min_increment: data.min_increment,
       default_starting_points: data.default_starting_points,
       retain_price: data.retain_price,
+      max_retains: data.max_retains,
       max_players: data.max_players,
       max_ambassadors: data.max_ambassadors,
       max_casters: data.max_casters,
       updated_at: new Date().toISOString(),
     }).eq("id", 1);
     if (error) throw new Error(friendly(error.message));
-    if (st?.status === "not_started") {
-      await sa.from("ambassadors").update({
+    if (data.apply_points_to_all && st?.status === "not_started") {
+      const { error: pointsError } = await sa.from("ambassadors").update({
         starting_points: data.default_starting_points,
         remaining_points: data.default_starting_points,
       }).gte("starting_points", 0);
+      if (pointsError) throw new Error(friendly(pointsError.message));
     }
     return { ok: true };
   });
