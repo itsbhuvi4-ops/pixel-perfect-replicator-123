@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
-import { useAuth } from "@/lib/auth";
 
 // Some columns exist only in certain environments; keep them optional.
 export type AuctionState = Tables<"auction_state"> & {
@@ -16,9 +15,25 @@ export type Player = Tables<"players">;
 export type Ambassador = Tables<"ambassadors">;
 export type AuctionEvent = Tables<"auction_events">;
 
+// Keep healthy auction queries fresh every 2 seconds. If a query is failing,
+// back off to a maximum 30-second interval instead of hammering Supabase.
+// React Query also stops interval refetches while the page is in the background.
+const auctionPollingInterval = (query: { state: { status: string; fetchFailureCount: number } }) =>
+  query.state.status === "error"
+    ? Math.min(30_000, 2_000 * 2 ** Math.min(query.state.fetchFailureCount, 4))
+    : 2_000;
+
+const auctionQueryRecovery = {
+  refetchInterval: auctionPollingInterval,
+  refetchIntervalInBackground: false,
+  retry: 2,
+  retryDelay: (attempt: number) => Math.min(30_000, 1_000 * 2 ** attempt),
+};
+
 export function useAuctionState() {
   return useQuery({
     queryKey: ["auction_state"],
+    ...auctionQueryRecovery,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("bidx_public_auction_state")
@@ -34,6 +49,7 @@ export function useAuctionState() {
 export function usePlayers() {
   return useQuery({
     queryKey: ["players"],
+    ...auctionQueryRecovery,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("bidx_public_players")
@@ -47,6 +63,7 @@ export function usePlayers() {
 export function useAmbassadors() {
   return useQuery({
     queryKey: ["ambassadors"],
+    ...auctionQueryRecovery,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("bidx_public_ambassadors")
@@ -60,6 +77,7 @@ export function useAmbassadors() {
 export function useAuctionEvents(limit = 25) {
   return useQuery({
     queryKey: ["auction_events", limit],
+    ...auctionQueryRecovery,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("bidx_public_auction_events")
@@ -75,6 +93,7 @@ export function useBids(playerId: string | null | undefined) {
   return useQuery({
     queryKey: ["bids", playerId],
     enabled: !!playerId,
+    ...auctionQueryRecovery,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("bidx_public_bids")
@@ -139,11 +158,11 @@ export function useMyRoster(ambassadorId: string | null | undefined) {
   });
 }
 
-/** Subscribe once per page to keep every auction query in sync with the server. */
+/** Invalidate mounted auction queries when the page returns to the foreground
+ * or the network comes back. Individual queries own their polling/backoff timers.
+ */
 export function useRealtimeAuction() {
   const qc = useQueryClient();
-  const { session } = useAuth();
-  const hasSession = Boolean(session?.user.id);
 
   useEffect(() => {
     const invalidate = () => {
@@ -154,29 +173,19 @@ export function useRealtimeAuction() {
       qc.invalidateQueries({ queryKey: ["bids"] });
     };
 
-    // Public audience polling deliberately avoids subscribing to private table
-    // rows over Postgres Changes. Authenticated roles keep the realtime channel.
-    if (!hasSession) {
-      const timer = window.setInterval(invalidate, 2000);
-      invalidate();
-      return () => window.clearInterval(timer);
-    }
-
-    const timer = window.setInterval(invalidate, 2000);
-    invalidate();
-
     const onVisible = () => {
       if (document.visibilityState === "visible") invalidate();
     };
+
+    invalidate();
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("online", invalidate);
 
     return () => {
-      window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("online", invalidate);
     };
-  }, [qc, hasSession]);
+  }, [qc]);
 }
 
 export function minimumNextBid(state: AuctionState | null | undefined): number {
