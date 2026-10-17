@@ -600,7 +600,19 @@ export const updateSettings = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireRole(context, ["admin"]);
     const sa = await admin();
-    const { data: st } = await sa.from("auction_state").select("status").eq("id", 1).single();
+
+    // Resetting team balances is a separate, explicitly requested action.
+    // The database function locks auction_state and checks the current status
+    // in the same transaction as the balance update, preventing a race with
+    // a caster starting the auction.
+    if (data.apply_points_to_all) {
+      const { error: pointsError } = await (sa as any).rpc(
+        "admin_reset_ambassador_points_if_not_started",
+        { p_points: data.default_starting_points },
+      );
+      if (pointsError) throw new Error(friendly(pointsError.message));
+    }
+
     const { error } = await (sa.from("auction_state") as any).update({
       tournament_name: data.tournament_name,
       tournament_season: data.tournament_season,
@@ -617,13 +629,6 @@ export const updateSettings = createServerFn({ method: "POST" })
       updated_at: new Date().toISOString(),
     }).eq("id", 1);
     if (error) throw new Error(friendly(error.message));
-    if (data.apply_points_to_all && st?.status === "not_started") {
-      const { error: pointsError } = await sa.from("ambassadors").update({
-        starting_points: data.default_starting_points,
-        remaining_points: data.default_starting_points,
-      }).gte("starting_points", 0);
-      if (pointsError) throw new Error(friendly(pointsError.message));
-    }
     return { ok: true };
   });
 
