@@ -34,8 +34,8 @@ export const Route = createFileRoute("/caster")({
 
 export function CasterConsole() {
   useRealtimeAuction();
-  const { data: state } = useAuctionState();
-  const { data: players = [] } = usePlayers();
+  const { data: state, error: stateError, isLoading: stateLoading } = useAuctionState();
+  const { data: players = [], error: playersError, isLoading: playersLoading } = usePlayers();
   const { data: ambassadors = [] } = useAmbassadors();
   const { data: events = [] } = useAuctionEvents();
   const current = players.find((p) => p.id === state?.current_player_id) ?? null;
@@ -46,8 +46,22 @@ export function CasterConsole() {
     <main className="role-canvas mx-auto max-w-7xl px-3 py-5 sm:px-5">
       <section id="profile" className="mb-4 flex flex-wrap items-end justify-between gap-3 bg-panel p-4 ring-1 ring-line">
         <div><p className="selection-label w-fit bg-blue px-3 py-1 text-xs">CASTER WORKSPACE</p><h1 className="mt-3 font-display text-5xl">Auction Control</h1></div>
-        <span className="label-cond bg-green px-3 py-2 text-xs text-foreground">BROADCAST READY</span>
+        <span className={`label-cond px-3 py-2 text-xs ${stateError || playersError ? "bg-alert text-white" : state?.status === "live" ? "bg-sold text-foreground" : "bg-green text-foreground"}`}>
+          {stateError || playersError ? "DATA CONNECTION ERROR" : stateLoading || playersLoading ? "CONNECTING…" : state?.status === "live" ? "AUCTION LIVE" : "BROADCAST READY"}
+        </span>
       </section>
+      {(stateError || playersError) && (
+        <section role="alert" className="mt-3 rounded-lg border border-alert/40 bg-alert/10 p-4 text-sm text-alert">
+          <p className="font-semibold">Auction data could not be loaded.</p>
+          <p className="mt-1 text-xs text-mut">Check the connection and refresh. The controls may be unavailable until the data connection recovers.</p>
+        </section>
+      )}
+      {!stateLoading && !playersLoading && !stateError && !playersError && !state?.current_player_id && players.length === 0 && (
+        <section role="status" className="mt-3 rounded-lg border border-gold/30 bg-gold/5 p-4 text-sm text-foreground">
+          <p className="font-semibold">No players are currently available in the auction pool.</p>
+          <p className="mt-1 text-xs text-mut">Register players or check player eligibility in the admin dashboard before starting the auction.</p>
+        </section>
+      )}
       <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-4">
           <section className="relative overflow-hidden rounded-xl bg-panel ring-1 ring-line">
@@ -405,6 +419,7 @@ function CasterCamCard() {
   const [hostActive, setHostActive] = useState(false);
   const [isCurrentHost, setIsCurrentHost] = useState(false);
   const [hostName, setHostName] = useState<string | null>(null);
+  const [hostStatusError, setHostStatusError] = useState(false);
   const [videoId, setVideoId] = useState("default");
   const [audioId, setAudioId] = useState("default");
   const [preview, setPreview] = useState<MediaStream | null>(null);
@@ -431,9 +446,12 @@ function CasterCamCard() {
         setHostActive(Boolean(next.host_active));
         setIsCurrentHost(Boolean(next.is_current_user_host));
         setHostName(next.host_name ?? null);
+        setHostStatusError(false);
       } catch {
         // Camera start remains server-authoritative; a failed status read must
-        // not grant host control.
+        // not grant host control. Tell the caster instead of silently showing
+        // a potentially stale host state.
+        if (!stopped) setHostStatusError(true);
       }
     };
     void refreshHost();
@@ -569,6 +587,11 @@ function CasterCamCard() {
         </div>
         {preview && !live && <button onClick={() => void stopLive()} className="label-cond border border-line py-2 text-[12px] text-mut">Stop Camera</button>}
         <p className="font-mono text-[11px] text-mut">Status: {status} · {viewers} viewer{viewers === 1 ? "" : "s"} · WebRTC peer-to-peer</p>
+        {hostStatusError && (
+          <p role="alert" className="rounded-md border border-alert/30 bg-alert/10 px-3 py-2 text-xs text-alert">
+            Could not verify the active caster. Refresh the host status or retry before starting a broadcast.
+          </p>
+        )}
         {hostActive && !isCurrentHost && !live && (
           <p className="rounded-md border border-alert/30 bg-alert/10 px-3 py-2 font-mono text-[10px] text-alert">
             STANDBY — {hostName ? `${hostName} is currently hosting` : "another caster is currently hosting"}
