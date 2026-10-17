@@ -57,15 +57,42 @@ function LoginPage() {
   };
 
   const submit = async (e: React.FormEvent) => {
-    e.preventDefault(); setBusy(true); setErr(null);
-    const { error } = await supabase.auth.signInWithPassword({ email: usernameToEmail(username.trim()), password });
-    if (error) { setBusy(false); setErr("Incorrect username or password. Please try again."); return; }
-    const res = await verify({ data: { role } });
-    setBusy(false);
-    if (!res.ok) { await supabase.auth.signOut(); setErr(res.error); return; }
-    if (res.mustChangePassword) { window.location.href = "/change-password"; return; }
-    if (next) { await navigate({ to: next }); return; }
-    await navigate({ to: homeForRoles([role]) });
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: usernameToEmail(username.trim()),
+        password,
+      });
+      if (error) {
+        setErr("Incorrect username or password. Please try again.");
+        return;
+      }
+
+      const res = await verify({ data: { role } });
+      if (!res.ok) {
+        await supabase.auth.signOut();
+        setErr(res.error || "This account does not have access to that role.");
+        return;
+      }
+      if (res.mustChangePassword) {
+        window.location.href = "/change-password";
+        return;
+      }
+      if (next) {
+        await navigate({ to: next });
+        return;
+      }
+      await navigate({ to: homeForRoles([role]) });
+    } catch (error) {
+      console.error("[login] Sign-in or role verification failed", error);
+      setErr("We couldn't complete sign-in. Check your connection and try again.");
+      try { await supabase.auth.signOut(); } catch { /* Keep the original sign-in error visible. */ }
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
