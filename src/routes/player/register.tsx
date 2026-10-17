@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Eye, EyeOff, ShieldCheck, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { registerPlayer } from "@/lib/accounts.functions";
+import { cleanupPlayerUploadObjects, registerPlayer } from "@/lib/accounts.functions";
+import { uploadPlayerFile } from "@/lib/storage";
 import { GAME_ROLES, ROLE_LABELS, usernameToEmail } from "@/lib/format";
 import { errText } from "@/components/Guard";
 
@@ -27,6 +28,9 @@ function RegisterPage() {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [video, setVideo] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState("");
   const [f, setF] = useState({
     username: "", password: "", player_name: "", game_id: "", game_name: "",
     experience: "", team_name: "", uid: "", primary_role: "primary_rusher",
@@ -35,17 +39,51 @@ function RegisterPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!photo || !video) {
+      toast.error("Both a player photo and gameplay video are required to register.");
+      return;
+    }
+    if (busy) return;
     setBusy(true);
+    setUploadProgress("");
+    let accountCreated = false;
+    const uploaded: { bucket: "player-photos" | "player-videos"; path: string }[] = [];
     try {
       await register({ data: { ...f, primary_role: f.primary_role as (typeof GAME_ROLES)[number] } });
+      accountCreated = true;
       const { data: auth, error } = await supabase.auth.signInWithPassword({ email: usernameToEmail(f.username), password: f.password });
-      if (error || !auth.user) throw error;
-      toast.success("Registered — you're in the auction pool");
+      if (error || !auth.user) throw error ?? new Error("Account created, but automatic sign-in failed.");
+
+      const progress = ({ stage, kind, percent }: { stage: "compressing" | "uploading"; kind: "photo" | "video"; percent?: number }) => {
+        setUploadProgress(`${stage === "compressing" ? "Preparing" : "Uploading"} ${kind}… ${percent ?? 0}%`);
+      };
+      const photoUpload = await uploadPlayerFile("player-photos", auth.user.id, photo, progress);
+      uploaded.push({ bucket: "player-photos", path: photoUpload.path });
+      const videoUpload = await uploadPlayerFile("player-videos", auth.user.id, video, progress);
+      uploaded.push({ bucket: "player-videos", path: videoUpload.path });
+
+      const { data, error: saveError } = await (supabase.rpc as any)("player_update_uploads", {
+        p_photo_url: photoUpload.url,
+        p_video_url: videoUpload.url,
+      });
+      if (saveError) throw saveError;
+      if (!data?.ok) throw new Error("Media could not be linked to the player profile.");
+
+      toast.success("Registration complete — photo and video uploaded.");
       navigate({ to: "/my-player" });
     } catch (err) {
-      toast.error(errText(err));
+      if (uploaded.length) {
+        await cleanupPlayerUploadObjects({ data: { objects: uploaded } }).catch(() => undefined);
+      }
+      if (accountCreated) {
+        toast.error("Your account was created, but media setup did not finish. Sign in and complete both uploads on your player dashboard.");
+        navigate({ to: "/my-player" });
+      } else {
+        toast.error(errText(err));
+      }
     } finally {
       setBusy(false);
+      setUploadProgress("");
     }
   };
 
@@ -96,10 +134,13 @@ function RegisterPage() {
               <label className="flex min-w-0 flex-col gap-2 text-xs font-medium text-[#191916]">Gaming experience<input className="bidx-register-input" placeholder="Years / experience" value={f.experience} onChange={set("experience")} required /></label>
               <label className="flex min-w-0 flex-col gap-2 text-xs font-medium text-[#191916]">Previous / current esports team<input className="bidx-register-input" placeholder="Team name" value={f.team_name} onChange={set("team_name")} required /></label>
               <label className="flex min-w-0 flex-col gap-2 text-xs font-medium text-[#191916]">UID<input className="bidx-register-input" placeholder="Your player UID" value={f.uid} onChange={set("uid")} required /></label>
+              <label className="flex min-w-0 flex-col gap-2 text-xs font-medium text-[#191916]">Player photo <input className="bidx-register-input" type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} required disabled={busy} /><span className="text-[10px] text-[#6f6e63]">{photo ? photo.name : "Required · JPG, PNG, or WebP · max 50 MB"}</span></label>
+              <label className="flex min-w-0 flex-col gap-2 text-xs font-medium text-[#191916]">Gameplay video <input className="bidx-register-input" type="file" accept="video/mp4,video/webm,video/quicktime" onChange={(e) => setVideo(e.target.files?.[0] ?? null)} required disabled={busy} /><span className="text-[10px] text-[#6f6e63]">{video ? video.name : "Required · MP4, WebM, or MOV · max 500 MB"}</span></label>
               <label className="flex min-w-0 flex-col gap-2 text-xs font-medium text-[#191916] sm:col-span-2">Primary role
-                <select className="bidx-register-input" value={f.primary_role} onChange={set("primary_role")}>{GAME_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}</select>
+                <select className="bidx-register-input" value={f.primary_role} onChange={set("primary_role")} disabled={busy}>{GAME_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}</select>
               </label>
-              <button disabled={busy} className="bidx-register-submit mt-1 sm:col-span-2">{busy ? "Registering…" : "CREATE PLAYER ACCOUNT"}<span aria-hidden="true">→</span></button>
+              {uploadProgress && <p role="status" className="sm:col-span-2 rounded-xl bg-[#07584e]/5 px-4 py-3 text-xs text-[#07584e]">{uploadProgress}</p>}
+              <button type="submit" disabled={busy} className="bidx-register-submit mt-1 sm:col-span-2">{busy ? "REGISTERING & UPLOADING…" : "CREATE PLAYER ACCOUNT"}<span aria-hidden="true">→</span></button>
             </form>
             <p className="mt-5 text-center text-xs text-[#6f6e63]">Already registered? <a className="font-semibold text-[#07584e] underline-offset-4 hover:underline" href="/login">Sign in</a></p>
           </div>
