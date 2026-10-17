@@ -22,8 +22,8 @@ export function LiveAuction({ audience = false }: { audience?: boolean }) {
     window.addEventListener("hashchange", syncPanelFromMenu);
     return () => window.removeEventListener("hashchange", syncPanelFromMenu);
   }, []);
-  const { data: state } = useAuctionState();
-  const { data: players = [] } = usePlayers();
+  const { data: state, error: stateError, isLoading: stateLoading } = useAuctionState();
+  const { data: players = [], error: playersError } = usePlayers();
   const { data: ambassadors = [] } = useAmbassadors();
   const { data: events = [] } = useAuctionEvents();
   const { stream: camStream, status: camStatus } = useCasterCamStream(Boolean(state?.caster_cam_live), state?.caster_session_id ?? null);
@@ -70,6 +70,19 @@ export function LiveAuction({ audience = false }: { audience?: boolean }) {
       </header>
 
       <section className="mx-auto max-w-[1600px] px-3 py-3 sm:px-5 sm:py-5">
+        {(stateError || playersError) && (
+          <div role="alert" className="mb-3 rounded-lg border border-red-500/40 bg-red-950/20 px-4 py-3 text-sm text-red-700">
+            <strong>Auction data couldn't load.</strong>{" "}
+            {stateError ? "The auction status is unavailable. " : ""}
+            {playersError ? "The player pool is unavailable. " : ""}
+            Check the database connection and public auction views, then reload this page.
+          </div>
+        )}
+        {!stateLoading && !stateError && !state?.current_player_id && players.length === 0 && (
+          <div role="status" className="mb-3 rounded-lg border border-[#191916]/15 bg-white/60 px-4 py-3 text-sm text-[#45453d]">
+            The player pool is currently empty. Players will appear here after they register and are added to the pool.
+          </div>
+        )}
         <div className="grid gap-3 xl:grid-cols-[minmax(0,1.75fr)_minmax(310px,.75fr)]">
           <div className="min-w-0 overflow-hidden rounded-xl bg-panel ring-1 ring-line">
             <PlayerStage player={current} state={state} />
