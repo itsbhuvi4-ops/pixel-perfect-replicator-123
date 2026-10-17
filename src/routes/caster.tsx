@@ -419,6 +419,7 @@ function CasterCamCard() {
   const [hostActive, setHostActive] = useState(false);
   const [isCurrentHost, setIsCurrentHost] = useState(false);
   const [hostName, setHostName] = useState<string | null>(null);
+  const [hostStatusError, setHostStatusError] = useState(false);
   const [videoId, setVideoId] = useState("default");
   const [audioId, setAudioId] = useState("default");
   const [preview, setPreview] = useState<MediaStream | null>(null);
@@ -445,9 +446,12 @@ function CasterCamCard() {
         setHostActive(Boolean(next.host_active));
         setIsCurrentHost(Boolean(next.is_current_user_host));
         setHostName(next.host_name ?? null);
+        setHostStatusError(false);
       } catch {
         // Camera start remains server-authoritative; a failed status read must
-        // not grant host control.
+        // not grant host control. Tell the caster instead of silently showing
+        // a potentially stale host state.
+        if (!stopped) setHostStatusError(true);
       }
     };
     void refreshHost();
@@ -583,6 +587,11 @@ function CasterCamCard() {
         </div>
         {preview && !live && <button onClick={() => void stopLive()} className="label-cond border border-line py-2 text-[12px] text-mut">Stop Camera</button>}
         <p className="font-mono text-[11px] text-mut">Status: {status} · {viewers} viewer{viewers === 1 ? "" : "s"} · WebRTC peer-to-peer</p>
+        {hostStatusError && (
+          <p role="alert" className="rounded-md border border-alert/30 bg-alert/10 px-3 py-2 text-xs text-alert">
+            Could not verify the active caster. Refresh the host status or retry before starting a broadcast.
+          </p>
+        )}
         {hostActive && !isCurrentHost && !live && (
           <p className="rounded-md border border-alert/30 bg-alert/10 px-3 py-2 font-mono text-[10px] text-alert">
             STANDBY — {hostName ? `${hostName} is currently hosting` : "another caster is currently hosting"}
