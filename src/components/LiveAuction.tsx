@@ -23,7 +23,7 @@ export function LiveAuction({ audience = false }: { audience?: boolean }) {
     return () => window.removeEventListener("hashchange", syncPanelFromMenu);
   }, []);
   const { data: state, error: stateError, isLoading: stateLoading } = useAuctionState();
-  const { data: players = [], error: playersError } = usePlayers();
+  const { data: players = [], error: playersError, isLoading: playersLoading } = usePlayers();
   const { data: ambassadors = [] } = useAmbassadors();
   const { data: events = [] } = useAuctionEvents();
   const { stream: camStream, status: camStatus } = useCasterCamStream(Boolean(state?.caster_cam_live), state?.caster_session_id ?? null);
@@ -78,7 +78,7 @@ export function LiveAuction({ audience = false }: { audience?: boolean }) {
             Check the database connection and public auction views, then reload this page.
           </div>
         )}
-        {!stateLoading && !stateError && !state?.current_player_id && players.length === 0 && (
+        {!stateLoading && !playersLoading && !stateError && !playersError && !state?.current_player_id && players.length === 0 && (
           <div role="status" className="mb-3 rounded-lg border border-[#191916]/15 bg-white/60 px-4 py-3 text-sm text-[#45453d]">
             The player pool is currently empty. Players will appear here after they register and are added to the pool.
           </div>
