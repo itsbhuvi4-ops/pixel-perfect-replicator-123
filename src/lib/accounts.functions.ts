@@ -590,6 +590,8 @@ export const updateSettings = createServerFn({ method: "POST" })
       min_increment: z.number().int().min(1),
       default_starting_points: z.number().int().min(0).max(10_000_000),
       retain_price: z.number().int().min(0),
+      max_retains: z.number().int().min(0).max(100),
+      apply_points_to_all: z.boolean().optional().default(false),
       max_players: z.number().int().min(1).max(1000),
       max_ambassadors: z.number().int().min(1).max(100),
       max_casters: z.number().int().min(1).max(20),
@@ -598,7 +600,19 @@ export const updateSettings = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireRole(context, ["admin"]);
     const sa = await admin();
-    const { data: st } = await sa.from("auction_state").select("status").eq("id", 1).single();
+
+    // Resetting team balances is a separate, explicitly requested action.
+    // The database function locks auction_state and checks the current status
+    // in the same transaction as the balance update, preventing a race with
+    // a caster starting the auction.
+    if (data.apply_points_to_all) {
+      const { error: pointsError } = await (sa as any).rpc(
+        "admin_reset_ambassador_points_if_not_started",
+        { p_points: data.default_starting_points },
+      );
+      if (pointsError) throw new Error(friendly(pointsError.message));
+    }
+
     const { error } = await (sa.from("auction_state") as any).update({
       tournament_name: data.tournament_name,
       tournament_season: data.tournament_season,
@@ -608,18 +622,13 @@ export const updateSettings = createServerFn({ method: "POST" })
       min_increment: data.min_increment,
       default_starting_points: data.default_starting_points,
       retain_price: data.retain_price,
+      max_retains: data.max_retains,
       max_players: data.max_players,
       max_ambassadors: data.max_ambassadors,
       max_casters: data.max_casters,
       updated_at: new Date().toISOString(),
     }).eq("id", 1);
     if (error) throw new Error(friendly(error.message));
-    if (st?.status === "not_started") {
-      await sa.from("ambassadors").update({
-        starting_points: data.default_starting_points,
-        remaining_points: data.default_starting_points,
-      }).gte("starting_points", 0);
-    }
     return { ok: true };
   });
 
