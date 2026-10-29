@@ -28,7 +28,7 @@ const Input = z.object({
 
 export const generateCommentary = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => Input.parse(d))
+  .validator((d) => Input.parse(d))
   .handler(async ({ data, context }) => {
     const { data: roles } = await context.supabase.from("user_roles").select("role").eq("user_id", context.userId);
     const allowed = (roles ?? []).some((r: { role: string }) => r.role === "caster" || r.role === "admin");

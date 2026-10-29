@@ -58,7 +58,7 @@ export function AmbassadorConsole() {
   return (
     <main className="role-canvas mx-auto max-w-6xl px-3 py-5 sm:px-5">
       <section id="profile" className="scroll-mt-20 rounded-xl bg-panel p-4 ring-1 ring-line sm:p-5">
-        <p className="selection-label w-fit bg-coral px-3 py-1 text-xs">AMBASSADOR WORKSPACE</p>
+        <p className="selection-label w-fit bg-alert px-3 py-1 text-xs">AMBASSADOR WORKSPACE</p>
         <h1 className="mt-3 font-display text-5xl">Profile</h1>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <Field label="Username" value={me.ambassador_name} />
