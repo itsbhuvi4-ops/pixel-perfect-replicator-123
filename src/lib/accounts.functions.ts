@@ -153,7 +153,7 @@ export const getFirstAdminSetupStatus = createServerFn({ method: "GET" })
   });
 
 export const setupFirstAdmin = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({
+  .validator((d) => z.object({
     username,
     password,
     setupCode: z.string().trim().min(12).max(200),
@@ -194,7 +194,7 @@ export const claimCasterCamera = createServerFn({ method: "POST" })
 
 export const heartbeatCasterCamera = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ sessionId: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ sessionId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     await requireRole(context, ["caster", "admin"]);
     const { data: result, error } = await (context.supabase as any).rpc("caster_heartbeat_camera", { p_session_id: data.sessionId });
@@ -227,7 +227,7 @@ export const adminReleaseCasterHost = createServerFn({ method: "POST" })
 
 export const releaseCasterCamera = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ sessionId: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ sessionId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     await requireRole(context, ["caster", "admin"]);
     const { data: result, error } = await (context.supabase as any).rpc("caster_release_camera", { p_session_id: data.sessionId });
@@ -238,7 +238,7 @@ export const releaseCasterCamera = createServerFn({ method: "POST" })
 /* ---------- Public ---------- */
 
 export const registerPlayer = createServerFn({ method: "POST" })
-  .inputValidator((d) =>
+  .validator((d) =>
     z
       .object({
         username,
@@ -284,7 +284,7 @@ export const registerPlayer = createServerFn({ method: "POST" })
 /** Confirms the chosen role against the database after sign-in. */
 export const verifyLogin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ role: z.enum(["admin", "caster", "ambassador", "player"]) }).parse(d))
+  .validator((d) => z.object({ role: z.enum(["admin", "caster", "ambassador", "player"]) }).parse(d))
   .handler(async ({ data, context }) => {
     // Role and profile are independent reads. Run them concurrently so login
     // does not wait for two sequential database round-trips.
@@ -311,7 +311,7 @@ export const completePasswordChange = createServerFn({ method: "POST" })
 
 export const changeUsername = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ username }).parse(d))
+  .validator((d) => z.object({ username }).parse(d))
   .handler(async ({ data, context }) => {
     const sa = await admin();
     const { data: taken } = await sa.from("profiles").select("id").ilike("username", data.username).maybeSingle();
@@ -338,7 +338,7 @@ export const listUsers = createServerFn({ method: "GET" })
 
 export const adminDeleteAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ userId: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ userId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     await requireRole(context, ["admin"]);
     if (data.userId === context.userId) throw new Error("You can't delete your own account");
@@ -471,7 +471,7 @@ export const markPlayerUploadPromptSeen = createServerFn({ method: "POST" })
 
 export const resetUserPassword = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ userId: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ userId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     await requireRole(context, ["admin"]);
     if (data.userId === context.userId) throw new Error("You can't reset your own password from the admin panel");
@@ -503,7 +503,7 @@ export const resetUserPassword = createServerFn({ method: "POST" })
 
 export const createStaff = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z.object({
       username, password,
       role: z.enum(["caster", "ambassador"]),
@@ -540,7 +540,7 @@ export const createStaff = createServerFn({ method: "POST" })
 
 export const updateAmbassador = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z.object({ id: z.string().uuid(), team_name: z.string().trim().min(2).max(40), starting_points: z.number().int().min(0).max(10_000_000) }).parse(d),
   )
   .handler(async ({ data, context }) => {
@@ -580,7 +580,7 @@ export const resetAuction = createServerFn({ method: "POST" })
 
 export const updateSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z.object({
       tournament_name: z.string().trim().min(2).max(80),
       tournament_season: z.string().trim().min(1).max(40),
@@ -629,7 +629,7 @@ export const updateSettings = createServerFn({ method: "POST" })
 
 export const cleanupPlayerUploadObjects = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({
+  .validator((d) => z.object({
     objects: z.array(z.object({ bucket: z.enum(["player-photos", "player-videos"]), path: z.string().min(3).max(500) })).max(2),
   }).parse(d))
   .handler(async ({ data, context }) => {
@@ -645,7 +645,7 @@ export const cleanupPlayerUploadObjects = createServerFn({ method: "POST" })
 
 export const adminDeleteAmbassador = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ ambassadorId: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ ambassadorId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     await requireRole(context, ["admin"]);
     const sa = await admin();
@@ -702,7 +702,7 @@ export const adminDeleteAmbassador = createServerFn({ method: "POST" })
 
 export const adminDeletePlayer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ playerId: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ playerId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     await requireRole(context, ["admin"]);
     const sa = await admin();
@@ -788,7 +788,7 @@ export const adminDeletePlayer = createServerFn({ method: "POST" })
 
 export const adminRequeuePlayer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ playerId: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ playerId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     await requireRole(context, ["admin"]);
     const sa = await admin();
@@ -806,7 +806,7 @@ export const adminRequeuePlayer = createServerFn({ method: "POST" })
 
 export const setAuctionStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({
+  .validator((d) => z.object({
     status: z.enum(["live", "paused", "stopped"]),
   }).parse(d))
   .handler(async ({ data, context }) => {
