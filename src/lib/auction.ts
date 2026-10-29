@@ -105,7 +105,7 @@ export function useMyPlayer(userId: string | null | undefined) {
         .eq("user_id", userId!)
         .maybeSingle();
 
-      if (fallbackError) throw error;
+      if (fallbackError) throw fallbackError;
       return (player ?? null) as Player | null;
     },
   });

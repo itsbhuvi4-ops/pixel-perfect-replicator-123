@@ -590,9 +590,11 @@ export const updateSettings = createServerFn({ method: "POST" })
       min_increment: z.number().int().min(1),
       default_starting_points: z.number().int().min(0).max(10_000_000),
       retain_price: z.number().int().min(0),
+      max_retains: z.number().int().min(0).max(1000),
       max_players: z.number().int().min(1).max(1000),
       max_ambassadors: z.number().int().min(1).max(100),
       max_casters: z.number().int().min(1).max(20),
+      apply_points_to_all: z.boolean(),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
@@ -608,17 +610,19 @@ export const updateSettings = createServerFn({ method: "POST" })
       min_increment: data.min_increment,
       default_starting_points: data.default_starting_points,
       retain_price: data.retain_price,
+      max_retains: data.max_retains,
       max_players: data.max_players,
       max_ambassadors: data.max_ambassadors,
       max_casters: data.max_casters,
       updated_at: new Date().toISOString(),
     }).eq("id", 1);
     if (error) throw new Error(friendly(error.message));
-    if (st?.status === "not_started") {
-      await sa.from("ambassadors").update({
+    if (st?.status === "not_started" && data.apply_points_to_all) {
+      const { error: pointsError } = await sa.from("ambassadors").update({
         starting_points: data.default_starting_points,
         remaining_points: data.default_starting_points,
       }).gte("starting_points", 0);
+      if (pointsError) throw new Error(friendly(pointsError.message));
     }
     return { ok: true };
   });
@@ -807,8 +811,7 @@ export const setAuctionStatus = createServerFn({ method: "POST" })
   }).parse(d))
   .handler(async ({ data, context }) => {
     await requireRole(context, ["caster", "admin"]);
-    const sa = await admin();
-    const { data: result, error } = await sa.rpc("caster_set_status", {
+    const { data: result, error } = await (context.supabase as any).rpc("caster_set_status", {
       p_status: data.status,
     });
     if (error) throw new Error(friendly(error.message));

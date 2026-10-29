@@ -58,14 +58,28 @@ function LoginPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); setBusy(true); setErr(null);
-    const { error } = await supabase.auth.signInWithPassword({ email: usernameToEmail(username.trim()), password });
-    if (error) { setBusy(false); setErr("Incorrect username or password. Please try again."); return; }
-    const res = await verify({ data: { role } });
-    setBusy(false);
-    if (!res.ok) { await supabase.auth.signOut(); setErr(res.error); return; }
-    if (res.mustChangePassword) { window.location.href = "/change-password"; return; }
-    if (next) { await navigate({ to: next }); return; }
-    await navigate({ to: homeForRoles([role]) });
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email: usernameToEmail(username.trim()), password });
+      if (error) { setErr("Incorrect username or password. Please try again."); return; }
+
+      let res;
+      try {
+        res = await verify({ data: { role } });
+      } catch (verifyError) {
+        await supabase.auth.signOut();
+        setErr(verifyError instanceof Error ? verifyError.message : "Unable to verify account access.");
+        return;
+      }
+
+      if (!res.ok) { await supabase.auth.signOut(); setErr(res.error); return; }
+      if (res.mustChangePassword) { window.location.href = "/change-password"; return; }
+      if (next) { await navigate({ to: next }); return; }
+      await navigate({ to: homeForRoles([role]) });
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : "Login failed. Please try again.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (

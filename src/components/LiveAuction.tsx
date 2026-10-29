@@ -233,7 +233,7 @@ function PublicPanelModal({
             <div className="space-y-3 text-sm leading-7 text-[#555449]"><p>BIDXAUCTION is a live player auction experience built for competitive esports communities.</p><p>Watch the player reveal, follow every bid, and see teams compete for their next roster addition in real time.</p><p className="text-[#191916]">Created by Bhuvi.</p></div>
           )}
           {panel === "support" && (
-            <div className="space-y-3 text-sm text-[#555449]"><p>Need help during the auction?</p><p>Contact the auction support team through the configured support channel.</p><button type="button" className="rounded-full border border-[#07584e]/20 bg-[#07584e]/5 px-4 py-2 text-xs uppercase tracking-[.15em] text-[#07584e]">Contact Support</button></div>
+            <div className="space-y-3 text-sm text-[#555449]"><p>Need help during the auction?</p><p>Please contact your BIDXAUCTION administrator for support.</p></div>
           )}
         </div>
       </div>
