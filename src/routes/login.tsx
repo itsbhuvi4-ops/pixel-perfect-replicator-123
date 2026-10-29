@@ -122,7 +122,7 @@ function LoginPage() {
           <div className="pointer-events-none absolute right-0 top-0 size-64 rounded-full bg-[#07584e]/5 blur-3xl" />
           <div className="relative">
             <p className="text-[11px] font-bold tracking-[.28em] text-[#07584e]">WELCOME BACK</p>
-            <h2 className="mt-3 text-4xl font-bold tracking-tight text-white sm:text-5xl">Sign in<span className="text-[#07584e]">.</span></h2>
+            <h2 className="mt-3 text-4xl font-bold tracking-tight text-[#191916] sm:text-5xl">Sign in<span className="text-[#07584e]">.</span></h2>
             <p className="mt-3 text-sm leading-6 text-[#6f6e63]">Use your registered username and password to continue.</p>
 
             <form onSubmit={submit} className="mt-8 flex flex-col gap-4">
@@ -146,7 +146,7 @@ function LoginPage() {
             <p className="mt-5 text-center text-xs leading-5 text-[#6f6e63]">Having trouble signing in? Contact your BIDXAUCTION administrator.</p>
 
             {setupAvailable && <div className="mt-7 border-t border-[#07584e]/15 pt-5">
-              <button type="button" onClick={() => setSetupOpen((v) => !v)} className="text-xs font-semibold text-[#07584e] hover:text-white">{setupOpen ? "Hide first-admin setup" : "First admin? Secure setup"}</button>
+              <button type="button" onClick={() => setSetupOpen((v) => !v)} className="text-xs font-semibold text-[#07584e] hover:text-[#034b42]">{setupOpen ? "Hide first-admin setup" : "First admin? Secure setup"}</button>
               {setupOpen && <form onSubmit={submitFirstAdmin} className="mt-4 grid gap-3">
                 <p className="text-xs leading-5 text-[#6f6e63]">Available only while no admin account exists. The setup code is verified on the server.</p>
                 <input className="bidx-login-input" placeholder="Admin username" value={setup.username} onChange={(e) => setSetup({ ...setup, username: e.target.value })} required minLength={3} />

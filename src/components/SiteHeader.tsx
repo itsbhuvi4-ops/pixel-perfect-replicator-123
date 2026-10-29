@@ -59,8 +59,8 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b-2 border-line bg-background px-3 sm:px-5">
       <div className="mx-auto flex min-h-16 max-w-7xl items-center gap-3">
-        <Link to="/" className="selection-logo shrink-0 bg-gold px-3 py-1 font-display text-xl sm:text-2xl">
-          BID<span className="text-blue">X</span>
+        <Link to="/" className="selection-logo shrink-0 bg-gold px-3 py-1 font-display text-xl text-arena sm:text-2xl">
+          BID<span className="text-arena">X</span>
         </Link>
 
         <nav aria-label="Main navigation" className="hidden min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto py-2 md:flex">
@@ -95,7 +95,7 @@ export function SiteHeader() {
           {session ? (
             <button
               onClick={() => void signOut()}
-              className="hidden items-center gap-2 border-2 border-line bg-panel2 px-3 py-1.5 font-cond text-[11px] text-mut transition hover:bg-coral hover:text-foreground sm:inline-flex"
+              className="hidden items-center gap-2 border-2 border-line bg-panel2 px-3 py-1.5 font-cond text-[11px] text-mut transition hover:bg-alert hover:text-foreground sm:inline-flex"
             >
               <LogOut className="size-3.5" /> {username}
             </button>
@@ -129,7 +129,7 @@ export function SiteHeader() {
                 key={item.label}
                 to={item.to}
                 onClick={() => setOpen(false)}
-                className="border-b-2 border-line px-4 py-3 font-cond text-[13px] uppercase text-mut hover:bg-blue hover:text-foreground"
+                className="border-b-2 border-line px-4 py-3 font-cond text-[13px] uppercase text-mut hover:bg-gold hover:text-arena"
               >
                 {item.label}
               </Link>

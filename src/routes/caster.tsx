@@ -45,7 +45,7 @@ export function CasterConsole() {
   return (
     <main className="role-canvas mx-auto max-w-7xl px-3 py-5 sm:px-5">
       <section id="profile" className="mb-4 flex flex-wrap items-end justify-between gap-3 bg-panel p-4 ring-1 ring-line">
-        <div><p className="selection-label w-fit bg-blue px-3 py-1 text-xs">CASTER WORKSPACE</p><h1 className="mt-3 font-display text-5xl">Auction Control</h1></div>
+        <div><p className="selection-label w-fit bg-gold px-3 py-1 text-xs">CASTER WORKSPACE</p><h1 className="mt-3 font-display text-5xl">Auction Control</h1></div>
         <span className="label-cond bg-green px-3 py-2 text-xs text-foreground">BROADCAST READY</span>
       </section>
       <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
