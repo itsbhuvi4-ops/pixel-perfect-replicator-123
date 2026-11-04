@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -185,8 +185,14 @@ export type Database = {
       auction_state: {
         Row: {
           base_price: number
+          bidding_deadline_at: string | null
           bidding_open: boolean
+          bidding_seconds_remaining: number | null
           caster_cam_live: boolean
+          caster_heartbeat_at: string | null
+          caster_lease_until: string | null
+          caster_owner_id: string | null
+          caster_session_id: string | null
           caster_stream_url: string | null
           current_bid: number | null
           current_bidder_id: string | null
@@ -206,8 +212,14 @@ export type Database = {
         }
         Insert: {
           base_price?: number
+          bidding_deadline_at?: string | null
           bidding_open?: boolean
+          bidding_seconds_remaining?: number | null
           caster_cam_live?: boolean
+          caster_heartbeat_at?: string | null
+          caster_lease_until?: string | null
+          caster_owner_id?: string | null
+          caster_session_id?: string | null
           caster_stream_url?: string | null
           current_bid?: number | null
           current_bidder_id?: string | null
@@ -227,8 +239,14 @@ export type Database = {
         }
         Update: {
           base_price?: number
+          bidding_deadline_at?: string | null
           bidding_open?: boolean
+          bidding_seconds_remaining?: number | null
           caster_cam_live?: boolean
+          caster_heartbeat_at?: string | null
+          caster_lease_until?: string | null
+          caster_owner_id?: string | null
+          caster_session_id?: string | null
           caster_stream_url?: string | null
           current_bid?: number | null
           current_bidder_id?: string | null
@@ -411,6 +429,7 @@ export type Database = {
           game_id: string
           id: string
           info: string | null
+          information_change_count: number
           ingame_name: string
           lot_number: number | null
           photo_url: string | null
@@ -422,6 +441,7 @@ export type Database = {
           status: Database["public"]["Enums"]["player_status"]
           submitted_at: string | null
           team_name: string | null
+          uid: string | null
           updated_at: string
           user_id: string
           video_url: string | null
@@ -433,6 +453,7 @@ export type Database = {
           game_id: string
           id?: string
           info?: string | null
+          information_change_count?: number
           ingame_name: string
           lot_number?: number | null
           photo_url?: string | null
@@ -444,6 +465,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["player_status"]
           submitted_at?: string | null
           team_name?: string | null
+          uid?: string | null
           updated_at?: string
           user_id: string
           video_url?: string | null
@@ -455,6 +477,7 @@ export type Database = {
           game_id?: string
           id?: string
           info?: string | null
+          information_change_count?: number
           ingame_name?: string
           lot_number?: number | null
           photo_url?: string | null
@@ -466,6 +489,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["player_status"]
           submitted_at?: string | null
           team_name?: string | null
+          uid?: string | null
           updated_at?: string
           user_id?: string
           video_url?: string | null
@@ -587,15 +611,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_release_caster_host: { Args: never; Returns: Json }
       admin_reset_auction: { Args: { p_request_id: string }; Returns: Json }
       admin_select_next_player_after_delete: {
         Args: { p_request_id: string }
         Returns: Json
       }
+      caster_claim_camera: { Args: never; Returns: Json }
       caster_end_bidding: { Args: never; Returns: Json }
+      caster_heartbeat_camera: { Args: { p_session_id: string }; Returns: Json }
+      caster_host_status: { Args: never; Returns: Json }
       caster_mark_unsold: { Args: never; Returns: Json }
       caster_next_player: { Args: never; Returns: Json }
       caster_open_bidding: { Args: never; Returns: Json }
+      caster_release_camera: { Args: { p_session_id: string }; Returns: Json }
       caster_set_status: {
         Args: { p_status: Database["public"]["Enums"]["auction_status"] }
         Returns: Json
@@ -613,6 +642,57 @@ export type Database = {
       place_bid: { Args: { p_amount: number }; Returns: Json }
       place_bid_v3: {
         Args: { p_amount: number; p_idempotency_key: string }
+        Returns: Json
+      }
+      player_get_me: {
+        Args: never
+        Returns: {
+          ambassador_id: string | null
+          created_at: string
+          experience: string | null
+          game_id: string
+          id: string
+          info: string | null
+          information_change_count: number
+          ingame_name: string
+          lot_number: number | null
+          photo_url: string | null
+          player_name: string
+          primary_role: Database["public"]["Enums"]["game_role"]
+          secondary_role: Database["public"]["Enums"]["game_role"] | null
+          sold_at: string | null
+          sold_price: number | null
+          status: Database["public"]["Enums"]["player_status"]
+          submitted_at: string | null
+          team_name: string | null
+          uid: string | null
+          updated_at: string
+          user_id: string
+          video_url: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "players"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      player_update_profile: {
+        Args: {
+          p_experience: string
+          p_game_id: string
+          p_info: string
+          p_ingame_name: string
+          p_player_name: string
+          p_primary_role: Database["public"]["Enums"]["game_role"]
+          p_secondary_role: Database["public"]["Enums"]["game_role"]
+          p_team_name: string
+          p_uid: string
+        }
+        Returns: Json
+      }
+      player_update_uploads: {
+        Args: { p_photo_url: string; p_video_url: string }
         Returns: Json
       }
       retain_player_v3: { Args: never; Returns: Json }
