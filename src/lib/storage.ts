@@ -17,7 +17,7 @@ const PHOTO_COMPRESS_THRESHOLD = 2 * 1024 * 1024;
 const PHOTO_MAX_DIMENSION = 1920;
 // Videos up to the storage limit are uploaded directly. This avoids forcing
 // mobile devices to re-encode every normal-sized video before upload.
-const VIDEO_COMPRESS_THRESHOLD = 100 * 1024 * 1024;
+const VIDEO_COMPRESS_THRESHOLD = 500 * 1024 * 1024;
 const VIDEO_MAX_WIDTH = 1280;
 const VIDEO_MAX_HEIGHT = 720;
 const VIDEO_BITRATE = 2_200_000;
@@ -235,10 +235,9 @@ export async function preparePlayerFile(
   file: File,
   onProgress?: (progress: UploadProgress) => void,
 ): Promise<File> {
-  // Keep normal-sized videos on the fast direct-upload path. Very large videos
-  // can take a long time to transfer on mobile networks, so try browser-side
-  // compression above 100 MB to reduce bytes sent. Compression is skipped for
-  // photos and never replaces the original unless the result is smaller.
+  // Upload player videos directly up to the existing 500 MB limit. Browser-side
+  // re-encoding can take as long as the video itself on phones, delay the upload,
+  // and reduce quality. Keep the selected original file unchanged.
   if (bucket !== "player-videos" || file.size <= VIDEO_COMPRESS_THRESHOLD) return file;
 
   const optimized = await compressVideo(file, (percent) => {
