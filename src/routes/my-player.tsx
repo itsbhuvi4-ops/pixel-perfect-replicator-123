@@ -351,11 +351,21 @@ function UploadsSection({
             : "Uploading " + kind + "… " + (percent ?? 0) + "%" + suffix,
         );
       };
-      const photoResult = photo ? await uploadPlayerFile("player-photos", userId, photo, reportUploadProgress) : null;
+      // Upload a selected photo and video together instead of making the player
+      // wait for two separate network transfers. Wait for both tasks to settle so
+      // any successful upload can still be cleaned up if the other one fails.
+      const [photoUpload, videoUpload] = await Promise.allSettled([
+        photo ? uploadPlayerFile("player-photos", userId, photo, reportUploadProgress) : Promise.resolve(null),
+        video ? uploadPlayerFile("player-videos", userId, video, reportUploadProgress) : Promise.resolve(null),
+      ]);
+      const photoResult = photoUpload.status === "fulfilled" ? photoUpload.value : null;
+      const videoResult = videoUpload.status === "fulfilled" ? videoUpload.value : null;
       if (photoResult) created.push({ bucket: "player-photos", path: photoResult.path });
-      const photoUrl = photoResult?.url ?? player.photo_url;
-      const videoResult = video ? await uploadPlayerFile("player-videos", userId, video, reportUploadProgress) : null;
       if (videoResult) created.push({ bucket: "player-videos", path: videoResult.path });
+      const uploadFailure = [photoUpload, videoUpload].find((result) => result.status === "rejected");
+      if (uploadFailure?.status === "rejected") throw uploadFailure.reason;
+
+      const photoUrl = photoResult?.url ?? player.photo_url;
       const videoUrl = videoResult?.url ?? player.video_url;
       setProgress("Saving profile…");
 
