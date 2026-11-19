@@ -1,4 +1,6 @@
 # Roadmap
+- [ ] Redesign the existing application as a Discord-inspired desktop workspace while preserving current auction and account flows
+- [ ] Audit and verify existing routes, controls, errors, and desktop/mobile behavior; document any external verification limits
 - [x] Reference-based BIDXAUCTION startup animation and website handoff
 - [x] Database upgrade: stop/retain states, results, retains, casters, safe bid/finalize/retain actions, private videos
 - [x] Login with role check, player registration, live page
