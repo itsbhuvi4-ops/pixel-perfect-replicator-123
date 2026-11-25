@@ -57,10 +57,10 @@ export function SiteHeader() {
   const live = state?.status === "live";
 
   return (
-    <header className="sticky top-0 z-50 border-b-2 border-line bg-background px-3 sm:px-5">
+    <header className="sticky top-0 z-50 border-b border-line bg-background px-3 sm:px-5">
       <div className="mx-auto flex min-h-16 max-w-7xl items-center gap-3">
-        <Link to="/" className="selection-logo shrink-0 bg-gold px-3 py-1 font-display text-xl text-arena sm:text-2xl">
-          BID<span className="text-arena">X</span>
+        <Link to="/" className="selection-logo shrink-0 rounded-md bg-primary px-3 py-1 font-display text-xl text-primary-foreground sm:text-2xl">
+          BID<span className="text-primary-foreground">X</span>
         </Link>
 
         <nav aria-label="Main navigation" className="hidden min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto py-2 md:flex">
@@ -74,9 +74,9 @@ export function SiteHeader() {
                 to={item.to}
                 aria-current={isActive ? "page" : undefined}
                 title={item.label}
-                className={`group inline-flex h-11 shrink-0 items-center justify-center gap-0 overflow-hidden rounded-full border transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#07584e]/40 ${isActive ? "gap-2 border-[#07584e]/15 bg-[#e7f2e9] px-3.5 text-[#07584e] shadow-sm" : "border-transparent px-3 text-[#6d6d62] hover:border-[#d9ddcf] hover:bg-white/80 hover:text-[#191916]"}`}
+                className={`group inline-flex h-11 shrink-0 items-center justify-center gap-0 overflow-hidden rounded-md border transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${isActive ? "gap-2 border-border bg-accent px-3.5 text-accent-foreground" : "border-transparent px-3 text-muted-foreground hover:border-border hover:bg-secondary hover:text-foreground"}`}
               >
-                <Icon size={18} strokeWidth={1.8} className={`shrink-0 transition-colors ${isActive ? "text-[#07584e]" : "text-current"}`} />
+                <Icon size={18} strokeWidth={1.8} className={`shrink-0 transition-colors ${isActive ? "text-accent-foreground" : "text-current"}`} />
                 <span className={`overflow-hidden whitespace-nowrap text-[11px] font-semibold uppercase tracking-[.055em] transition-all duration-300 ${isActive ? "max-w-40 translate-x-0 opacity-100" : "max-w-0 -translate-x-1 opacity-0 group-hover:max-w-40 group-hover:translate-x-0 group-hover:opacity-100"}`}>
                   {item.label}
                 </span>
@@ -87,7 +87,7 @@ export function SiteHeader() {
 
         <div className="ml-auto flex items-center gap-2">
           {live && (
-            <span className="hidden items-center gap-1.5 border-2 border-line bg-alert px-2.5 py-1 font-mono text-[10px] text-foreground sm:flex">
+            <span className="hidden items-center gap-1.5 rounded-sm border border-alert/30 bg-alert/10 px-2.5 py-1 font-mono text-[10px] text-alert sm:flex">
               <i className="live-dot size-1.5 rounded-full bg-alert" /> ON AIR
             </span>
           )}
@@ -95,7 +95,7 @@ export function SiteHeader() {
           {session ? (
             <button
               onClick={() => void signOut()}
-              className="hidden items-center gap-2 border-2 border-line bg-panel2 px-3 py-1.5 font-cond text-[11px] text-mut transition hover:bg-alert hover:text-foreground sm:inline-flex"
+              className="hidden items-center gap-2 rounded-md border border-line bg-panel2 px-3 py-1.5 font-cond text-[11px] text-mut transition hover:bg-destructive hover:text-destructive-foreground sm:inline-flex"
             >
               <LogOut className="size-3.5" /> {username}
             </button>
@@ -103,7 +103,7 @@ export function SiteHeader() {
             <Link
               to="/login"
               search={{}}
-              className="neo-action hidden border-2 border-line bg-gold px-4 py-2 font-cond text-[11px] uppercase text-arena sm:inline-flex"
+              className="neo-action hidden rounded-md border border-primary bg-primary px-4 py-2 font-cond text-[11px] uppercase text-primary-foreground sm:inline-flex"
             >
               Sign in
             </Link>
@@ -114,7 +114,7 @@ export function SiteHeader() {
             aria-label="Open menu"
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
-            className="grid size-10 place-items-center border-2 border-line bg-panel2 md:hidden"
+            className="grid size-10 place-items-center rounded-md border border-line bg-panel2 md:hidden"
           >
             {open ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>
@@ -129,7 +129,7 @@ export function SiteHeader() {
                 key={item.label}
                 to={item.to}
                 onClick={() => setOpen(false)}
-                className="border-b-2 border-line px-4 py-3 font-cond text-[13px] uppercase text-mut hover:bg-gold hover:text-arena"
+                className="border-b border-line px-4 py-3 font-cond text-[13px] uppercase text-mut hover:bg-secondary hover:text-foreground"
               >
                 {item.label}
               </Link>
