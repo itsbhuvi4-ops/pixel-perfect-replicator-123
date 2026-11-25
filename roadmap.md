@@ -1,7 +1,7 @@
 # Roadmap
-- [ ] Redesign the existing application as a Discord-inspired desktop workspace while preserving current auction and account flows
-- [ ] Audit and verify existing routes, controls, errors, and desktop/mobile behavior; document any external verification limits
-- [ ] Run the requested auction end-to-end with fresh test accounts, then verify reset and immutable history without disturbing existing auction data
+- [ ] Refresh the global visual theme and homepage hero with an Antigravity-inspired minimal direction, preserving current auction and account flows
+- [ ] Verify the homepage at desktop and mobile sizes and run available project checks
+- [ ] Run the requested auction end-to-end in an isolated environment, then verify reset and immutable history without touching shared live data
 - [x] Reference-based BIDXAUCTION startup animation and website handoff
 - [x] Database upgrade: stop/retain states, results, retains, casters, safe bid/finalize/retain actions, private videos
 - [x] Login with role check, player registration, live page
